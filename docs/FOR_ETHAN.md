@@ -40,6 +40,11 @@ Green now marks functional status, not the theme.
 The darker technical-studio alternative would have introduced another theme to explain without
 helping the first lesson: how spacing groups content.
 
+The orb setup uses Bun's lockfile as the single source of truth. A fresh remote workspace installs
+the matching JavaScript packages and Playwright's Chromium once, then Amp snapshots that prepared
+workspace for later agents. This keeps test tooling ready without putting a development server in
+the snapshot, because servers are live set pieces rather than reusable props.
+
 The shell and grid have different jobs. In film terms, a studio wall should not move whenever
 the camera reframes a shot. Navigation stays bounded while content columns divide the remaining
 space. Twelve columns divide evenly into halves, thirds, quarters, and sixths. Ten works well
@@ -74,6 +79,17 @@ AA minimum target-size rule: WCAG 2.2 AA generally uses 24 CSS pixels with excep
 
 For your next remix, write down what stays fixed, what stretches, what scrolls, and what collapses.
 Then test the smallest useful window, long labels, keyboard navigation, and 200% zoom.
+
+### Orb setup: prepare the stage before the crew arrives
+
+`.agents/setup` is the pre-production checklist for an Amp orb. It installs the Bun version in
+`.bun-version` when the base machine does not match, then restores dependencies exactly from
+`bun.lock` and caches the browser the Playwright tests need. The script is safe to run again: Bun
+checks the lockfile, and Playwright reuses the installed browser instead of starting an app server.
+
+An orb snapshot is like a saved studio set. It should contain tools and materials, not an active
+camera or a performer logged into a personal account. That lets every later agent begin from the
+same prepared baseline.
 
 ### Live mode: move the set, not every prop
 
