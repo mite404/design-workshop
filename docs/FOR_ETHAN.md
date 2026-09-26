@@ -103,6 +103,23 @@ Reducing the bar to 56px leaves 10px. Adjust that relationship before resizing e
 Traffic-light marks remain 12px; their larger containing group is a separate measurement.
 
 We deliberately allow groups to overlap so the learner can see the problem and its measured gap.
-The warning compares group rectangles, not appearances. This is a title-bar composition exercise,
-not a general page editor or a native macOS implementation. The content below demonstrates why
-a fixed sidebar and a 12-column content grid need not share the title bar's positioning system.
+The warning compares group rectangles, not appearances. This is a composition exercise,
+not a general page editor or a native macOS implementation.
+
+### Body panels: two axes, the same scale
+
+Live mode now includes a 192 × 400px side navigation panel and a 512 × 440px chat panel.
+Each header is a handle: drag it like moving a complete set piece, rather than moving every prop.
+The body has its own 800 × 560px grid below the title bar. Coordinates start at that body's
+top-left corner, so increasing title-bar height does not change a panel's local position.
+
+The panels keep their dimensions, typography, message spacing, and composer intact as they move.
+Movement snaps to 8px and stops at the body edges. Overlap remains allowed for experimentation;
+the selected panel comes forward, and a warning explains when the rectangles intersect.
+Four arrow keys and X/Y fields offer the same movement without dragging. Reset restores both
+the title-bar groups and the body panels.
+
+The browser test uses an uneven diagonal drag: 37px across and 19px down becomes 40px and 16px.
+This catches implementations that accidentally use the horizontal delta for both axes.
+The chat is deliberately mock content, not a messaging service. The status bar now says that
+the composition is session-only rather than claiming unsaved work was saved.

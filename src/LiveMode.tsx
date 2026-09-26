@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, Search, PanelLeft } from "lucide-react";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { LivePanels } from "./LivePanels";
 
 const initial = { lights: 24, navigation: 160, tabs: 328 };
 type Group = keyof typeof initial;
@@ -21,6 +22,7 @@ export function LiveMode() {
   const [size, setSize] = useState(36);
   const [gap, setGap] = useState(8);
   const [grid, setGrid] = useState(true);
+  const [panelReset, setPanelReset] = useState(0);
   const drag = useRef<{ pointer: number; start: number; x: number } | null>(
     null,
   );
@@ -49,8 +51,9 @@ export function LiveMode() {
       <div className="section-label">COMPOSITION LAB / LIVE MODE</div>
       <h2>Move the group. Keep the rhythm.</h2>
       <p className="intro-copy">
-        Drag title-bar groups along an 8px grid. Their size stays fixed. Like
-        moving a grouped layer in a layout, the contents travel together.
+        Drag title-bar groups and body panels along an 8px grid. Their size
+        stays fixed. Like moving a grouped layer in a layout, the contents
+        travel together.
       </p>
       <div className="live-controls">
         <label>
@@ -126,6 +129,7 @@ export function LiveMode() {
             setGap(8);
             setSelected("navigation");
             setGrid(true);
+            setPanelReset((version) => version + 1);
           }}
         >
           Reset composition
@@ -222,37 +226,9 @@ export function LiveMode() {
               </button>
             ))}
           </div>
-          <div className="live-body">
-            <aside>
-              <PanelLeft size={18} />
-              <strong>Forma studio</strong>
-              <span>Overview</span>
-              <span>Projects</span>
-              <span>Library</span>
-              <small>
-                Shell region
-                <br />
-                Fixed navigation
-              </small>
-            </aside>
-            <article>
-              <div className="section-label">PROJECT / 04</div>
-              <h3>Brand refresh</h3>
-              <p>Content grid starts inside the shell.</p>
-              <div className="live-content-grid">
-                {["Direction", "Typography", "Assets"].map((name, index) => (
-                  <div key={name}>
-                    <span>0{index + 1}</span>
-                    <strong>{name}</strong>
-                    <Search size={20} />
-                  </div>
-                ))}
-              </div>
-              <p>12 columns · 16px gutters · 24px content padding</p>
-            </article>
-          </div>
+          <LivePanels key={panelReset} grid={grid} />
           <div className="live-status">
-            All changes saved <span>Mock desktop window</span>
+            Session only · not saved <span>Mock desktop window</span>
           </div>
         </div>
       </div>
@@ -343,8 +319,9 @@ export function LiveMode() {
             12 columns.
           </p>
           <p>
-            This sandbox moves title-bar groups only. Values are learning
-            examples, not native macOS title-bar specifications. Changes reset
+            Drag the side navigation or chat header to move its whole panel.
+            Panel dimensions and internal spacing stay locked. Values are
+            learning examples, not native macOS specifications. Changes reset
             when you leave this section.
           </p>
         </article>

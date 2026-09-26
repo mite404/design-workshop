@@ -22,7 +22,9 @@ Vite prints the local address. In an Amp orb, expose port 5173 through an Amp po
 4. Switch between the dashboard, list/detail, editor, and settings patterns.
 5. Open **Components**. Test the form error, menu, empty state, and keyboard focus.
 6. Open **Learning path**. Work through eight lessons and their practice exercises.
-7. Open **Live mode**. Drag title-bar groups on an 8px grid without scaling their contents.
+7. Open **Live mode**. Drag title-bar groups and side navigation/chat panels on an 8px grid
+   without scaling their contents. Panel headers move on both axes; X/Y fields and arrow keys
+   also work. Panel dimensions stay locked, and reset restores the starting composition.
    Compare corner radius, bar height, control size, and gaps independently. Arrow keys and a
    numeric field also move groups. Overlap feedback reports collisions between group boxes.
 
@@ -53,6 +55,7 @@ replace keyboard, screen-reader, touch, or usability testing.
 - `src/App.tsx`: workbook navigation, layout controls, spacing explorer, and CSS recipes.
 - `src/MockWindow.tsx`: desktop shell and the four mock compositions.
 - `src/LiveMode.tsx`: fixed-scale, grid-snapped title-bar composition sandbox.
+- `src/LivePanels.tsx`: movable mock side navigation and chat panels with collision feedback.
 - `src/Lessons.tsx`: interactive component examples, quizzes, and session progress.
 - `src/index.css`: workbook styling, example measurements, and responsive arrangements.
 - `src/components/ui/`: shadcn/ui components added through the official CLI.
