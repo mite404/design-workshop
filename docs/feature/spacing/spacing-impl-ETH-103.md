@@ -76,7 +76,7 @@ from the browser at the start of the drag. See ADR-013.
 * The browser test and the unit test pass.
 * The screenshot shows nothing misaligned.
 * `pnpm typecheck`, `pnpm lint` and `pnpm test` pass.
-* The PR title starts with this ticket's bracketed Linear identifier.
+* The change is on `main` in a commit whose body names this ticket's Linear identifier.
 
 ## Notes
 

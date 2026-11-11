@@ -134,7 +134,7 @@ Part 5, the canvas handles:
 * The build output contains no `__workbench` string.
 * The three screenshots show nothing misaligned.
 * `pnpm typecheck`, `pnpm lint` and `pnpm test` pass.
-* The PR title starts with this ticket's bracketed Linear identifier.
+* The change is on `main` in a commit whose body names this ticket's Linear identifier.
 
 ## Notes
 

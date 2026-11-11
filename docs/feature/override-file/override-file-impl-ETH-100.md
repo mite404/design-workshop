@@ -81,7 +81,7 @@ Rejected: adding the dark block now. It arrives with the first colour story.
 * The Vitest file passes and each case above is in it.
 * A hand-typed value reaches both the app and a story.
 * `pnpm typecheck`, `pnpm lint` and `pnpm test` pass.
-* The PR title starts with this ticket's bracketed Linear identifier.
+* The change is on `main` in a commit whose body names this ticket's Linear identifier.
 
 ## Notes
 
