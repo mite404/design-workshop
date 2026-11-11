@@ -31,7 +31,18 @@ export default defineConfig({
     exclude: ["@sqlite.org/sqlite-wasm"],
   },
   // Amp orb portals reach the dev server under their own hostname.
-  server: { allowedHosts: [".onamp.dev"] },
+  server: {
+    allowedHosts: [".onamp.dev"],
+    proxy: {
+      "/__stories/": {
+        target: "http://localhost:6006",
+        changeOrigin: true,
+        ws: true,
+        // Keep the WebSocket's base path; only HTTP asset paths lose the prefix.
+        rewrite: (path) => path.replace(/^\/__stories(?=\/[^?])/, ""),
+      },
+    },
+  },
   // A module worker (ADR-083), so the runtime's worker can import like any other module.
   worker: { format: "es" },
 });

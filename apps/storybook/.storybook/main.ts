@@ -20,6 +20,29 @@ const config: StorybookConfig = {
     menuOnboardingChecklist: false,
   },
   core: { disableWhatsNewNotifications: true },
-  viteFinal: (vite) => ({ ...vite, plugins: [...(vite.plugins ?? []), tailwindcss()] }),
+  viteFinal: (vite) => ({
+    ...vite,
+    // Dev stories also load through the app's same-origin forward, including their HMR socket.
+    ...(vite.server?.middlewareMode === true && {
+      base: "/__stories/",
+      server: { ...vite.server, ws: { port: 0 } },
+    }),
+    plugins: [
+      ...(vite.plugins ?? []),
+      tailwindcss(),
+      {
+        name: "storybook-forward",
+        apply: "serve",
+        transformIndexHtml: {
+          order: "post",
+          // Storybook's virtual entry and mocker bypass Vite's configured base.
+          handler: (html, { path }) =>
+            vite.server?.middlewareMode === true && path === "/iframe.html"
+              ? html.replaceAll(/(src|href)="\/(?!\/|__stories\/)/g, '$1="/__stories/')
+              : html,
+        },
+      },
+    ],
+  }),
 };
 export default config;
