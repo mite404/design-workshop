@@ -138,6 +138,8 @@ review, so each commit message or report names them.
 The whole repo, Template included, moves to TypeScript 7 for the native compiler's speed.
 One deviation: `tools/verify-ui-drift` parses scripts with `@typescript/typescript6`, because
 TypeScript 7 no longer ships the in-process compiler API; it still typechecks on TypeScript 7.
+Amended 2026-11-11: the deviation is gone with `tools/verify-ui-drift` (ADR-020); nothing in
+the repo depends on `@typescript/typescript6` now.
 
 ## ADR-019 - Type steps use Tailwind's names
 
@@ -147,3 +149,12 @@ once in the baseline tokens. Tailwind's size classes already read those variable
 Tailwind classes and imported shadcn components all follow one scale with no mapping (ADR-014).
 The cost: `text-lg` and larger no longer mean Tailwind's default sizes. Rejected: names of our
 own, which would need a mapping for every step.
+
+## ADR-020 - No UI drift check
+
+2026-11-11 - Accepted.
+(Ethan: "the drift tool was something i built to impress an employer i don't think it applies to
+this since the app will be constantly changing a component or view's look. lets delete the
+drift-ui cli script and skill for now".) `tools/verify-ui-drift`, its baselines, its page at
+`/verify-ui-tooling` and the welcome's seal that led there are removed. The Workbench exists to
+change the look, so a check that the look has not changed works against it.

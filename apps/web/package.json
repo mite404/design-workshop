@@ -31,11 +31,9 @@
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@yaklabs/config": "workspace:*",
-    "fontkit": "^2.0.4",
     "tailwindcss": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
-    "vitest": "catalog:",
-    "wawoff2": "^2.0.1"
+    "vitest": "catalog:"
   }
 }

@@ -37,10 +37,6 @@ describe("the route files", () => {
     expect(fileAt("/playground")).toBe("routes/playground.tsx");
   });
 
-  it("have a page of their own for the design tooling, outside the signed-in shell", () => {
-    expect(fileAt("/verify-ui-tooling")).toBe("routes/verify-ui-tooling.tsx");
-  });
-
   it("have no /new", () => {
     expect(fileAt("/new")).not.toBe("routes/_app.new.tsx");
   });

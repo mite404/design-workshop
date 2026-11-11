@@ -16,7 +16,6 @@ The agent loop and the conversation store run in a Web Worker from `@yaklabs/run
 | `/demo/weekly-brief`       | Redirects to `/t/demo-<script>` (`?script=`, else the brief)         | required |
 | `/demo/weekly-brief/t/:id` | Redirects to `/t/:id`                                                | required |
 | `/share.html`              | One shared card from the link's fragment (ADR-064)                   | public   |
-| `/verify-ui-tooling`       | The design tooling page: what `verify-ui-drift` is for (ADR-160)     | public   |
 | `/callback`                | Where WorkOS sends visitors back; the provider finishes sign-in      | public   |
 
 Any signed-in route takes `?scenario=` (below), and every link inside the app keeps it. The
@@ -113,7 +112,7 @@ styles a bare `button` or `a`, the components layer puts preflight back for any 
 renders (it carries a `data-slot`), so a shadcn control shows only its own classes. The theme is
 the root's `data-theme`, light or dark (Umbralkai, ADR-162): `src/theme.ts` sets it before React
 loads from the account menu's choice, or from the system's when the visitor has none, and the
-root's `color-scheme` follows it. The design tooling page holds it on light while open.
+root's `color-scheme` follows it.
 
 ## Prove it in a browser
 

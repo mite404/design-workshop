@@ -3,7 +3,6 @@ import type { ThreadSummary } from "@yaklabs/runtime";
 import { env } from "../env";
 import { BonsaiMark } from "../shell/rail-places";
 import type { PaneKind } from "../shell/state";
-import { DesignToolingSeal } from "./design-tooling-seal";
 import { WelcomeArt } from "./splash";
 import { SplashSwitch } from "./splash-switch";
 import { ACTION, Actions, Projects } from "./welcome-sections";
@@ -53,10 +52,8 @@ const GreetingLine = env.auth.kind === "workos" ? WorkOsGreeting : LocalGreeting
 
 /**
  * A new thread's welcome (ADR-136), after Kay's own new tab: the mark, the date, a greeting for
- * the theme's time of day, the projects, and the actions a thread can open with, with the seal
- * that leads to the design tooling page pinned above the greeting at the column's right, tilted
- * like a medal on a lapel (ADR-160). It shows in the main
- * pane while the thread has no turns, over the painting `<html data-splash>` names, and leaves
+ * the theme's time of day, the projects, and the actions a thread can open with. It shows in
+ * the main pane while the thread has no turns, over the painting `<html data-splash>` names, and leaves
  * with the first turn. Open file and Open terminal are the desktop app's; here they wait.
  * @param pane The layout the thread is in. The switch for the painting shows only in the
  * Thread layout, where the welcome has the window to itself, and never beside the canvas or the
@@ -67,7 +64,6 @@ export function Welcome({ thread, pane }: { thread: ThreadSummary; pane: PaneKin
     <div className="welcome" data-slot="welcome">
       <WelcomeArt threadId={thread.id} />
       <div className="welcome-words flex w-full max-w-sm flex-col gap-7">
-        <DesignToolingSeal className="welcome-seal" />
         <div className="flex flex-col gap-4">
           <span className="grid size-10 place-items-center rounded-full bg-paper-deep text-ink">
             <BonsaiMark className="size-5" />
