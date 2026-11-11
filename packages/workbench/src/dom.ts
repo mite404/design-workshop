@@ -2,9 +2,28 @@
 // boxes, the elements a click can select, and the override file as the frame has it.
 import type { Box } from "./radius";
 import { selectorFor, type Step } from "./selector";
-import type { Spacing } from "./spacing";
+import type { Offset, Spacing } from "./spacing";
 
 const OVERRIDES = "/catalog/src/overrides.css";
+
+/** The same-origin app URL requested by `path`, or `/` for an unsafe or recursive target. */
+export function canvasPath(search: string): string {
+  const path = new URLSearchParams(search).get("path") ?? "/";
+  try {
+    const decoded = decodeURIComponent(path);
+    if (
+      !decoded.startsWith("/") ||
+      decoded.startsWith("//") ||
+      decoded.split("").some((c) => c === "\\" || c <= " ")
+    )
+      return "/";
+    const url = new URL(decoded, "https://workbench.invalid");
+    if (url.pathname.startsWith("/__workbench")) return "/";
+    return path;
+  } catch {
+    return "/";
+  }
+}
 
 /** An element that takes inline styles: HTML or SVG. */
 export type Styled = Element & ElementCSSInlineStyle;
@@ -70,6 +89,47 @@ export function spacingOf(node: Element): Record<Spacing, number> {
   };
 }
 
+/** The computed two-dimensional pixel offset of an editable element. */
+export function offsetOf(node: Element): Offset {
+  const [x = "0", y = "0"] = style(node).translate.split(/\s+/);
+  return { x: size(x), y: size(y) };
+}
+
+/** The parent's padding edge, inside its borders. */
+export function paddingBox(node: Element): Box {
+  const r = node.getBoundingClientRect();
+  const s = style(node);
+  return {
+    left: r.left + size(s.borderLeftWidth),
+    top: r.top + size(s.borderTopWidth),
+    width: r.width - size(s.borderLeftWidth) - size(s.borderRightWidth),
+    height: r.height - size(s.borderTopWidth) - size(s.borderBottomWidth),
+  };
+}
+
+function overrideSheet(doc: Document): CSSStyleSheet | undefined {
+  const view = doc.defaultView;
+  if (view === null) return undefined;
+  return [...doc.styleSheets].find(
+    (s) =>
+      s.ownerNode instanceof view.HTMLElement &&
+      s.ownerNode.dataset.viteDevId?.endsWith(OVERRIDES) === true,
+  );
+}
+
+/** Whether the source, excluding the Workbench stylesheet, already transforms this element. */
+export function hasNativeTransform(node: Styled): boolean {
+  const sheet = overrideSheet(node.ownerDocument);
+  const disabled = sheet?.disabled ?? false;
+  if (sheet !== undefined) sheet.disabled = true;
+  try {
+    const s = style(node);
+    return [s.transform, s.translate, s.rotate, s.scale].some((v) => v !== "none");
+  } finally {
+    if (sheet !== undefined) sheet.disabled = disabled;
+  }
+}
+
 /**
  * The override file's value for `name` in `selector`'s rule, as `doc`'s copy of the file has it
  * now, after any hot reload.
@@ -77,11 +137,7 @@ export function spacingOf(node: Element): Record<Spacing, number> {
 export function applied(doc: Document, selector: string, name: string): string | null {
   const view = doc.defaultView;
   if (view === null) return null;
-  const sheet = [...doc.styleSheets].find(
-    (s) =>
-      s.ownerNode instanceof view.HTMLElement &&
-      s.ownerNode.dataset.viteDevId?.endsWith(OVERRIDES) === true,
-  );
+  const sheet = overrideSheet(doc);
   for (const rule of sheet?.cssRules ?? []) {
     if (rule instanceof view.CSSStyleRule && rule.selectorText === selector) {
       const value = rule.style.getPropertyValue(name).trim();

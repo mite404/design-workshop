@@ -1,7 +1,28 @@
 import { describe, expect, test } from "vitest";
-import { dragSpace, gapSpaces, paddingMoved, paddingSides, paddingSpace } from "./spacing";
+import {
+  boundedOffset,
+  dragSpace,
+  gapSpaces,
+  paddingMoved,
+  paddingSides,
+  paddingSpace,
+} from "./spacing";
 
 const BOX = { left: 100, top: 50, width: 300, height: 80 };
+
+test("nudges snap inside the padding edge, including an already touching edge", () => {
+  const child = { left: 110, top: 63, width: 70, height: 20 };
+  expect(boundedOffset({ x: 7, y: -7 }, { x: 0, y: 0 }, child, BOX, 2)).toEqual({ x: 8, y: -6 });
+  expect(boundedOffset({ x: 999, y: -999 }, { x: 4, y: -2 }, child, BOX, 10)).toEqual({
+    x: 220,
+    y: -10,
+  });
+  expect(boundedOffset({ x: -9, y: 9 }, { x: 0, y: 0 }, BOX, BOX, 2)).toEqual({ x: 0, y: 0 });
+  expect(
+    boundedOffset({ x: 999, y: 999 }, { x: 0, y: 0 }, child, { ...BOX, width: 299.5 }, 2),
+  ).toEqual({ x: 218, y: 46 });
+  expect(boundedOffset({ x: 10, y: 10 }, { x: 0, y: 0 }, BOX, child, 2)).toEqual({ x: 0, y: 0 });
+});
 
 describe("dragSpace", () => {
   test("adds the distance moved, snapped to 2px, or 10px with Shift", () => {

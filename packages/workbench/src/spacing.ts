@@ -17,6 +17,41 @@ export const SPACING: Spacing[] = ["gap", ...SIDES.map((s): Spacing => `padding-
 /** A space a handle controls, and the axis it is dragged along. */
 export type Space = { axis: "x" | "y"; box: Box };
 
+// A visual offset, independent of layout.
+export type Offset = { x: number; y: number };
+
+/**
+ * Limits a proposed offset to the parent's padding box, measured before the gesture.
+ * Snapped values stay on the grid even at fractional edges. An oversized axis stays put.
+ */
+export function boundedOffset(
+  value: Offset,
+  from: Offset,
+  box: Box,
+  parent: Box,
+  step = 1,
+): Offset {
+  const axis = (v: number, start: number, near: number, far: number): number => {
+    const min = Math.ceil((start + near) / step) * step;
+    const max = Math.floor((start + far) / step) * step;
+    return min > max ? start : Math.min(max, Math.max(min, Math.round(v / step) * step));
+  };
+  return {
+    x: axis(
+      value.x,
+      from.x,
+      parent.left - box.left,
+      parent.left + parent.width - box.left - box.width,
+    ),
+    y: axis(
+      value.y,
+      from.y,
+      parent.top - box.top,
+      parent.top + parent.height - box.top - box.height,
+    ),
+  };
+}
+
 const OPPOSITE: Record<Side, Side> = { top: "bottom", right: "left", bottom: "top", left: "right" };
 
 // Each side's inward direction: how far a pointer moved by dx, dy goes into the element.

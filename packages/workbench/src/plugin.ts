@@ -14,6 +14,7 @@ const PAGE = fileURLToPath(new URL("./page.ts", import.meta.url));
 const ROOT = ":root";
 const EDITABLE = ["--window-radius"];
 const PX = /^\d{1,4}px$/;
+const TRANSLATE = /^-?\d{1,4}px -?\d{1,4}px$/;
 
 // One answer: its HTTP status, and a page as a string or anything else as JSON.
 type Reply = { status: number; body: unknown };
@@ -61,13 +62,13 @@ export function readValues(
 type Write = { selector: string; name: string; value: string | null; was: string | null };
 
 // `:root` takes the editable tokens; an element, by a selector of the grammar its function
-// makes, takes gap and the four paddings.
+// makes, takes gap, the four paddings and a two-dimensional offset.
 function namesOf(selector: string): readonly string[] {
   if (selector === ROOT) return EDITABLE;
-  return isSelector(selector) ? SPACING : [];
+  return isSelector(selector) ? [...SPACING, "translate"] : [];
 }
-const isPx = (v: unknown): v is string | null =>
-  v === null || (typeof v === "string" && PX.test(v));
+const isValue = (v: unknown, name: string): v is string | null =>
+  v === null || (typeof v === "string" && (name === "translate" ? TRANSLATE : PX).test(v));
 const isWas = (v: unknown): v is string | null => v === null || typeof v === "string";
 
 function json(text: string): unknown {
@@ -92,7 +93,9 @@ function parseWrite(body: string): Write | string {
   ) {
     return `not an editable selector and name: ${JSON.stringify([selector, name])}`;
   }
-  if (!isPx(value)) return `not a pixel length: ${JSON.stringify(value)}`;
+  if (!isValue(value, name)) {
+    return `not a pixel length: ${JSON.stringify(value)}`;
+  }
   if (!isWas(was)) return "was must be a string or null";
   return { selector, name, value, was };
 }
@@ -132,6 +135,16 @@ async function read(req: IncomingMessage): Promise<string> {
   return body;
 }
 
+async function reloadOverrides(server: ViteDevServer): Promise<void> {
+  // The filesystem watcher drops changes within 50ms. Each accepted write still needs HMR.
+  const client = server.environments.client;
+  if (client === undefined) return;
+  client.moduleGraph.onFileChange(OVERRIDES);
+  await Promise.all(
+    [...(client.moduleGraph.getModulesByFile(OVERRIDES) ?? [])].map((m) => client.reloadModule(m)),
+  );
+}
+
 async function answer(server: ViteDevServer, req: IncomingMessage): Promise<Reply> {
   const path = req.url?.split("?")[0];
   if (path === "/__workbench/" || path === "/__workbench") {
@@ -145,7 +158,13 @@ async function answer(server: ViteDevServer, req: IncomingMessage): Promise<Repl
   }
   if (path === "/__workbench/values" && req.method === "POST") {
     const body = await read(req);
-    return writeValue(OVERRIDES, { origin: req.headers.origin, host: req.headers.host, body });
+    const reply = writeValue(OVERRIDES, {
+      origin: req.headers.origin,
+      host: req.headers.host,
+      body,
+    });
+    if (reply.status === 200) await reloadOverrides(server);
+    return reply;
   }
   return { status: 404, body: { error: `no Workbench route ${req.method} ${path}` } };
 }

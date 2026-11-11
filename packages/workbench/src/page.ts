@@ -16,11 +16,15 @@ import {
 } from "./radius";
 import {
   applied,
+  canvasPath,
   chain,
   element,
+  hasNativeTransform,
   inside,
   laysOut,
   matches,
+  offsetOf,
+  paddingBox,
   place,
   px,
   selectorOf,
@@ -31,6 +35,7 @@ import {
 } from "./dom";
 import { pick } from "./selector";
 import {
+  boundedOffset,
   dragSpace,
   gapSpaces,
   paddingMoved,
@@ -38,6 +43,7 @@ import {
   paddingSpace,
   SIDES,
   SPACING,
+  type Offset,
   type Side,
   type Spacing,
 } from "./spacing";
@@ -79,7 +85,7 @@ const BLOCKED = [
 type Drag = { control: HTMLElement; from: number; x: number; y: number };
 // The selection: the element, its selector, and the values its own `style` attribute sets,
 // which no stylesheet can override.
-type Selection = { node: Styled; selector: string; locked: Set<Spacing> };
+type Selection = { node: Styled; selector: string; locked: Set<Spacing>; nudgeLocked: boolean };
 // A change to the selection's spacing: the values before it, and the names it set inline.
 type Edit = { selection: Selection; before: Record<Spacing, number>; touched: Set<Spacing> };
 // A spacing handle: its element, the highlight of the space it controls, and its drag axis.
@@ -93,7 +99,21 @@ type Bar = {
 // A press on a spacing handle: where it started, and whether it has moved enough to be a drag.
 type Press = { bar: Bar; x: number; y: number; moved: boolean };
 
-const frame = element("iframe", { src: "/", title: "Canvas", className: "frame" });
+// One offset edit retains its geometry and inline value until commit or cancellation.
+type OffsetEdit = {
+  target: Selection;
+  from: Offset;
+  box: Box;
+  parent: Box;
+  inline: string;
+};
+type BodyPress = { x: number; y: number; id: number; under: Element | null; moved: boolean };
+
+const frame = element("iframe", {
+  src: canvasPath(location.search),
+  title: "Canvas",
+  className: "frame",
+});
 const outline = element("div", { className: "outline" });
 const handles = CORNERS.map(() =>
   element("div", { className: "handle", tabIndex: 0, ariaLabel: "Corner radius" }),
@@ -128,6 +148,11 @@ const note = element(
 );
 const unmatchedList = element("ul", { className: "unmatched" });
 const message = element("p", { className: "message", role: "status" });
+const offsetNote = element(
+  "p",
+  { className: "offset-note" },
+  "Offset is read-only because the element already has a native transform or translate.",
+);
 
 let baseline = 0; // tokens.css's radius, in px
 let files = new Map<string, Map<string, string>>(); // the override file as last read: each `was`
@@ -138,6 +163,8 @@ let selection: Selection | null = null;
 let edit: Edit | null = null;
 let press: Press | null = null;
 let inplaceBar: Bar | null = null;
+let offsetEdit: OffsetEdit | null = null;
+let bodyPress: BodyPress | null = null;
 let pointer = { x: -1, y: -1 }; // in the canvas's coordinates
 let unmatchedKey = "";
 let queue = Promise.resolve();
@@ -167,12 +194,15 @@ async function settle(
   selector: string,
   name: string,
   expected: string | null,
+  inline = node.style.getPropertyValue(name),
 ): Promise<void> {
-  const inline = node.style.getPropertyValue(name);
+  const parsed = element("div").style;
+  parsed.setProperty(name, expected ?? "");
+  const canonical = expected === null ? null : parsed.getPropertyValue(name);
   for (let i = 0; i < 300; i++) {
     if (node.style.getPropertyValue(name) !== inline) return;
     const d = doc();
-    if (d !== null && applied(d, selector, name) === expected) {
+    if (d !== null && applied(d, selector, name) === canonical) {
       node.style.removeProperty(name);
       return;
     }
@@ -250,9 +280,84 @@ function enqueue(task: () => Promise<void>): void {
 // Saves `selector`'s `name` from `node`'s inline value, or removes it when `value` is null, then
 // drops the inline value once the file applies.
 function saveValue(node: Styled, selector: string, name: string, value: string | null): void {
+  const inline = node.style.getPropertyValue(name);
   enqueue(async () => {
-    if (await write(selector, name, value)) void settle(node, selector, name, value);
+    if (await write(selector, name, value)) void settle(node, selector, name, value, inline);
   });
+}
+
+function beginOffset(): OffsetEdit | null {
+  if (selection === null || selection.nudgeLocked || selection.node.parentElement === null)
+    return null;
+  if (offsetEdit === null) {
+    offsetEdit = {
+      target: selection,
+      from: offsetOf(selection.node),
+      box: selection.node.getBoundingClientRect(),
+      parent: paddingBox(selection.node.parentElement),
+      inline: selection.node.style.translate,
+    };
+  }
+  return offsetEdit;
+}
+
+function setOffset(value: Offset, step = 1): void {
+  const current = beginOffset();
+  if (current === null) return;
+  const next =
+    value.x === 0 && value.y === 0
+      ? value
+      : boundedOffset(value, current.from, current.box, current.parent, step);
+  current.target.node.style.translate = `${next.x}px ${next.y}px`;
+  pill.textContent = `X ${next.x}  Y ${next.y}`;
+}
+
+function endOffset(restore = false): void {
+  const current = offsetEdit;
+  offsetEdit = null;
+  bodyPress = null;
+  delete overlay.dataset.nudging;
+  if (current === null) return;
+  const { node, selector } = current.target;
+  const value = offsetOf(node);
+  if (restore || (value.x === current.from.x && value.y === current.from.y)) {
+    node.style.translate = current.inline;
+    return;
+  }
+  saveValue(
+    node,
+    selector,
+    "translate",
+    value.x === 0 && value.y === 0 ? null : `${value.x}px ${value.y}px`,
+  );
+}
+
+function editingTarget(target: EventTarget | null): boolean {
+  if (target instanceof Element && target.closest("input, button, .bar, .handle, .scrub"))
+    return true;
+  // Frame elements belong to a different realm. Their editing controls must not nudge either.
+  return (
+    target !== null &&
+    "nodeName" in target &&
+    /^(INPUT|TEXTAREA|SELECT)$/.test(String(target.nodeName))
+  );
+}
+
+function stepOffset(event: KeyboardEvent): void {
+  if (bodyPress !== null || selection === null || editingTarget(event.target)) return;
+  const direction: Record<string, Offset> = {
+    ArrowLeft: { x: -1, y: 0 },
+    ArrowRight: { x: 1, y: 0 },
+    ArrowUp: { x: 0, y: -1 },
+    ArrowDown: { x: 0, y: 1 },
+  };
+  const by = direction[event.key];
+  if (by === undefined || beginOffset() === null) return;
+  event.preventDefault();
+  const from = offsetOf(selection.node);
+  const step = event.shiftKey ? 10 : 2;
+  setOffset({ x: from.x + by.x * step, y: from.y + by.y * step });
+  endOffset();
 }
 
 // Writes the radius in hand, or null to reset. A value the file already gives, saved or
@@ -477,6 +582,7 @@ const paddingBars = SIDES.map((side) =>
 const gapBars: Bar[] = [];
 
 function select(node: Styled | null): void {
+  endOffset();
   commit();
   closeInplace(false);
   selection =
@@ -486,13 +592,18 @@ function select(node: Styled | null): void {
           node,
           selector: selectorOf(node),
           locked: new Set(SPACING.filter((n) => node.style.getPropertyValue(n) !== "")),
+          nudgeLocked: hasNativeTransform(node),
         };
   selectorText.textContent = selection?.selector ?? "";
 }
 
 function onKey(event: KeyboardEvent): void {
+  stepOffset(event);
   if (event.key !== "Escape") return;
-  if (drag !== null) {
+  if (offsetEdit !== null) {
+    event.preventDefault();
+    endOffset(true);
+  } else if (drag !== null) {
     event.preventDefault();
     endDrag(true);
   } else if (press !== null) {
@@ -511,6 +622,10 @@ const block = (event: Event): void => {
   event.stopImmediatePropagation();
 };
 
+function cancelBody(): void {
+  if (bodyPress !== null) endOffset(true);
+}
+
 // Follows the frame's document across reloads: selection by click, and keys while it has focus.
 function watchFrame(): void {
   const view = frame.contentWindow;
@@ -519,16 +634,58 @@ function watchFrame(): void {
   view.addEventListener(
     "pointerdown",
     (event) => {
-      if (!selecting || event.button !== 0) return;
+      if (!selecting || event.button !== 0 || bodyPress !== null) return;
+      view.focus();
       const under = view.document.elementFromPoint(event.clientX, event.clientY);
+      if (
+        selection !== null &&
+        inside({ x: event.clientX, y: event.clientY }, selection.node.getBoundingClientRect()) &&
+        beginOffset() !== null
+      ) {
+        selection.node.setPointerCapture(event.pointerId);
+        bodyPress = {
+          x: event.clientX,
+          y: event.clientY,
+          id: event.pointerId,
+          under,
+          moved: false,
+        };
+        return;
+      }
       select(pick(chain(under), chain(selection?.node ?? null)));
     },
     true,
   );
-  for (const type of BLOCKED) view.addEventListener(type, block, true);
   view.addEventListener("pointermove", (event) => {
     pointer = { x: event.clientX, y: event.clientY };
+    if (bodyPress === null || event.pointerId !== bodyPress.id || offsetEdit === null) return;
+    const dx = event.clientX - bodyPress.x;
+    const dy = event.clientY - bodyPress.y;
+    if (!bodyPress.moved && Math.abs(dx) + Math.abs(dy) < DRAG_START) return;
+    bodyPress.moved = true;
+    overlay.dataset.nudging = "true";
+    setOffset({ x: offsetEdit.from.x + dx, y: offsetEdit.from.y + dy }, event.shiftKey ? 10 : 2);
+    const parent = offsetEdit.parent;
+    const right = parent.left + parent.width + 14;
+    const x =
+      right + pill.offsetWidth <= overlay.clientWidth
+        ? right
+        : Math.max(0, parent.left - pill.offsetWidth - 14);
+    pill.style.translate = `${x}px ${event.clientY - pill.offsetHeight / 2}px`;
   });
+  view.addEventListener(
+    "pointerup",
+    (event) => {
+      if (bodyPress === null || event.pointerId !== bodyPress.id) return;
+      const { moved, under } = bodyPress;
+      endOffset();
+      if (!moved) select(pick(chain(under), chain(selection?.node ?? null)));
+    },
+    true,
+  );
+  view.addEventListener("pointercancel", cancelBody, true);
+  view.addEventListener("lostpointercapture", cancelBody, true);
+  for (const type of BLOCKED) view.addEventListener(type, block, true);
   view.addEventListener("keydown", onKey);
 }
 
@@ -667,6 +824,58 @@ const rows = SPACING.map((name) => {
   });
   return { name, input, clear, row };
 });
+const offsetRows = (["x", "y"] as const).map((axis) => {
+  const input = element("input", { id: `wb-${axis}`, inputMode: "numeric", autocomplete: "off" });
+  const clear = element(
+    "button",
+    { type: "button", className: "reset", ariaLabel: `Reset ${axis}` },
+    "Reset",
+  );
+  const row = element(
+    "div",
+    { className: "row" },
+    element("label", { htmlFor: input.id }, axis.toUpperCase()),
+    input,
+    clear,
+  );
+  const commitInput = () => {
+    const typed = /^\s*-?\d{1,4}\s*(?:px)?\s*$/.test(input.value)
+      ? Number.parseInt(input.value, 10)
+      : Number.NaN;
+    const current = beginOffset();
+    if (Number.isFinite(typed) && current !== null) {
+      const value = { ...offsetOf(current.target.node), [axis]: typed };
+      const bounded = boundedOffset(value, current.from, current.box, current.parent);
+      if ((value.x === 0 && value.y === 0) || (value.x === bounded.x && value.y === bounded.y))
+        setOffset(value);
+    }
+    endOffset();
+    if (selection !== null) input.value = String(offsetOf(selection.node)[axis]);
+  };
+  input.addEventListener("focus", beginOffset);
+  input.addEventListener("keydown", (event) => {
+    const sign = UP_DOWN[event.key];
+    if (sign !== undefined && selection !== null && !input.readOnly) {
+      event.preventDefault();
+      const from = offsetOf(selection.node);
+      setOffset({ ...from, [axis]: from[axis] + sign * (event.shiftKey ? 10 : 1) });
+      input.value = String(offsetOf(selection.node)[axis]);
+    }
+    if (event.key === "Enter") commitInput();
+    if (event.key === "Escape") {
+      event.stopPropagation();
+      endOffset(true);
+      if (selection !== null) input.value = String(offsetOf(selection.node)[axis]);
+    }
+  });
+  input.addEventListener("blur", commitInput);
+  clear.addEventListener("click", () => {
+    if (selection === null) return;
+    setOffset({ ...offsetOf(selection.node), [axis]: 0 });
+    endOffset();
+  });
+  return { axis, input, clear, row };
+});
 const selectionPanel = element(
   "section",
   { ariaLabel: "Selection" },
@@ -674,6 +883,8 @@ const selectionPanel = element(
   selectorText,
   ...rows.map((r) => r.row),
   note,
+  ...offsetRows.map((r) => r.row),
+  offsetNote,
 );
 const unmatchedPanel = element(
   "section",
@@ -695,6 +906,13 @@ function trackFields(): void {
     clear.disabled = was(selector, name) === null;
   }
   note.hidden = locked.size === 0;
+  const offset = offsetOf(node);
+  for (const { axis, input, clear } of offsetRows) {
+    if (document.activeElement !== input) input.value = String(offset[axis]);
+    input.readOnly = selection.nudgeLocked;
+    clear.disabled = selection.nudgeLocked || offset[axis] === 0;
+  }
+  offsetNote.hidden = !selection.nudgeLocked;
 }
 
 // Lists saved values whose selector matches nothing in the frame's page, each with a delete.

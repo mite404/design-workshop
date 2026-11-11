@@ -78,6 +78,30 @@ describe("writeValue", () => {
     expect(readFileSync(file, "utf8")).toBe(SAVED);
   });
 
+  test("accepts only two signed whole pixel lengths for an element's translate and removes it", () => {
+    const file = overrideFile(SAVED);
+    const offset = { selector: CARD, name: "translate", was: null };
+    for (const value of [
+      "2px",
+      "2px 3px 4px",
+      "2.5px 0px",
+      "2em 0px",
+      "0px; color: red",
+      "10000px 0px",
+      2,
+    ]) {
+      expect(post(file, { ...offset, value }, ORIGIN).status).toBe(400);
+      expect(readFileSync(file, "utf8")).toBe(SAVED);
+    }
+    expect(post(file, { ...offset, value: "-7px 13px" }, ORIGIN).status).toBe(200);
+    expect(readValues(readFileSync(file, "utf8"), "").saved[CARD]).toEqual({
+      translate: "-7px 13px",
+    });
+    expect(post(file, { ...offset, value: null, was: "-7px 13px" }, ORIGIN).status).toBe(200);
+    expect(readFileSync(file, "utf8")).toBe(SAVED);
+    expect(post(file, { ...offset, selector: ":root", value: "0px 0px" }, ORIGIN).status).toBe(400);
+  });
+
   test.each(REFUSALS)("refuses %s and writes nothing", (_, change, origin, status) => {
     const file = overrideFile(SAVED);
     const body = { ...RADIUS, value: "8px", was: "20px", ...change };
