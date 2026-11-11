@@ -31,15 +31,14 @@ The maths lives in CSS, not in the Workbench, so the running app is the design (
 
 ## What the app looks like today
 
-Measured on the Template at PR #4:
+Measured on `main` at `cf734ed`, after the drift tool and the first-visit guide were deleted:
 
-- About 170 `font-size` declarations with a pixel number written in place, in 27 different
-  values. The most used are 12px (60), 13px (25), 11px (16), 15px (13) and 14px (11).
+- 103 `font-size` declarations with a pixel number written in place, in 16 different values.
+  The most used are 12px (25), 13px (23), 11px (15), 15px (12) and 10px (6).
 - 79 Tailwind size classes on top: `text-xs` (44), `text-sm` (19), `text-[13px]` (9) and a few
   larger ones.
 - No named sizes at all, so there is nothing for a dial to turn. That is what the preparation
   ticket fixes.
-- In the three folders the preparation ticket covers: 107 declarations in 16 values.
 
 ## Acceptance criteria
 
@@ -50,10 +49,9 @@ Preparation (ETH-104):
 2. The nine steps are a modular scale with a 12px base and a ratio of 1.2, rounded down to even:
    10, 12, 14, 16, 20, 24, 28, 34 and 42px. They carry Tailwind's size names, `--text-2xs` to
    `--text-4xl` (ADR-019).
-3. A size worked out from another value stays as it is, and the ticket lists it. There is one:
-   a guide title sized from the spacing unit. (Corrected Nov 11 2026: the three `clamp()`
-   headlines and the 96px numeral first listed here were in the drift tool's stylesheet, which
-   is deleted, ADR-020.)
+3. A size worked out from another value stays as it is, and the ticket lists it. There are none
+   today. (Corrected Nov 11 2026: the `clamp()` headlines, the 96px numeral and the guide title
+   first listed here went with the drift tool, ADR-020, and the first-visit guide.)
 4. Ethan can compare before and after screenshots of the shell and judge the rounding.
 
 The dial (ticket to follow, once this story is confirmed):

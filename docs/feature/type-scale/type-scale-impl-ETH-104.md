@@ -11,7 +11,8 @@ linear: ETH-104
 - **Effort**: Medium
 - **Risk**: MEDIUM
 - **Category**: refactor
-- **Planned at**: commit `a9f6718`, 2026-11-11
+- **Planned at**: commit `a9f6718`, 2026-11-11. Recounted at `cf734ed`, after the drift tool and
+  the first-visit guide were deleted.
 - **Story**: [type-scale-story.md](type-scale-story.md). Needs ETH-99 only. The dial is a later
   ticket.
 
@@ -25,14 +26,13 @@ so it ends in before and after screenshots for Ethan to judge. "AC 2" below mean
 
 ## Current state
 
-Measured at `a9f6718`, in `apps/web/src`, `packages/catalog/src` and `packages/ui/src`, leaving
-out `verify-ui-tooling.css`:
+Measured at `cf734ed`, in `apps/web/src`, `packages/catalog/src` and `packages/ui/src`:
 
-* 107 `font-size` declarations with a pixel number, in 7 CSS files: `thread.css` 40, `tokens.css`
-  40, `dictation.css` 9, `interactive.css` 6, `primitives.css` 6, `apps/web/src/index.css` 5,
-  `App.css` 1. Two more sizes hide in `font:` shorthands in `index.css` (lines 84 and 89).
-* 16 different sizes: 12px (27), 13px (23), 11px (15), 15px (12), 14px (6), 10px (6), 9px (4),
-  18px (3), 17, 24 and 34px (2 each), and 20, 21, 22, 30 and 44px (1 each).
+* 103 `font-size` declarations with a pixel number, in 7 CSS files: `thread.css` 40, `tokens.css`
+  40, `dictation.css` 9, `interactive.css` 6, `primitives.css` 6, `apps/web/src/index.css` 1,
+  `App.css` 1. No `font:` shorthand carries a pixel size.
+* 16 different sizes: 12px (25), 13px (23), 11px (15), 15px (12), 10px (6), 14px (5), 9px (4),
+  18px (3), 17 and 34px (2 each), and 20, 21, 22, 24, 30 and 44px (1 each).
 * Tailwind size classes in TSX: `text-xs` 44, `text-sm` 19, `text-[13px]` 9, `text-3xl` 4,
   `text-xl` 2, `text-2xl` 2, `text-[11px]` 2, `text-lg` 1, `text-[10px]` 1.
 * Sizes typed in TSX: `fontSize: 12`, `13` or `15` in five story files (9 places), and
@@ -40,7 +40,8 @@ out `verify-ui-tooling.css`:
 * No named sizes anywhere. Tailwind is 4.3.3. Its size classes already read a variable
   (`text-xs` is `font-size: var(--text-xs)`), and the app's layer order
   (`theme, base, catalog, components, utilities`) puts `tokens.css` above Tailwind's theme.
-* `WorkDetails.browser.test.tsx` asserts 13px and 15px.
+* `WorkDetails.browser.test.tsx` asserts 13px and 15px. The test suite story
+  (`docs/feature/test-suite/test-suite-story.md`) plans to make it compare the two sizes instead.
 
 ## Approach
 
@@ -72,11 +73,11 @@ smallest step, so it moves up to 10px.
 | Today | Becomes | Uses in CSS |
 | --- | --- | --- |
 | 9, 10, 11px | `--text-2xs` (10px) | 25 |
-| 12, 13px | `--text-xs` (12px) | 50 |
-| 14, 15px | `--text-sm` (14px) | 18, plus 2 shorthands |
+| 12, 13px | `--text-xs` (12px) | 48 |
+| 14, 15px | `--text-sm` (14px) | 17 |
 | 17, 18px | `--text-base` (16px) | 5 |
 | 20, 21, 22px | `--text-lg` (20px) | 3 |
-| 24px | `--text-xl` (24px) | 2 |
+| 24px | `--text-xl` (24px) | 1 |
 | 30px | `--text-2xl` (28px) | 1 |
 | 34px | `--text-3xl` (34px) | 2 |
 | 44px | `--text-4xl` (42px) | 1 |
@@ -89,15 +90,11 @@ hair under 10 and round down to 8). That belongs with the dial, where it can be 
 ## Scope
 
 * In: `packages/catalog/src/tokens.css`: the nine steps, and its own 40 declarations.
-* In: the other six CSS files listed in Current state, and the two `font:` shorthands.
+* In: the other six CSS files listed in Current state.
 * In: `packages/ui/src/styles/globals.css`: one line so the `text-2xs` class exists.
 * In: Tailwind size classes and typed `fontSize` values in TSX under the three folders.
 * In: the two expected sizes in `WorkDetails.browser.test.tsx`, and one new test.
-* Out: `apps/web/src/verify-ui-tooling.css`, `tools/verify-ui-drift` and the SVG text in
-  `design-tooling-seal.tsx`. They style the drift tool, not the Template. The three `clamp()`
-  headlines and the 96px numeral the story mentions are all in that first file.
-* Out: `font-size: calc(var(--space) * 5 / 6)` in `index.css`. It follows the spacing unit on
-  purpose. Leave it and list it in the drift log.
+* Out: `packages/workbench`. Its `page.css` styles the Workbench's own page, not the Template.
 * Out: `line-height` declarations, weights, families and letter spacing.
 * Out: the base and ratio maths, the Type panel and the override file. They are the dial ticket.
 
@@ -120,8 +117,7 @@ Part 2, the names:
 
 Part 3, CSS:
 
-* Replace each pixel `font-size` in the seven files with the step from the table. Replace the
-  14px in the two `font:` shorthands with `var(--text-sm)`.
+* Replace each pixel `font-size` in the seven files with the step from the table.
 
 Part 4, TSX:
 
@@ -139,17 +135,17 @@ Part 4, TSX:
 
 Part 5, tests and after screenshots:
 
-* Change the expected sizes in `WorkDetails.browser.test.tsx` to the new ones (12px and 14px).
+* If `WorkDetails.browser.test.tsx` still expects 13px and 15px, change them to 12px and 14px.
+  If the test suite ticket has landed and the test compares the sizes, leave it.
 * Add one test in `packages/catalog` that reads the CSS files of the three folders and fails if
-  a pixel `font-size` is written anywhere but the nine steps in `tokens.css`. It leaves out
-  `verify-ui-tooling.css`.
+  a pixel `font-size` is written anywhere but the nine steps in `tokens.css`.
 * Capture the same views as part 1.
 
 ## Test plan
 
 * The new test passes, and fails when a `font-size: 13px` is added to any of the seven files.
-* These searches return nothing under the three folders, leaving out `verify-ui-tooling.css`
-  and `design-tooling-seal.tsx`: `text-\[[0-9.]+px\]`, and `fontSize` followed by a number.
+* These searches return nothing under the three folders: `text-\[[0-9.]+px\]`, and `fontSize`
+  followed by a number.
 * `pnpm typecheck`, `pnpm lint` and `pnpm test`.
 * Look at each before and after pair. Text may be up to 2px smaller and lines may wrap
   differently. Nothing may be clipped, overlap, or fall out of its container.
@@ -165,8 +161,8 @@ Part 5, tests and after screenshots:
 
 ## Notes
 
-Risk: MEDIUM. This changes how the app looks on purpose: 59 of the 107 CSS sizes get smaller,
-most by 1px (13 to 12, 11 to 10, 15 to 14), 4 grow by 1px (9 to 10) and 44 stay. Ethan's view
+Risk: MEDIUM. This changes how the app looks on purpose: 59 of the 103 CSS sizes get smaller,
+most by 1px (13 to 12, 11 to 10, 15 to 14), 4 grow by 1px (9 to 10) and 40 stay. Ethan's view
 is "probably rounded down, but we'll just have to wait until things are live to see". If down
 looks wrong, the fix is the mapping table above, not the names, and it is one commit to revert.
 Screenshots are shown in the thread, not committed. Other tests that assert pixel values of
