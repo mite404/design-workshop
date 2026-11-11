@@ -86,6 +86,15 @@ test("tracks live instances, folds with keys and follows canvas selection", asyn
     expect(rows()[0]?.tabIndex).toBe(0);
     canvas.firstElementChild?.removeAttribute("inert");
     await expect.poll(() => rows()).toHaveLength(3);
+    const first = canvas.firstElementChild;
+    first?.setAttribute("hidden", "");
+    await expect.poll(() => rows()).toHaveLength(1);
+    first?.removeAttribute("hidden");
+    await expect.poll(() => rows()).toHaveLength(3);
+    first?.setAttribute("style", "display:none");
+    await expect.poll(() => rows()).toHaveLength(1);
+    first?.removeAttribute("style");
+    await expect.poll(() => rows()).toHaveLength(3);
     canvas.firstElementChild?.remove();
     await expect.poll(() => rows().map((row) => row.getAttribute("aria-label"))).toEqual(["Card"]);
   } finally {

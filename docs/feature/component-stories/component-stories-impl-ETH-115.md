@@ -144,4 +144,9 @@ issue or PR under repo policy (ADR-007, ADR-017).
 * Ethan will check Safari manually. Safari is not part of CI and does not block this ticket.
   Do not start a Mac satellite without Ethan's explicit approval. Automated browser checks
   run in Chromium in the Linux orb.
-* Delivery remains local until the earlier no-push instruction is lifted. Linear is unchanged.
+* Ethan lifted the no-push and no-Linear restrictions after verification. Pushes and updates to
+  ETH-115 are authorized, including shipping directly to main once the checks are green.
+* Follow-up from Ethan: the Workbench opens one Weekly brief chat by default. The old Canvas
+  button is removed; saved lane layouts remain available through their existing routes, not
+  the default preview. The tree excludes CSS-hidden components and refreshes when their
+  visibility changes. Components below the fold remain listed so a row can scroll to them.

@@ -30,10 +30,12 @@ export function watchComponentView(changed: () => void): () => void {
   };
 }
 
-/** Component roots in page order, omitting the drawer and the app's retained off-screen panes. */
+/** Rendered component roots in page order, including those reached by scrolling, not hidden panes. */
 export function componentTree(root: Element, skip: Element | null = null): ComponentNode[] {
   if (root === skip || root.matches("[data-retain][inert]")) return [];
   const children = [...root.children].flatMap((child) => componentTree(child, skip));
   const name = root.getAttribute("data-wb");
-  return name ? [{ element: root, name, children }] : children;
+  return name && root.checkVisibility({ visibilityProperty: true, opacityProperty: true })
+    ? [{ element: root, name, children }]
+    : children;
 }

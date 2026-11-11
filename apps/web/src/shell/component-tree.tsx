@@ -68,8 +68,9 @@ export default function ComponentTree() {
       childList: true,
       subtree: true,
       attributes: true,
-      attributeFilter: ["data-wb", "inert"],
+      attributeFilter: ["data-wb", "inert", "hidden", "class", "style", "open"],
     });
+    window.addEventListener("resize", rebuild);
     const follow = (event: Event) => {
       if (!("detail" in event)) return;
       const element: unknown = event.detail;
@@ -87,6 +88,7 @@ export default function ComponentTree() {
     document.addEventListener(TREE_EVENT.selected, follow);
     return () => {
       observer.disconnect();
+      window.removeEventListener("resize", rebuild);
       document.removeEventListener(TREE_EVENT.selected, follow);
       announce(TREE_EVENT.hover, null);
     };
