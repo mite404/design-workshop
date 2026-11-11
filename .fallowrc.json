@@ -23,7 +23,17 @@
   "health": {
     // Dev scripts (DevTools snippets, the browser levers) are tools, not product code;
     // complexity gates police the components.
-    "ignore": ["scripts/**", "apps/web/scripts/**"]
+    "ignore": ["scripts/**", "apps/web/scripts/**"],
+    "thresholdOverrides": [
+      {
+        // The CRAP gate estimates coverage from export references (43.1 here). The gateway's
+        // Istanbul coverage puts playground.ts at 96% of branches, which scores decide about 12.
+        "files": ["apps/gateway/src/playground.ts"],
+        "functions": ["decide"],
+        "maxCrap": 45,
+        "reason": "Estimated CRAP; measured branch coverage is 96%."
+      }
+    ]
   },
   // React Router's default server entry imports isbot at build time; the app never does.
   "ignoreDependencies": ["isbot"],
