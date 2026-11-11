@@ -318,3 +318,8 @@ These are Ethan's stated preferences for how the Workbench itself should look an
   other screens and stories first (ETH-118), so it has no story and no ticket yet.
 - Is a finished look folded into the baseline tokens, or does it stay in the override file for
   good? Revisited after the first finished app.
+- How does R15 fit principle 2? Dragging a component into a slot changes what a component
+  renders, which is structure, and the Workbench edits values, never code (ADR-001). Either
+  what fills a slot becomes a design value the override file can hold, or the drop writes a
+  request for an agent in the structure lane (section 7), or R15 is dropped. Undecided, so R15
+  gets no story until it is.
