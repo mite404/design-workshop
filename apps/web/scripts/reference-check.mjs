@@ -229,7 +229,7 @@ await step("the keyboard chooses and attaches", async () => {
 
 let sent = "";
 await step("send keeps the reference's identity in the message", async () => {
-  await page.getByRole("button", { name: "Send" }).click();
+  await chat.getByRole("button", { name: "Send", exact: true }).click();
   const ref = chat.locator(".chat-message .chip");
   assert.equal(await ref.count(), 1);
   assert.equal(await chat.locator(".chat-message p").textContent(), DRAFT);

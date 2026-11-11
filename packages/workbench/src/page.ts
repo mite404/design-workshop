@@ -4,6 +4,7 @@
 // inline on its element until the override file has it (ADR-004): the window's corner radius on
 // the frame's root, the selection's gap and padding on the selection.
 import "./page.css";
+import { COLOUR_ROOT, CONTRAST, contrast, HEX } from "./colour";
 import {
   historyDirection,
   move,
@@ -285,7 +286,10 @@ const prop = (value: unknown, key: string): unknown =>
 const entries = (value: unknown): [string, unknown][] =>
   typeof value === "object" && value !== null ? Object.entries(value) : [];
 const text = (value: unknown): string | null => (typeof value === "string" ? value : null);
-const doc = (): Document | null => frame.contentDocument;
+const doc = (): Document | null => {
+  const current = frame.contentDocument;
+  return current?.documentElement ? current : null;
+};
 const windowElement = (): Element | null => doc()?.querySelector("[data-slot=window]") ?? null;
 const box = (): Box => windowElement()?.getBoundingClientRect() ?? new DOMRect(0, 0, 0, 0);
 const was = (selector: string, name: string): string | null =>
@@ -483,6 +487,7 @@ async function load(): Promise<void> {
     ]),
     [ROOT, root],
   ]);
+  buildColours(prop(values, "colours"));
   reset.disabled = savedRadius() === null;
   show(onDisk());
   await settleRadius();
@@ -2657,7 +2662,12 @@ function trackUnmatched(): void {
   const d = doc();
   if (d === null || windowElement() === null) return;
   const lost = [...files]
-    .filter(([selector]) => selector !== ROOT && !matches(d, selector))
+    .filter(
+      ([selector]) =>
+        selector !== ROOT &&
+        !Object.values(COLOUR_ROOT).includes(selector) &&
+        !matches(d, selector),
+    )
     .flatMap(([selector, rule]) => [...rule].map(([name, value]) => ({ selector, name, value })));
   const key = JSON.stringify(lost);
   if (key === unmatchedKey) return;
@@ -2683,7 +2693,205 @@ function trackUnmatched(): void {
   );
 }
 
+const colourList = element("div", { className: "colour-list" });
+const colourHeading = element("summary", {}, "Colours · Light");
+const colourPanel = element(
+  "details",
+  { className: "colours", open: true },
+  colourHeading,
+  colourList,
+);
+type ColourRow = {
+  name: string;
+  picker: HTMLInputElement;
+  input: HTMLInputElement;
+  reset: HTMLButtonElement;
+  ratios: HTMLElement;
+  editable: boolean;
+};
+let colourRows: ColourRow[] = [];
+let colourEdit: {
+  row: ColourRow;
+  root: HTMLElement;
+  selector: string;
+  before: string;
+  inline: string;
+} | null = null;
+const colourCanvas = element("canvas");
+colourCanvas.width = colourCanvas.height = 1;
+const colourContext = colourCanvas.getContext("2d", { willReadFrequently: true });
+const colourCache = new Map<string, string>();
+let colourKey = "";
+
+function colourHex(value: string, background = "#ffffff"): string {
+  const key = `${background}/${value}`;
+  const cached = colourCache.get(key);
+  if (cached !== undefined) return cached;
+  if (colourContext === null) return "#000000";
+  colourContext.clearRect(0, 0, 1, 1);
+  colourContext.fillStyle = background;
+  colourContext.fillRect(0, 0, 1, 1);
+  colourContext.fillStyle = value;
+  colourContext.fillRect(0, 0, 1, 1);
+  const rgb = colourContext.getImageData(0, 0, 1, 1).data;
+  const hex = `#${[rgb[0], rgb[1], rgb[2]].map((n) => (n ?? 0).toString(16).padStart(2, "0")).join("")}`;
+  colourCache.set(key, hex);
+  return hex;
+}
+
+function beginColour(row: ColourRow): void {
+  if (colourEdit?.row === row) return;
+  finishColour(true);
+  const root = doc()?.documentElement;
+  if (root === undefined) return;
+  colourEdit = {
+    row,
+    root,
+    selector: canvasMode.value === "dark" ? COLOUR_ROOT.dark : COLOUR_ROOT.light,
+    before: colourHex(style(root).getPropertyValue(row.name)),
+    inline: root.style.getPropertyValue(row.name),
+  };
+}
+
+function previewColour(row: ColourRow, value: string): void {
+  if (!HEX.test(value)) return;
+  beginColour(row);
+  colourEdit?.root.style.setProperty(row.name, value.toLowerCase());
+  row.picker.value = value;
+  if (document.activeElement !== row.input) row.input.value = value;
+}
+
+function finishColour(accept: boolean): void {
+  const pending = colourEdit;
+  if (pending === null) return;
+  colourEdit = null;
+  const { row, root, selector, before, inline } = pending;
+  const value = root.style.getPropertyValue(row.name);
+  if (accept && HEX.test(value) && value.toLowerCase() !== before) {
+    saveValue(root, selector, row.name, value.toLowerCase());
+  } else {
+    if (inline === "") root.style.removeProperty(row.name);
+    else root.style.setProperty(row.name, inline);
+  }
+  row.input.value = colourHex(style(root).getPropertyValue(row.name));
+  row.input.removeAttribute("aria-invalid");
+  colourKey = "";
+}
+
+function buildColours(values: unknown): void {
+  if (colourRows.length > 0) return;
+  colourRows = entries(values).map(([name, token]) => {
+    const editable = prop(token, "editable") === true;
+    const picker = element("input", {
+      type: "color",
+      ariaLabel: `Pick ${name}`,
+      disabled: !editable,
+    });
+    const input = element("input", {
+      id: `colour-${name}`,
+      ariaLabel: `${name} hex`,
+      readOnly: !editable,
+      autocomplete: "off",
+      spellcheck: false,
+    });
+    const clear = element(
+      "button",
+      { type: "button", className: "reset", ariaLabel: `Reset ${name}` },
+      "Reset",
+    );
+    clear.hidden = !editable;
+    const ratios = element("div", { className: "contrast" });
+    const row = { name, picker, input, reset: clear, ratios, editable };
+    colourList.append(
+      element(
+        "div",
+        { className: "colour-row" },
+        element("label", { htmlFor: input.id }, `${name}${editable ? "" : " · Read-only"}`),
+        element("div", { className: "colour-inputs" }, picker, input, clear),
+        ratios,
+      ),
+    );
+    if (editable) {
+      for (const control of [picker, input]) {
+        control.addEventListener("focus", () => beginColour(row));
+        control.addEventListener("input", () => {
+          beginColour(row);
+          const valid = HEX.test(control.value);
+          input.setAttribute("aria-invalid", String(!valid));
+          if (valid) previewColour(row, control.value);
+        });
+        control.addEventListener("keydown", (event) => {
+          if (event.key !== "Escape" && event.key !== "Enter") return;
+          event.preventDefault();
+          event.stopPropagation();
+          finishColour(event.key === "Enter" && HEX.test(control.value));
+        });
+        control.addEventListener("blur", () => finishColour(HEX.test(control.value)));
+      }
+      picker.addEventListener("change", () => finishColour(true));
+      picker.addEventListener("cancel", () => finishColour(false));
+      clear.addEventListener("click", () => {
+        finishColour(false);
+        const root = doc()?.documentElement;
+        if (root !== undefined)
+          saveValue(
+            root,
+            canvasMode.value === "dark" ? COLOUR_ROOT.dark : COLOUR_ROOT.light,
+            name,
+            null,
+          );
+      });
+    }
+    return row;
+  });
+}
+
+function showColour(row: ColourRow, values: Map<string, string>, selector: string): void {
+  const value = values.get(row.name) ?? "";
+  const hex = colourHex(value);
+  if (colourEdit?.row !== row) {
+    row.picker.value = hex;
+    row.input.value = row.editable ? hex : value;
+  }
+  row.input.title = value;
+  row.reset.disabled = was(selector, row.name) === null;
+  row.ratios.replaceChildren(
+    ...(CONTRAST[row.name] ?? []).map((surface) => {
+      const background = colourHex(values.get(surface) ?? "#ffffff");
+      const ratio = contrast(colourHex(value, background), background);
+      const low = ratio < 4.5;
+      const reading = element(
+        "div",
+        {},
+        `${low ? "Low · " : ""}${ratio.toFixed(2)}:1 on ${surface}`,
+      );
+      reading.dataset.low = String(low);
+      return reading;
+    }),
+  );
+}
+
+function trackColours(): void {
+  const root = doc()?.documentElement;
+  if (root === undefined || colourRows.length === 0) return;
+  const theme = root.dataset.theme === "dark" ? "dark" : "light";
+  const selector = COLOUR_ROOT[theme];
+  const computed = style(root);
+  const values = new Map(
+    colourRows.map(({ name }) => [name, computed.getPropertyValue(name).trim()]),
+  );
+  const key = JSON.stringify([theme, [...values], [...(files.get(selector) ?? [])]]);
+  if (key === colourKey) return;
+  colourKey = key;
+  canvasMode.value = theme;
+  const themeLabel = theme === "dark" ? "Dark" : "Light";
+  modeLabel.textContent = `Editing ${themeLabel} mode · Other values apply to both modes`;
+  colourHeading.textContent = `Colours · ${themeLabel}`;
+  for (const row of colourRows) showColour(row, values, selector);
+}
+
 function track(): void {
+  trackColours();
   trackRadius();
   trackSelection();
   trackFields();
@@ -2722,6 +2930,7 @@ document.body.append(
       message,
       element("h2", {}, "Window · Both modes"),
       element("div", { className: "row" }, label, field, reset),
+      colourPanel,
       scalePanel,
       selectionPanel,
       typePanel,
@@ -2785,7 +2994,9 @@ field.addEventListener("keydown", (event) => {
 });
 field.addEventListener("blur", commitField);
 canvasMode.addEventListener("change", () => {
+  finishColour(false);
   const root = doc()?.documentElement;
+  for (const row of colourRows) root?.style.removeProperty(row.name);
   if (root !== undefined) root.dataset.theme = canvasMode.value;
   localStorage.setItem("theme", canvasMode.value);
   modeLabel.textContent = `Editing ${canvasMode.value === "dark" ? "Dark" : "Light"} mode · Other values apply to both modes`;

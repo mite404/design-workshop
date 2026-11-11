@@ -103,3 +103,23 @@ issue or PR under repo policy (ADR-007, ADR-017).
 ## Drift log
 
 Record here anything built differently from this plan, and why.
+
+- Refreshed against `45c22d6`, including ETH-111. The endpoint already supports grouped history,
+  undo, redo and discard. Colour releases use that path rather than introducing colour history.
+  The existing type and scale controls remain shared between modes.
+- The baseline contains 78 named colours. Of these, 58 have a literal six-digit hex in at least
+  one mode and can be edited. Aliases, mixes and transparent values remain visible read-only
+  where neither mode has a literal hex.
+- Light colours use `:root[data-theme="light"]`, not plain `:root`. The planned specificity
+  argument fails for colours such as `--sage` that have no dark declaration. An explicit light
+  selector isolates those colours too. Ethan accepted this correction. Shared non-colour values
+  remain in `:root`; both colour modes still live in the same override file.
+- Contrast includes the baseline's text aliases and derived text roles. The browser resolves
+  expressions and composites transparency before the dependency-free WCAG calculation.
+- The native picker remains. Chrome event-path checks cover preview, acceptance and Escape;
+  Safari's native palette was opened and visually inspected on macOS.
+- Browser checks now wait for discard to refresh the radius before starting the next drag.
+  The reference check targets the chat's exact Send button, not the new Reset --send control.
+- Integrated ETH-112 through `7313a32` after its review and green CI. Both colour selectors
+  appear in its check-and-commit review. The combined browser suite retains the commit-dialog
+  lever as well as the colour lever. No product commit is pushed by the Workbench.

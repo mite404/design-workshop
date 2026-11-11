@@ -57,6 +57,35 @@ const post = (file: string, body: unknown, origin: string | undefined) =>
   writeValue(file, { origin, host: HOST, body: JSON.stringify(body) });
 
 describe("writeValue", () => {
+  test("colour releases stay in their mode and reject non-opaque or non-colour values", () => {
+    const file = overrideFile(SAVED);
+    for (const [selector, value] of [
+      [':root[data-theme="light"]', "#abcdef"],
+      [':root[data-theme="dark"]', "#123456"],
+    ]) {
+      expect(post(file, { selector, name: "--paper", value, was: null }, ORIGIN).status).toBe(200);
+    }
+    const saved = readFileSync(file, "utf8");
+    expect(saved).toContain("--paper: #abcdef;");
+    expect(saved).toContain("--paper: #123456;");
+    for (const [name, value] of [
+      ["--paper", "#abcdef88"],
+      ["--paper", "red"],
+      ["--paper", "#abc"],
+      ["--rule", "#abcdef"],
+      ["--window-radius", "#abcdef"],
+    ]) {
+      expect(
+        post(file, { selector: ':root[data-theme="dark"]', name, value, was: null }, ORIGIN).status,
+      ).toBe(400);
+      expect(readFileSync(file, "utf8")).toBe(saved);
+    }
+    expect(
+      post(file, { selector: ":root", name: "--paper", value: "#abcdef", was: null }, ORIGIN)
+        .status,
+    ).toBe(400);
+  });
+
   test("undoing a deletion restores its original position, not the end of the file", () => {
     const original = `${SAVED}${CARD} {\n  gap: 22px;\n  padding-left: 6px;\n}\nbody {\n  gap: 2px;\n}\n`;
     const file = overrideFile(original);
@@ -231,6 +260,7 @@ describe("writeValue", () => {
 test("readValues reads each token's baseline and override, and each element's values", () => {
   const tokens = ":root {\n  --btn-radius: 4px;\n  --window-radius: 12px; /* the window */\n}\n";
   expect(readValues(`${SAVED}${CARD} {\n  gap: 22px;\n}\n`, tokens)).toEqual({
+    colours: {},
     tokens: {
       "--window-radius": { baseline: "12px", override: "20px" },
       "--font-text": { baseline: null, override: null },

@@ -237,6 +237,7 @@ try {
   page.once("dialog", (dialog) => dialog.accept());
   await button("Discard").click();
   await expectFile(starting);
+  await page.waitForFunction(() => document.querySelector("#radius").value === "12");
   console.log("ok external edits enable Discard without a reload");
 
   const { promise: gate, resolve: release } = Promise.withResolvers();

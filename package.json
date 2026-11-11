@@ -10,7 +10,7 @@
     "test": "turbo run test --concurrency=50%",
     "test:unit": "turbo run test:unit",
     "test:stories": "turbo run test:stories",
-    "test:browser": "node apps/web/scripts/shell-check.mjs --base http://localhost:5173 && node apps/web/scripts/spacing-check.mjs && node apps/web/scripts/corner-radius-check.mjs && node scripts/nudge-check.js && node apps/web/scripts/type-check.mjs && node apps/web/scripts/scale-check.mjs && node apps/web/scripts/reference-check.mjs && node apps/web/scripts/history-check.mjs && node apps/web/scripts/commit-check.mjs && git diff --exit-code packages/catalog/src/overrides.css",
+    "test:browser": "node apps/web/scripts/shell-check.mjs --base http://localhost:5173 && node apps/web/scripts/spacing-check.mjs && node apps/web/scripts/corner-radius-check.mjs && node scripts/nudge-check.js && node apps/web/scripts/type-check.mjs && node apps/web/scripts/scale-check.mjs && node apps/web/scripts/reference-check.mjs && node apps/web/scripts/history-check.mjs && node apps/web/scripts/commit-check.mjs && node apps/web/scripts/colour-check.mjs && git diff --exit-code packages/catalog/src/overrides.css",
     "storybook": "pnpm --filter storybook storybook",
     "build-storybook": "turbo run build-storybook",
     "lint": "pnpm --filter web exec react-router typegen && oxlint --disable-nested-config",

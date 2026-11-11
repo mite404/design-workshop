@@ -32,6 +32,7 @@ import { isPosition, type Change } from "./history.ts";
 import { isSelector } from "./selector.ts";
 import { SPACING } from "./spacing.ts";
 import { isScale, isType, SCALE, scaleValue, TYPE, typeValue } from "./type.ts";
+import { COLOUR_ROOT, colourTokens, HEX } from "./colour.ts";
 
 const OVERRIDES = fileURLToPath(new URL("../../catalog/src/overrides.css", import.meta.url));
 const TOKENS = fileURLToPath(new URL("../../catalog/src/tokens.css", import.meta.url));
@@ -39,6 +40,8 @@ const CATALOG = fileURLToPath(new URL("../../catalog/src/", import.meta.url));
 const FONTS = join(CATALOG, "fonts.css");
 const PAGE = fileURLToPath(new URL("./page.ts", import.meta.url));
 const ROOT = ":root";
+const COLOURS = colourTokens(readFileSync(TOKENS, "utf8"));
+const COLOUR_NAMES = Object.keys(COLOURS).filter((name) => COLOURS[name]?.editable);
 const EDITABLE = ["--window-radius", "--font-text", "--font-display", ...SCALE];
 const PX = /^\d{1,4}px$/;
 const TRANSLATE = /^-?\d{1,4}px -?\d{1,4}px$/;
@@ -70,11 +73,13 @@ export function readValues(
   tokens: string,
 ): {
   tokens: Record<string, { baseline: string | null; override: string | null }>;
+  colours: ReturnType<typeof colourTokens>;
   saved: Record<string, Record<string, string>>;
 } {
   const blocks = parseOverrides(overrides);
   const root = blocks.get(ROOT);
   return {
+    colours: colourTokens(tokens),
     tokens: Object.fromEntries(
       EDITABLE.map((n) => [n, { baseline: baseline(tokens, n), override: root?.get(n) ?? null }]),
     ),
@@ -98,11 +103,13 @@ type Write = {
 // makes, takes gap, the four paddings, a two-dimensional offset and the type properties.
 function namesOf(selector: string): readonly string[] {
   if (selector === ROOT) return EDITABLE;
+  if (Object.values(COLOUR_ROOT).includes(selector)) return COLOUR_NAMES;
   return isSelector(selector) ? [...SPACING, "translate", ...TYPE] : [];
 }
 function isValue(v: unknown, name: string): v is string | null {
   if (v === null) return true;
   if (typeof v !== "string") return false;
+  if (COLOUR_NAMES.includes(name)) return HEX.test(v);
   if (isType(name)) return typeValue(name, v);
   if (isScale(name)) return scaleValue(name, v);
   if (name.startsWith("--font-")) return isFamilyValue(v);
