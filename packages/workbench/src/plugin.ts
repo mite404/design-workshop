@@ -180,7 +180,15 @@ const foreign = ({ origin, host }: Post): boolean =>
  */
 export function writeValue(file: string, request: Post): Reply {
   if (foreign(request)) return FOREIGN;
-  const input = json(request.body);
+  return writeValues(file, json(request.body));
+}
+
+/**
+ * Saves a validated release without HTTP origin handling, for the route and command line.
+ * Refuses invalid input (400) and stale values or revisions (409), writing nothing.
+ * @throws When the override file cannot be read, parsed or replaced, or Git cannot read HEAD.
+ */
+export function writeValues(file: string, input: unknown): Reply {
   const head = field(input, "head");
   if (head !== undefined && head !== revision(file)) {
     return { status: 409, body: { error: "the last commit changed; history was cleared" } };
@@ -213,6 +221,68 @@ export function writeValue(file: string, request: Post): Reply {
   }
   replace(file, text);
   return { status: 200, body: { changes } };
+}
+
+/**
+ * Checks file shape and the route's selector, name and value rules without writing.
+ * @throws With the offending line when a block or value is not writable by the Workbench.
+ */
+export function checkValues(text: string): void {
+  const blocks = parseOverrides(text);
+  const lines = text.split("\n");
+  for (const [selector, values] of blocks) {
+    const open = lines.indexOf(`${selector} {`);
+    if (namesOf(selector).length === 0) {
+      throw new Error(`override file line ${open + 1}: not an editable selector: ${selector}`);
+    }
+    for (const [name, value] of values) {
+      const checked = parseWrite({ selector, name, value, was: null });
+      if (typeof checked === "string") {
+        const at = lines.indexOf(`  ${name}: ${value};`, open);
+        throw new Error(`override file line ${at + 1}: ${checked}`);
+      }
+    }
+  }
+}
+
+function listedBaseline(
+  values: ReturnType<typeof readValues>,
+  selector: string,
+  name: string,
+): string | null {
+  if (selector === ROOT) return values.tokens[name]?.baseline ?? null;
+  const colour = values.colours[name];
+  if (colour === undefined) return null;
+  if (selector === COLOUR_ROOT.light) return colour.light;
+  if (selector === COLOUR_ROOT.dark) return colour.dark;
+  return null;
+}
+
+/**
+ * Lists editable root tokens, mode colours and each saved element selector's editable names.
+ * Element baselines are null because their cascade needs a browser.
+ * @throws When the override file is malformed.
+ */
+export function listValues(
+  overrides: string,
+  tokens: string,
+): {
+  selector: string;
+  name: string;
+  baseline: string | null;
+  saved: string | null;
+}[] {
+  const blocks = parseOverrides(overrides);
+  const values = readValues(overrides, tokens);
+  const selectors = new Set([ROOT, ...Object.values(COLOUR_ROOT), ...blocks.keys()]);
+  return [...selectors].flatMap((selector) =>
+    namesOf(selector).map((name) => ({
+      selector,
+      name,
+      baseline: listedBaseline(values, selector, name),
+      saved: blocks.get(selector)?.get(name) ?? null,
+    })),
+  );
 }
 
 function committed(file: string): string {

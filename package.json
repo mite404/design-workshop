@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "turbo run dev",
+    "workbench": "node packages/workbench/src/cli.ts",
     "dev:web": "turbo run dev --filter=web",
     "build": "turbo run build",
     "typecheck": "turbo run typecheck",

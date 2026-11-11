@@ -87,3 +87,15 @@ policy (ADR-007, ADR-017).
 ## Drift log
 
 Record here anything built differently from this plan, and why.
+
+- `list` enumerates root tokens, editable light/dark colours, and the editable names for each
+  element selector already saved in the file. An offline command cannot enumerate the running
+  DOM or compute element baselines, so those baselines are `null`. Token baselines retain their
+  source CSS expressions. No browser or dev server is required.
+- The parser now includes a line number for missing final newlines and incomplete files, as
+  well as malformed lines. This extends its diagnostics to meet AC 4 without a second parser.
+- Tests run the actual Node command in temporary checkouts instead of adding a file-path option.
+  The command's only write target remains the catalog override file beside its own package.
+- Verification on 2026-11-11 confirmed CLI `28px` hot reload in Chromium. The open Workbench's
+  attempted `36px` write was refused as stale, kept `28px` on disk, and reloaded its field to
+  `28`. The override file was restored byte for byte afterwards.

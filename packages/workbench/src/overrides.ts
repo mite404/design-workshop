@@ -48,7 +48,7 @@ function addValue(block: Block, line: string, i: number): void {
 
 function scan(text: string): { lines: string[]; blocks: Block[] } {
   const lines = text.split("\n"); // string → string[], the last one "" after the final newline
-  if (lines.pop() !== "") throw new Error("override file: must end with a newline");
+  if (lines.pop() !== "") fail(lines.length, "must end with a newline");
   const blocks: Block[] = [];
   let block: Block | undefined;
   for (const [i, line] of lines.entries()) {
@@ -62,7 +62,7 @@ function scan(text: string): { lines: string[]; blocks: Block[] } {
     }
   }
   if (block !== undefined || blocks.length === 0) {
-    throw new Error("override file: needs a :root block and a closing }");
+    fail(lines.length, "needs a :root block and a closing }");
   }
   return { lines, blocks };
 }
