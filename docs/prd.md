@@ -1,6 +1,6 @@
 # Design Workbench - PRD
 
-Status: draft 3, Nov 11 2026. Decisions confirmed by Ethan. This file is the source of truth; the
+Status: draft 4, Nov 11 2026. Decisions confirmed by Ethan. This file is the source of truth; the
 Amp artifact it came from is a copy. Background research: [code-native workbench
 research](research/code-native-workbench.md).
 
@@ -33,9 +33,9 @@ graphic designer: by eye, by direct manipulation, with numbers available when he
 
 Laid out like Figma:
 
-| Left panel | Centre | Right panel |
+| Side drawer | Centre | Right panel |
 | --- | --- | --- |
-| Layers: the named regions of what is on the canvas. Assets: components, colours, type styles, looks | Canvas: the live preview, with selection outlines, handles and measurements | Inspector: the editable properties of the selection, as sliders, number fields, pickers and curve editors |
+| Component tree: the named components on the canvas, drawn by the Template in its own drawer (ADR-025). Assets come later: components, colours, type styles, looks | Canvas: the live preview, with selection outlines, handles and measurements | Inspector: the editable properties of the selection, as sliders, number fields, pickers and curve editors |
 
 Two modes, offered under **More actions** on the welcome:
 
@@ -43,10 +43,16 @@ Two modes, offered under **More actions** on the welcome:
   mocked agent loop. This mode is for layout, chrome, and how components sit together. "Live" means
   the running UI, not a connection to a live model.
 - **Component mode**, with the browser icon and tab. This is what earlier drafts called Component
-  Canvas. The target is one Storybook story, framed at its own URL instead of a second renderer.
-  The story list comes from Storybook's index.
+  Canvas. The target is one component. If it is on screen, the preview stays the running app:
+  the component is centred, only it and what is inside it can be selected, and its surroundings
+  fade out (ADR-024). If the app is not showing it, the target is its Storybook story, framed at
+  its own URL instead of a second renderer.
 
-Both views edit the same design values, so a change made on a component shows up in the shell.
+Both modes edit the same design values, so a change made on a component shows up in the shell.
+An edit to an element reaches as far as its mode says (ADR-023). In Component mode it is saved
+under the component's name, so every instance changes, in the shell and in stories. In Live
+mode it changes the one element selected. Component mode edits the inside of a component, its
+own padding included; where the component sits and the space around it belong to Live mode.
 
 ### Welcome and mock chat
 
@@ -58,7 +64,7 @@ user-choice fixture. Live mode fills the preview; Component mode frames the same
 In development, either button opens the Workbench with that conversation selected, so the
 selection, spacing, and radius tools are reachable without typing an editor URL. Mode switches
 inside the editor stay in its existing frame. Production builds show the mock without editor
-endpoints. The Storybook index and single-story navigation below remain planned.
+endpoints. The component tree, the focused view and story navigation below remain planned.
 
 The scripted-demo transport bar is removed. Demo conversations open complete without Play,
 typing animation, or a playback wait. Gateway, authentication, and live-model implementations
@@ -67,12 +73,16 @@ remain available for later work but are not needed for this preview flow.
 The existing lane-and-card canvas remains a layout within the running Template. It is not the
 Storybook-backed Component mode. Mode changes must not discard its saved lanes, cards, or threads.
 
-### Chat-history panel in Component mode
+### Component tree in the side drawer
 
-The panel that rolls out for chat history can list components in Component mode. Preserve
-Storybook's group, component, and story hierarchy and labels, using its index as the source of
-truth. Selecting a story shows that story in the component preview. Live mode keeps thread history.
-This is the navigation requirement, not a claim that Storybook navigation is implemented today.
+While the app runs inside the Workbench, the drawer that rolls out for chat history lists the
+components on the canvas instead of threads, in both modes (ADR-025). Each component is named
+as it is in code. The tree is read from the page, so it lists only what is rendered. Clicking
+a row selects its element and opens the component it belongs to in Component mode. In
+Component mode the drawer also lists the stories of components the app is not showing, with
+Storybook's labels, using its index as the source of truth. Outside the Workbench the drawer
+keeps thread history. This is the navigation requirement, not a claim that it is implemented
+today.
 
 ## 5. Principles
 
@@ -161,8 +171,10 @@ git HEAD ──read baseline + override──> inspector and canvas
   user and agent messages, varied cards, and a user-choice panel, without playback controls.
 - R2. The Workbench opens beside the Template's normal dev servers and frames them. It is absent
   from production builds.
-- R3. Two modes: Live mode and Component mode, offered under More actions with chat and browser icons.
-- R4. Layers panel lists the named regions on the canvas; click a layer or the canvas to select.
+- R3. Two modes: Live mode and Component mode, offered under More actions with chat and browser
+  icons.
+- R4. The component tree in the side drawer lists the named components on the canvas; click a
+  row or the canvas to select.
 - R5. Inspector shows the design values of the selection, with a control per kind: scrub field with
   grid snap, colour picker with contrast readout, font controls.
 - R6. Live preview while dragging; save on release; app and stories hot reload.
@@ -204,7 +216,7 @@ Each block is usable and testable before the next starts.
 | 1 | **Template.** Copy the yaklabs monorepo whole (`apps/web`, `apps/storybook`, `packages/ui`, `packages/catalog` and the rest), replacing the workbook on this branch. Its scripted agent is the mocked loop. Prune what the Template does not need afterwards, one removal per ticket | There is a real, good-looking target to design against |
 | 2 | **Override file format.** Parser and writer as pure functions | Read then write returns the same file, byte for byte |
 | 3 | **Dev server plugin and command line.** List values, write a value, ownership and stale checks | A change reaches disk, the app and the stories, and nothing else can be written |
-| 4 | **Workbench frame.** Three panels, two views, selection, inspector controls, undo and discard | A look can be changed without typing a description |
+| 4 | **Workbench frame.** Component tree, canvas and inspector, two modes, selection, inspector controls, undo and discard | A look can be changed without typing a description |
 | 5 | **Check and commit.** | A design session ends in a clean, reviewable commit |
 | 6 | **Request a design value**, plus the agent skill file (R12) | Hitting the edge of what is adjustable does not mean going back to prose |
 | 7 | **Canvas handles and readouts** (R13) | Dragging replaces the inspector for layout work |

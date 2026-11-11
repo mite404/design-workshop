@@ -95,6 +95,10 @@ is taggging behind the scenes that's okaky with me".) Agents that build mockups 
 identity. The generated selector is the fallback for untagged elements. The Workbench itself
 still never writes to source (ADR-001).
 
+Amended 2026-11-11 (ADR-023): `data-wb` on a component's root is the component's name as it
+is in code. In Component mode a name that several elements share is still the identity, so one
+edit reaches every instance.
+
 ## ADR-013 - A nudge is an offset, not a layout change
 
 2026-11-11 - Accepted, with the spacing story.
@@ -181,3 +185,48 @@ build. `pnpm test` runs one turbo task per two CPUs: on a 2 CPU, 3.9 GB orb, tur
 of ten at once ran out of memory and stalled tests past their timeouts, and the Storybook suite
 alone needs up to 2.1 GB. Rejected: longer test timeouts, which hide the stall instead of
 removing it.
+
+## ADR-023 - A component has one name, and the mode decides how far an edit reaches
+
+2026-11-11 - Accepted. Amends ADR-012.
+Each component's root element carries `data-wb` with the component's name, spelled as it is in
+code. (Ethan: "i was hoping the name of the component (in code) would be identical".) An edit
+made in Component mode is saved under that name plus the path inside the component, so it
+reaches every instance, in the shell and in stories. An edit made in Live mode is saved as
+before, for the one element selected. This is Figma's main component and instance (ADR-009).
+Component mode edits the inside of a component, its own padding included. Where it sits and
+the space around it belong to Live mode. (Ethan: "i was referring to only editing the things
+within a component that affect the component itself".) The name is in source because the
+override file ships, and its selectors have to match the built page. Rejected: reading names
+from React while editing, which leaves nothing in the page for a saved rule to match.
+Rejected: a "Push to live" button; once both modes share the name there is nothing to push.
+The cost: a component whose inner structure differs between states can leave a saved value
+unmatched. As in ADR-012 it is listed, not dropped.
+
+## ADR-024 - Component mode is a view into the running app
+
+2026-11-11 - Accepted. Changes PRD section 4, which made a Storybook story the only target.
+Opening a component that is on screen keeps the running app in the frame. The component is
+brought to the centre, only it and what is inside it can be selected, and what surrounds it
+fades out. (Ethan: "show some of the surrounding components to the one currently being
+editing and have a gradient fade to invisible so its like a 'view' into where the currently
+edited component is in the app".) A Storybook story is the target only for a component or a
+state the app is not showing, and it has no surroundings to fade. The build order is names,
+the tree, focus, then stories. Focus needs one document, one cascade and one dev server, so
+the forward to Storybook, the HIGH risk in ETH-115, no longer blocks Component mode.
+Rejected: drawing stand-in surroundings around a story, which would be a picture, not the
+running code (ADR-014).
+
+## ADR-025 - One component tree, in the Template's side drawer
+
+2026-11-11 - Accepted. Replaces the left Layers panel of PRD section 4.
+What is on the canvas is listed once, as a tree the Template draws in its own side drawer in
+place of the thread list while it runs inside the Workbench. (Ethan: "a 'component tree' in
+the current side drawer (what replaces the list of threads currently)".) The tree is read from
+the page, so it lists only what is rendered. (Ethan: "only the comopnents that are actively
+rendered in live view".) Rejected: a Layers panel beside the canvas as well as a list in the
+drawer, which is two lists of the same thing. The costs: the Template carries a tree that
+exists in development only, the first Workbench interface inside the app; the thread list is
+not shown while the app is in the Workbench; the fade of ADR-024 must leave the drawer
+visible; and a story is shown in a frame inside the app, so that the drawer stays, which puts
+the document being edited two frames down from the Workbench.
