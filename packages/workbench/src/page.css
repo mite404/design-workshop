@@ -880,3 +880,368 @@ body {
     transition: opacity 120ms ease-out;
   }
 }
+
+/* The chat (ETH-110): a dock at the canvas's bottom right, the chat panel rising above it, and
+   while choosing an element, a filled highlight with its label, a hint and the Add to chat
+   stage. The highlight is orange so it never reads as the blue edit selection. */
+:root {
+  --wb-ref: #f0561d;
+}
+
+body[data-referencing] .overlay,
+:is(.target, .stage, .chips)[hidden] {
+  display: none;
+}
+
+.target {
+  position: absolute;
+  box-sizing: border-box;
+  border: 2px solid var(--wb-ref);
+  background: color-mix(in srgb, var(--wb-ref) 14%, transparent);
+  box-shadow: 0 0 0 1px rgb(255 255 255 / 0.6);
+  pointer-events: none;
+}
+
+.target[data-glide] {
+  transition-property: left, top, width, height, border-radius;
+  transition-duration: 120ms;
+  transition-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.target[data-picked="true"] {
+  background: color-mix(in srgb, var(--wb-ref) 20%, transparent);
+}
+
+.target[data-picked="true"] .target-label {
+  display: none;
+}
+
+.target-label {
+  position: absolute;
+  bottom: 100%;
+  left: -2px;
+  max-width: 280px;
+  margin-bottom: 4px;
+  padding: 2px 6px;
+  overflow: hidden;
+  border-radius: 4px;
+  background: var(--wb-ref);
+  color: #fff;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stage,
+.ref-hint,
+.dock,
+.chat {
+  position: absolute;
+  box-sizing: border-box;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow:
+    0 0 0 0.5px rgb(0 0 0 / 0.12),
+    0 8px 24px rgb(0 0 0 / 0.16);
+}
+
+.stage {
+  top: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 420px;
+  padding: 6px;
+}
+
+.stage-label {
+  min-width: 0;
+  padding: 0 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stage button,
+.composer button {
+  flex: none;
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid var(--wb-line);
+  border-radius: 4px;
+  background: #fff;
+  color: var(--wb-ink);
+  font: inherit;
+  cursor: pointer;
+}
+
+.stage .primary,
+.composer .primary {
+  border-color: var(--wb-accent);
+  background: var(--wb-accent);
+  color: #fff;
+}
+
+.ref-hint {
+  right: 104px;
+  bottom: 20px;
+  margin: 0;
+  padding: 6px 10px;
+  background: var(--wb-ink);
+  color: #fff;
+  white-space: nowrap;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.dock {
+  right: 16px;
+  bottom: 16px;
+  display: flex;
+  gap: 2px;
+  padding: 4px;
+}
+
+.dock button {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--wb-ink);
+  cursor: pointer;
+  transition: scale 120ms ease-out;
+}
+
+.dock button:hover {
+  background: #f2f2f2;
+}
+
+.dock button:active {
+  scale: 0.96;
+}
+
+.dock button:is([aria-pressed="true"], [aria-expanded="true"]) {
+  background: var(--wb-accent);
+  color: #fff;
+}
+
+.dock svg,
+.composer svg {
+  fill: none;
+  stroke: currentcolor;
+  stroke-linejoin: round;
+  stroke-width: 1.4;
+}
+
+.dock button[aria-pressed="true"] svg {
+  fill: currentcolor;
+}
+
+:is(.dock, .stage, .chat) :focus-visible {
+  outline: 2px solid var(--wb-accent);
+  outline-offset: 1px;
+}
+
+.chat {
+  right: 16px;
+  bottom: 64px;
+  display: flex;
+  flex-direction: column;
+  width: 360px;
+  max-height: min(560px, calc(100% - 88px));
+  transform-origin: bottom right;
+  transition:
+    opacity 160ms ease-out,
+    translate 200ms cubic-bezier(0.23, 1, 0.32, 1),
+    visibility 0s 200ms;
+}
+
+.chat[data-open="false"] {
+  visibility: hidden;
+  opacity: 0;
+  translate: 0 12px;
+}
+
+.chat[data-open="true"] {
+  transition-delay: 0s;
+}
+
+.chat header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--wb-line);
+}
+
+.chat h2 {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.chat-mock {
+  color: var(--wb-soft-ink);
+  font-size: 11px;
+}
+
+.chat-log {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 48px;
+  margin: 0;
+  padding: 12px;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.chat-message {
+  align-self: flex-end;
+  max-width: 85%;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #f2f2f2;
+}
+
+.chat-message p {
+  margin: 4px 0 0;
+  white-space: pre-wrap;
+}
+
+.chat-message p:empty {
+  display: none;
+}
+
+.composer {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 12px 12px;
+  border-top: 1px solid var(--wb-line);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  padding: 2px 2px 2px 8px;
+  border: 1px solid color-mix(in srgb, var(--wb-ref) 40%, transparent);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--wb-ref) 8%, #fff);
+}
+
+.chat-message .chip {
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 4px 8px;
+}
+
+.chip-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chip code {
+  color: var(--wb-soft-ink);
+  font-size: 10px;
+}
+
+.chip[data-unresolved="true"] {
+  border-style: dashed;
+  border-color: var(--wb-soft-ink);
+  background: #fff;
+  color: var(--wb-soft-ink);
+}
+
+.chip[data-unresolved="true"] .chip-label::after {
+  content: " · unresolved";
+}
+
+.chip .reselect {
+  display: none;
+}
+
+.chip[data-unresolved="true"] .reselect {
+  display: block;
+}
+
+.chat-message .reselect {
+  align-self: flex-end;
+}
+
+.chip button {
+  height: 20px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 3px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.chip button:hover {
+  background: rgb(0 0 0 / 0.06);
+}
+
+.chat-draft {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--wb-line);
+  border-radius: 4px;
+  font: inherit;
+  resize: none;
+}
+
+.chat-draft:focus {
+  border-color: var(--wb-accent);
+  outline: none;
+}
+
+.composer-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--wb-soft-ink);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .target[data-glide] {
+    transition: none;
+  }
+
+  .chat {
+    transition:
+      opacity 160ms ease-out,
+      visibility 0s 160ms;
+  }
+
+  .chat[data-open="false"] {
+    translate: none;
+  }
+}

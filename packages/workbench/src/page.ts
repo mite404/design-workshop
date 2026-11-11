@@ -4,6 +4,7 @@
 // inline on its element until the override file has it (ADR-004): the window's corner radius on
 // the frame's root, the selection's gap and padding on the selection.
 import "./page.css";
+import { chatKey, chatLayer, referencing, trackChat, watchReference } from "./chat";
 import {
   clampRadius,
   CORNERS,
@@ -669,8 +670,13 @@ function onKey(event: KeyboardEvent): void {
   }
 }
 
+// A key goes to the chat first, then to the page's own handling.
+const keyDown = (event: KeyboardEvent): void => {
+  if (!chatKey(event)) onKey(event);
+};
+
 const block = (event: Event): void => {
-  if (!selecting) return;
+  if (!selecting && !referencing()) return;
   event.preventDefault();
   event.stopImmediatePropagation();
 };
@@ -684,6 +690,7 @@ function watchFrame(): void {
   const view = frame.contentWindow;
   if (view === null) return;
   select(null);
+  watchReference(view, frame);
   view.addEventListener(
     "pointerdown",
     (event) => {
@@ -739,7 +746,7 @@ function watchFrame(): void {
   view.addEventListener("pointercancel", cancelBody, true);
   view.addEventListener("lostpointercapture", cancelBody, true);
   for (const type of BLOCKED) view.addEventListener(type, block, true);
-  view.addEventListener("keydown", onKey);
+  view.addEventListener("keydown", keyDown);
 }
 
 function trackRadius(): void {
@@ -2400,6 +2407,7 @@ function track(): void {
   trackRootFonts();
   trackScale();
   trackUnmatched();
+  trackChat();
   requestAnimationFrame(track);
 }
 
@@ -2407,7 +2415,7 @@ document.body.append(
   element(
     "main",
     { className: "workbench" },
-    element("div", { className: "canvas" }, frame, overlay),
+    element("div", { className: "canvas" }, frame, overlay, ...chatLayer),
     element(
       "aside",
       { className: "inspector", ariaLabel: "Inspector" },
@@ -2481,7 +2489,7 @@ reset.addEventListener("click", () => {
   show(baseline);
   save(null);
 });
-document.addEventListener("keydown", onKey);
+document.addEventListener("keydown", keyDown);
 frame.addEventListener("load", () => {
   watchFrame();
   void load();

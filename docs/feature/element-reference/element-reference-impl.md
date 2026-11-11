@@ -81,3 +81,32 @@ do not build a second selector or enable a live-model service to demonstrate the
 Risk: MEDIUM. Pointer stability, nested targeting and stale identity can fail independently.
 Use poteto-mode, emil-design-eng and gestures per the project's UI build workflow. This ticket
 does not change serial build order. Linear owns status; no GitHub issue or PR under repo policy.
+
+## Drift log
+
+Record what differed from this plan and why.
+
+* Host: the chat lives on the Workbench page, outside the framed preview, so one selector serves
+  Live and Component mode and the Template's own mock chat stays design content. This is an
+  implementation assumption agreed with the coordinator, not a host Ethan named; he specified the
+  bottom-right entry and the bottom panel.
+* The dock at the canvas's bottom right holds the arrow and chat buttons; the panel rises above
+  it. Clicking an element shows a small Add to chat bar beside it instead of adding at once, so a
+  click never edits the draft. There is no Add to chat in the inspector; the arrow is the one
+  entry, as asked.
+* Targeting: inline elements (spans, bold words, links, SVG shapes) count as the block they sit
+  in, which removes Cursor's span/paragraph flicker. The highlight holds until the pointer is
+  6px past its element, unless it moves into a child. Arrow keys refine: Up to the container,
+  Down to a child (toward the pointer), Left and Right to siblings, so inline children stay
+  reachable. The 6px band is one constant in `reference.ts`.
+* The highlight is orange (fill 14%, 2px outline, white halo), so it never reads as the blue
+  edit selection, which is hidden while choosing. It glides 120ms on target change only; reduced
+  motion snaps.
+* A reference keeps its element, selector (ADR-012) and preview (`Live` or `Component`, plus the
+  frame's path). It is unresolved once its element leaves the page or its selector no longer
+  names it. An unresolved draft chip offers Reselect, which replaces it in place; an unresolved
+  sent chip offers Reselect too, which adds the new choice to the draft and leaves the message
+  as sent.
+* Picking cancels any glide in flight and places the highlight on the chosen element at once, so
+  a press during travel never shows the previous target.
+* Sent messages stay on the page; there is no mocked agent reply.
