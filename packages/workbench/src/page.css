@@ -297,6 +297,22 @@ body {
   margin-bottom: -4px;
 }
 
+.mode-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 16px;
+}
+
+.mode-row select {
+  padding: 4px 8px;
+  border: 1px solid var(--wb-line);
+  border-radius: 4px;
+  background: #fff;
+  color: var(--wb-ink);
+  font: inherit;
+}
+
 .tool {
   height: 24px;
   padding: 0 8px;
@@ -375,6 +391,7 @@ body {
 
 .note,
 .commit-note,
+.mode-note,
 .offset-note,
 .type-note {
   margin: 8px 0 0;

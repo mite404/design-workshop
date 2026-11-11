@@ -182,6 +182,12 @@ const tool = element(
 const field = element("input", { id: "radius", inputMode: "numeric", autocomplete: "off" });
 const label = element("label", { htmlFor: "radius", className: "scrub" }, "Corner radius");
 const reset = element("button", { type: "button", className: "reset" }, "Reset");
+const canvasMode = element("select", { id: "theme", ariaLabel: "Canvas mode" });
+canvasMode.append(
+  element("option", { value: "light" }, "Light"),
+  element("option", { value: "dark" }, "Dark"),
+);
+const modeLabel = element("p", { className: "mode-note" }, "Editing Light mode");
 const undo = element(
   "button",
   { type: "button", className: "history-button", disabled: true, title: "Undo (⌘Z / Ctrl+Z)" },
@@ -2700,6 +2706,13 @@ document.body.append(
       element("div", { className: "tools" }, tool),
       element(
         "div",
+        { className: "mode-row" },
+        element("label", { htmlFor: "theme" }, "Canvas"),
+        canvasMode,
+      ),
+      modeLabel,
+      element(
+        "div",
         { className: "history-tools", ariaLabel: "Edit history", role: "group" },
         undo,
         redo,
@@ -2707,7 +2720,7 @@ document.body.append(
       ),
       checkCommit,
       message,
-      element("h2", {}, "Window"),
+      element("h2", {}, "Window · Both modes"),
       element("div", { className: "row" }, label, field, reset),
       scalePanel,
       selectionPanel,
@@ -2771,6 +2784,12 @@ field.addEventListener("keydown", (event) => {
   if (event.key === "Enter") commitField();
 });
 field.addEventListener("blur", commitField);
+canvasMode.addEventListener("change", () => {
+  const root = doc()?.documentElement;
+  if (root !== undefined) root.dataset.theme = canvasMode.value;
+  localStorage.setItem("theme", canvasMode.value);
+  modeLabel.textContent = `Editing ${canvasMode.value === "dark" ? "Dark" : "Light"} mode · Other values apply to both modes`;
+});
 reset.addEventListener("click", () => {
   show(baseline);
   save(null);
@@ -2818,6 +2837,8 @@ document.addEventListener("keydown", keyDown);
 window.addEventListener("focus", () => enqueue(refreshStatus));
 import.meta.hot?.on("workbench:values", () => enqueue(refreshStatus));
 frame.addEventListener("load", () => {
+  canvasMode.value = doc()?.documentElement.dataset.theme === "dark" ? "dark" : "light";
+  modeLabel.textContent = `Editing ${canvasMode.value === "dark" ? "Dark" : "Light"} mode · Other values apply to both modes`;
   watchFrame();
   void load();
 });
