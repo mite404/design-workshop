@@ -1,9 +1,18 @@
 // The Workbench's dev-only half of the app's dev server: its page at /__workbench/, the endpoint
 // that writes the override file (ADR-002), and the one that copies a Google font into the repo
 // (ADR-021). `apply: "serve"` keeps them all out of a build.
-import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  watch,
+  writeFileSync,
+} from "node:fs";
+import { execFileSync } from "node:child_process";
 import type { IncomingMessage } from "node:http";
-import { join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Plugin, ViteDevServer } from "vite";
 import {
@@ -18,6 +27,7 @@ import {
   parseDetails,
 } from "./fonts.ts";
 import { parseOverrides, setOverride } from "./overrides.ts";
+import { isPosition, type Change } from "./history.ts";
 import { isSelector } from "./selector.ts";
 import { SPACING } from "./spacing.ts";
 import { isScale, isType, SCALE, scaleValue, TYPE, typeValue } from "./type.ts";
@@ -75,7 +85,13 @@ export function readValues(
 
 // A POST body, checked: a selector, one name it may set, the new value or null, and the value
 // last read.
-type Write = { selector: string; name: string; value: string | null; was: string | null };
+type Write = {
+  selector: string;
+  name: string;
+  value: string | null;
+  was: string | null;
+  at?: Change["at"];
+};
 
 // `:root` takes the editable tokens; an element, by a selector of the grammar its function
 // makes, takes gap, the four paddings, a two-dimensional offset and the type properties.
@@ -104,8 +120,7 @@ function json(text: string): unknown {
 const field = (input: unknown, key: string): unknown =>
   typeof input === "object" && input !== null ? Reflect.get(input, key) : undefined;
 
-function parseWrite(body: string): Write | string {
-  const input = json(body); // string → unknown
+function parseWrite(input: unknown): Write | string {
   const [selector, name, value, was] = ["selector", "name", "value", "was"].map((key) =>
     field(input, key),
   );
@@ -120,7 +135,22 @@ function parseWrite(body: string): Write | string {
     return `not a value ${name} takes: ${JSON.stringify(value)}`;
   }
   if (!isWas(was)) return "was must be a string or null";
-  return { selector, name, value, was };
+  const at = field(input, "at");
+  if (at !== undefined && !isPosition(at)) return "invalid declaration position";
+  return { selector, name, value, was, ...(at === undefined ? {} : { at }) };
+}
+
+function parseRelease(input: unknown): Write[] | string {
+  const release = field(input, "changes") ?? input;
+  const batch: unknown[] = Array.isArray(release) ? release : [release];
+  if (batch.length === 0) return "empty release";
+  const writes: Write[] = [];
+  for (const item of batch) {
+    const write = parseWrite(item);
+    if (typeof write === "string") return write;
+    writes.push(write);
+  }
+  return writes;
 }
 
 // A POST to an endpoint: its Origin and Host headers and its body.
@@ -134,25 +164,78 @@ const foreign = ({ origin, host }: Post): boolean =>
   host === undefined || URL.parse(origin ?? "")?.host !== host;
 
 /**
- * Sets one editable value in the override file at `file`, or removes it when `value` is null,
- * through a temp file and a rename. Refuses, writing nothing, a foreign `origin` (403), a
+ * Sets one editable value or an entire release atomically in the override file at `file`.
+ * A null removes a value. Refuses, writing nothing, a foreign `origin` (403), a
  * selector off the grammar, a name it may not set or a value its name's check refuses (400),
  * and a `was` that is not the value now on disk (409).
+ * @throws When the override file cannot be read, parsed or replaced, or Git cannot read HEAD.
  */
 export function writeValue(file: string, request: Post): Reply {
   if (foreign(request)) return FOREIGN;
-  const write = parseWrite(request.body);
-  if (typeof write === "string") return { status: 400, body: { error: write } };
-  const text = readFileSync(file, "utf8");
-  const now = parseOverrides(text).get(write.selector)?.get(write.name) ?? null;
-  if (now !== write.was) {
-    return { status: 409, body: { error: "the override file changed since it was read", now } };
+  const input = json(request.body);
+  const head = field(input, "head");
+  if (head !== undefined && head !== revision(file)) {
+    return { status: 409, body: { error: "the last commit changed; history was cleared" } };
   }
-  replace(file, setOverride(text, write.selector, write.name, write.value));
+  const writes = parseRelease(input);
+  if (typeof writes === "string") return { status: 400, body: { error: writes } };
+  let text = readFileSync(file, "utf8");
+  const changes: Change[] = [];
+  for (const write of writes) {
+    const blocks = parseOverrides(text);
+    const now = blocks.get(write.selector)?.get(write.name) ?? null;
+    if (now !== write.was) {
+      return { status: 409, body: { error: "the override file changed since it was read", now } };
+    }
+    const at: Change["at"] =
+      now === null
+        ? undefined
+        : [
+            [...blocks.keys()].indexOf(write.selector),
+            [...(blocks.get(write.selector)?.keys() ?? [])].indexOf(write.name),
+          ];
+    changes.push({
+      selector: write.selector,
+      name: write.name,
+      before: now,
+      after: write.value,
+      ...(at === undefined ? {} : { at }),
+    });
+    text = setOverride(text, write.selector, write.name, write.value, write.at);
+  }
+  replace(file, text);
+  return { status: 200, body: { changes } };
+}
+
+function committed(file: string): string {
+  return execFileSync("git", ["show", `HEAD:./${basename(file)}`], {
+    cwd: dirname(file),
+    encoding: "utf8",
+  });
+}
+
+function revision(file: string): string {
+  return execFileSync("git", ["rev-parse", "HEAD"], {
+    cwd: dirname(file),
+    encoding: "utf8",
+  }).trim();
+}
+
+function historyStatus(): { head: string; dirty: boolean } {
   return {
-    status: 200,
-    body: { selector: write.selector, name: write.name, override: write.value },
+    head: revision(OVERRIDES),
+    dirty: readFileSync(OVERRIDES, "utf8") !== committed(OVERRIDES),
   };
+}
+
+/**
+ * Restores only the override file from HEAD, without changing the index. Refuses foreign origins.
+ * @throws When Git cannot read the committed file, or the file cannot be replaced.
+ */
+export function discardValues(file: string, request: Post): Reply {
+  if (foreign(request)) return FOREIGN;
+  replace(file, committed(file));
+  return { status: 200, body: { discarded: true } };
 }
 
 // Writes `text` to `file` through a temp file and a rename.
@@ -268,7 +351,16 @@ async function reload(server: ViteDevServer, file: string): Promise<void> {
 
 // Each writing endpoint: what it does with a POST, and the file it changes for hot reload.
 const WRITES: Record<string, { run: (post: Post) => Reply | Promise<Reply>; file: string }> = {
-  "/__workbench/values": { run: (post) => writeValue(OVERRIDES, post), file: OVERRIDES },
+  "/__workbench/values": {
+    run: (post) => {
+      const reply = writeValue(OVERRIDES, post);
+      return reply.status === 200
+        ? { status: 200, body: { changes: field(reply.body, "changes"), ...historyStatus() } }
+        : reply;
+    },
+    file: OVERRIDES,
+  },
+  "/__workbench/discard": { run: (post) => discardValues(OVERRIDES, post), file: OVERRIDES },
   "/__workbench/fonts": { run: (post) => installFont(CATALOG, post), file: FONTS },
 };
 
@@ -280,7 +372,10 @@ async function answer(server: ViteDevServer, req: IncomingMessage): Promise<Repl
   if (path === "/__workbench/values" && req.method === "GET") {
     return {
       status: 200,
-      body: readValues(readFileSync(OVERRIDES, "utf8"), readFileSync(TOKENS, "utf8")),
+      body: {
+        ...readValues(readFileSync(OVERRIDES, "utf8"), readFileSync(TOKENS, "utf8")),
+        ...historyStatus(),
+      },
     };
   }
   const write = WRITES[path ?? ""];
@@ -295,10 +390,19 @@ async function answer(server: ViteDevServer, req: IncomingMessage): Promise<Repl
 
 /** The Workbench page and its values endpoint, on the dev server only. */
 export function workbench(): Plugin {
+  let watcher: ReturnType<typeof watch> | undefined;
   return {
     name: "workbench",
     apply: "serve",
+    closeBundle() {
+      watcher?.close();
+    },
     configureServer(server) {
+      // Vite suppresses rapid changes. Watch the directory to also survive atomic file replacement.
+      watcher = watch(dirname(OVERRIDES), (_event, file) => {
+        if (file === basename(OVERRIDES))
+          server.ws.send({ type: "custom", event: "workbench:values" });
+      });
       server.middlewares.use((req, res, next) => {
         if (req.url?.startsWith("/__workbench") !== true) {
           next();

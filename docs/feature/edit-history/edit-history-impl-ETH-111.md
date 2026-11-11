@@ -12,8 +12,8 @@ linear: ETH-111
 - **Risk**: LOW
 - **Category**: feature
 - **Planned at**: commit `04cb7ad`, 2026-11-11
-- **Story**: [edit-history-story.md](edit-history-story.md). Goes ahead of ETH-104, so every
-  later editor is built on it.
+- **Story**: [edit-history-story.md](edit-history-story.md). Follows ETH-104 through ETH-110,
+  which have already landed. History covers their save paths too.
 
 ## Why this matters
 
@@ -93,4 +93,25 @@ issue or PR under repo policy (ADR-007, ADR-017).
 
 ## Drift log
 
-Record here anything built differently from this plan, and why.
+Implementation started from `d8de2c1` on `origin/main`, not the planned `04cb7ad`.
+
+* ETH-104 already landed. The dependency order above now reflects Ethan's revised order.
+* Typography, Basics, element and root font picks, type-scale base, ratio and leading, resets,
+  and unmatched-value deletion now save values too. History records at the shared write boundary,
+  rather than adding recording to each editor. Element references do not save design values and
+  remain outside history.
+* One release can write several properties. The values endpoint now accepts an atomic batch using
+  the same validation, stale checks, temporary file and rename as single-value writes. A late
+  conflict refuses the whole release instead of leaving earlier properties partially undone.
+* History keeps the deleted declaration's block and property positions. Replaying a reset restores
+  file order as well as values, including a removed selector block. No file snapshot is restored.
+* The values endpoint reports the current Git HEAD and whether the override file differs from HEAD.
+  Session history is scoped to that commit, and writes refuse an outdated HEAD. Discard restores
+  HEAD with `git show`, without touching the index. Copied font assets remain installed, as the
+  story limits discard to saved values in the override file.
+* Vite suppresses rapid file-change events. A directory watcher keeps Discard's status current
+  after external edits and atomic replacements without depending on that throttle. Conflict
+  messages now appear beside the history controls rather than below the inspector's fold.
+* The browser lever extends the original radius, Alt-padding and nudge scenario with typography,
+  grouped style changes and resets, fonts, scale settings, reload, shortcuts and text-field focus,
+  redo branching, external conflicts, and confirmed or cancelled discard.

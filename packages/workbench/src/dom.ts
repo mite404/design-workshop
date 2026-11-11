@@ -49,7 +49,8 @@ const size = (value: string): number => px(value) || 0; // "normal" → 0
 export const style = (node: Element): CSSStyleDeclaration =>
   (node.ownerDocument.defaultView ?? window).getComputedStyle(node);
 
-const styled = (node: Element): node is Styled => "style" in node;
+/** Whether an element supports inline CSS, including elements from the canvas's realm. */
+export const styled = (node: Element): node is Styled => "style" in node;
 
 /** A typed whole number of 0 to 9999, with or without "px", or null for anything else. */
 export function wholeNumber(typed: string): number | null {

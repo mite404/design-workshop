@@ -8,6 +8,8 @@ const COMMENT = /^\/\*.*\*\/$/;
 const OPEN = /^([^\s{};](?:[^{};\n]*[^\s{};])?) \{$/;
 const DECL = /^ {2}([^\s:;{}]+): ([^\s;{}](?:[^;{}\n]*[^\s;{}])?);$/;
 
+export type Position = [block: number, property: number];
+
 // One block of the file: its selector, the lines of its braces, and each value with its line.
 type Block = {
   selector: string;
@@ -104,6 +106,7 @@ export function parseOverrides(text: string): Map<string, Map<string, string>> {
  * `text` with one value set, or removed when `value` is null. Every other byte is kept. A new
  * selector's block goes last; a selector's block goes once its last value is removed, except
  * `:root`'s, which stays empty.
+ * @param position The original block and property offsets when restoring a removed value.
  * @throws when `text` is malformed, or when the selector, name or value would not fit one line.
  */
 export function setOverride(
@@ -111,11 +114,22 @@ export function setOverride(
   selector: string,
   name: string,
   value: string | null,
+  position?: Position,
 ): string {
   const { lines, blocks } = scan(text);
   const block = blocks.find((b) => b.selector === selector);
   const at = block?.values.get(name)?.line;
-  if (value !== null) writeValue(lines, block, at, selector, `  ${name}: ${value};`);
+  if (value !== null && at === undefined && position !== undefined) {
+    const line = `  ${name}: ${value};`;
+    if (!DECL.test(line) || !OPEN.test(`${selector} {`)) throw new Error("invalid override");
+    if (block === undefined) {
+      const next = blocks[Math.max(1, position[0])];
+      lines.splice(next?.open ?? lines.length, 0, `${selector} {`, line, "}");
+    } else {
+      const next = [...block.values.values()][position[1]];
+      lines.splice(next?.line ?? block.close, 0, line);
+    }
+  } else if (value !== null) writeValue(lines, block, at, selector, `  ${name}: ${value};`);
   else if (block !== undefined && at !== undefined) removeValue(lines, block, at);
   return `${lines.join("\n")}\n`;
 }

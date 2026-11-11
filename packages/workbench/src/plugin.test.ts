@@ -6,10 +6,11 @@ import {
   readFileSync,
   writeFileSync,
 } from "node:fs";
+import { execFileSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, test, vi } from "vitest";
-import { installFont, readValues, writeValue } from "./plugin";
+import { discardValues, installFont, readValues, writeValue } from "./plugin";
 
 const HEADER = "/* Written by the Workbench. One design value per line. Do not edit by hand. */\n";
 const SAVED = `${HEADER}:root {\n  --window-radius: 20px;\n}\n`;
@@ -38,6 +39,7 @@ const REFUSALS: [string, Record<string, unknown>, string | undefined, number][] 
   ["a selector with a comma", { selector: `${CARD}, p`, name: "gap", was: null }, ORIGIN, 400],
   ["a selector with a class", { selector: "body > .card", name: "gap", was: null }, ORIGIN, 400],
   ["a fraction of a pixel", { value: "8.5px" }, ORIGIN, 400],
+  ["a malformed restoration position", { at: [1, -1] }, ORIGIN, 400],
   ["a value that is not px", { value: "8em" }, ORIGIN, 400],
   ["a value that escapes", { value: "8px;}" }, ORIGIN, 400],
   ["a negative value", { value: "-8px" }, ORIGIN, 400],
@@ -55,6 +57,39 @@ const post = (file: string, body: unknown, origin: string | undefined) =>
   writeValue(file, { origin, host: HOST, body: JSON.stringify(body) });
 
 describe("writeValue", () => {
+  test("undoing a deletion restores its original position, not the end of the file", () => {
+    const original = `${SAVED}${CARD} {\n  gap: 22px;\n  padding-left: 6px;\n}\nbody {\n  gap: 2px;\n}\n`;
+    const file = overrideFile(original);
+    expect(
+      post(file, { selector: CARD, name: "gap", value: null, was: "22px" }, ORIGIN).status,
+    ).toBe(200);
+    expect(
+      post(file, { selector: CARD, name: "gap", value: "22px", was: null, at: [1, 0] }, ORIGIN)
+        .status,
+    ).toBe(200);
+    expect(readFileSync(file, "utf8")).toBe(original);
+  });
+
+  test("a multi-value release refuses a late conflict without writing earlier values", () => {
+    const file = overrideFile(SAVED);
+    const batch = [
+      { ...RADIUS, value: "8px", was: "20px" },
+      { selector: CARD, name: "padding-left", value: "6px", was: "2px" },
+    ];
+    expect(post(file, batch, ORIGIN).status).toBe(409);
+    expect(readFileSync(file, "utf8")).toBe(SAVED);
+    expect(
+      post(
+        file,
+        [batch[0], { selector: CARD, name: "padding-left", value: "6px", was: null }],
+        ORIGIN,
+      ).status,
+    ).toBe(200);
+    expect(readFileSync(file, "utf8")).toBe(
+      `${SAVED.replace("20px", "8px")}${CARD} {\n  padding-left: 6px;\n}\n`,
+    );
+  });
+
   test("sets, replaces and resets a value, leaving only the override file", () => {
     const file = overrideFile(`${HEADER}:root {\n}\n`);
     expect(post(file, { ...RADIUS, value: "20px", was: null }, ORIGIN).status).toBe(200);
@@ -209,6 +244,51 @@ test("readValues reads each token's baseline and override, and each element's va
   const empty = readValues(`${HEADER}:root {\n}\n`, tokens);
   expect(empty.tokens["--window-radius"]?.override).toBeNull();
   expect(empty.saved).toEqual({});
+});
+
+test("discard restores HEAD rather than the index, and old-commit writes are refused", () => {
+  const file = overrideFile(SAVED);
+  const cwd = path.dirname(file);
+  const git = (...args: string[]) => execFileSync("git", args, { cwd, encoding: "utf8" });
+  git("init", "--quiet");
+  git("add", "overrides.css");
+  git(
+    "-c",
+    "user.name=Workbench test",
+    "-c",
+    "user.email=test@example.test",
+    "commit",
+    "--quiet",
+    "-m",
+    "baseline",
+  );
+  const head = git("rev-parse", "HEAD").trim();
+  writeFileSync(file, SAVED.replace("20px", "8px"));
+  git("add", "overrides.css");
+  const index = git("show", ":overrides.css");
+  const request = { origin: ORIGIN, host: HOST, body: "" };
+  expect(discardValues(file, { ...request, origin: "http://evil.test" }).status).toBe(403);
+  expect(readFileSync(file, "utf8")).toBe(index);
+  expect(
+    writeValue(file, {
+      ...request,
+      body: JSON.stringify({
+        head: "outdated",
+        changes: [{ ...RADIUS, value: "4px", was: "8px" }],
+      }),
+    }).status,
+  ).toBe(409);
+  expect(readFileSync(file, "utf8")).toBe(index);
+  expect(
+    writeValue(file, {
+      ...request,
+      body: JSON.stringify({ head, changes: [{ ...RADIUS, value: "4px", was: "8px" }] }),
+    }).status,
+  ).toBe(200);
+  expect(discardValues(file, request).status).toBe(200);
+  expect(readFileSync(file, "utf8")).toBe(SAVED);
+  expect(git("show", ":overrides.css")).toBe(index);
+  expect(readdirSync(cwd).toSorted()).toEqual([".git", "overrides.css"]);
 });
 
 const CDN = "https://cdn.jsdelivr.net";

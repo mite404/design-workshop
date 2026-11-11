@@ -4,6 +4,15 @@
 // inline on its element until the override file has it (ADR-004): the window's corner radius on
 // the frame's root, the selection's gap and padding on the selection.
 import "./page.css";
+import {
+  historyDirection,
+  move,
+  push,
+  readChanges,
+  readHistory,
+  type Change,
+  type History,
+} from "./history";
 import { chatKey, chatLayer, referencing, trackChat, watchReference } from "./chat";
 import {
   clampRadius,
@@ -31,6 +40,7 @@ import {
   selectorOf,
   spacingOf,
   style,
+  styled,
   wholeNumber,
   type Styled,
 } from "./dom";
@@ -172,6 +182,21 @@ const tool = element(
 const field = element("input", { id: "radius", inputMode: "numeric", autocomplete: "off" });
 const label = element("label", { htmlFor: "radius", className: "scrub" }, "Corner radius");
 const reset = element("button", { type: "button", className: "reset" }, "Reset");
+const undo = element(
+  "button",
+  { type: "button", className: "history-button", disabled: true, title: "Undo (⌘Z / Ctrl+Z)" },
+  "Undo",
+);
+const redo = element(
+  "button",
+  { type: "button", className: "history-button", disabled: true, title: "Redo (⇧⌘Z / Ctrl+Y)" },
+  "Redo",
+);
+const discard = element(
+  "button",
+  { type: "button", className: "history-button", disabled: true },
+  "Discard",
+);
 const selectorText = element("code", { className: "selector" });
 const note = element(
   "p",
@@ -200,6 +225,23 @@ let bodyPress: BodyPress | null = null;
 let pointer = { x: -1, y: -1 }; // in the canvas's coordinates
 let unmatchedKey = "";
 let queue = Promise.resolve();
+const HISTORY_KEY = "workbench-history";
+const stored = readHistory(sessionStorage.getItem(HISTORY_KEY));
+let history: History = stored?.history ?? { steps: [], cursor: 0 };
+let head = stored?.head ?? "";
+let pendingSaves: {
+  node: Styled;
+  selector: string;
+  name: string;
+  value: string | null;
+  inline: string;
+}[] = [];
+
+function storeHistory(): void {
+  sessionStorage.setItem(HISTORY_KEY, JSON.stringify({ head, history }));
+  undo.disabled = history.cursor === 0;
+  redo.disabled = history.cursor === history.steps.length;
+}
 
 const prop = (value: unknown, key: string): unknown =>
   typeof value === "object" && value !== null ? Reflect.get(value, key) : undefined;
@@ -243,9 +285,9 @@ async function settle(
   }
 }
 
-const settleRadius = async (): Promise<void> => {
+const settleRadius = async (inline?: string): Promise<void> => {
   const root = doc()?.documentElement;
-  if (root !== undefined) await settle(root, ROOT, NAME, savedRadius());
+  if (root !== undefined) await settle(root, ROOT, NAME, savedRadius(), inline);
 };
 
 function show(radius: number): void {
@@ -256,8 +298,22 @@ function show(radius: number): void {
   doc()?.documentElement.style.setProperty(NAME, `${radius}px`);
 }
 
+function historyStatus(values: unknown): void {
+  const nowHead = text(prop(values, "head")) ?? "";
+  if (nowHead !== head) history = { steps: [], cursor: 0 };
+  head = nowHead;
+  discard.disabled = prop(values, "dirty") !== true;
+  storeHistory();
+}
+
+async function refreshStatus(): Promise<void> {
+  const values: unknown = await (await fetch(ENDPOINT)).json();
+  historyStatus(values);
+}
+
 async function load(): Promise<void> {
   const values: unknown = await (await fetch(ENDPOINT)).json();
+  historyStatus(values);
   const token = prop(prop(values, "tokens"), NAME);
   baseline = px(text(prop(token, "baseline")) ?? "0");
   const root = new Map(
@@ -286,11 +342,24 @@ function record(selector: string, name: string, value: string | null): void {
 }
 
 // Writes one value, or removes it when `value` is null. True when the file now has it.
-async function write(selector: string, name: string, value: string | null): Promise<boolean> {
+function write(selector: string, name: string, value: string | null): Promise<boolean> {
+  return writeChanges([{ selector, name, before: was(selector, name), after: value }]);
+}
+
+async function writeChanges(changes: Change[], replaying = false): Promise<boolean> {
   const response = await fetch(ENDPOINT, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ selector, name, value, was: was(selector, name) }),
+    body: JSON.stringify({
+      head,
+      changes: changes.map((c) => ({
+        selector: c.selector,
+        name: c.name,
+        value: c.after,
+        was: c.before,
+        at: c.at,
+      })),
+    }),
   });
   if (response.status === 409) {
     message.textContent = "The override file changed on disk, so this was not saved. Showing it.";
@@ -302,7 +371,11 @@ async function write(selector: string, name: string, value: string | null): Prom
     message.textContent = `Not saved: ${text(prop(body, "error")) ?? response.statusText}`;
     return false;
   }
-  record(selector, name, value);
+  for (const c of changes) record(c.selector, c.name, c.after);
+  const body: unknown = await response.json();
+  const saved = readChanges(prop(body, "changes"));
+  if (!replaying && saved !== null) history = push(history, saved);
+  historyStatus(body);
   message.textContent = "";
   return true;
 }
@@ -317,10 +390,65 @@ function enqueue(task: () => Promise<void>): void {
 // Saves `selector`'s `name` from `node`'s inline value, or removes it when `value` is null, then
 // drops the inline value once the file applies.
 function saveValue(node: Styled, selector: string, name: string, value: string | null): void {
-  const inline = node.style.getPropertyValue(name);
-  enqueue(async () => {
-    if (await write(selector, name, value)) void settle(node, selector, name, value, inline);
+  pendingSaves.push({ node, selector, name, value, inline: node.style.getPropertyValue(name) });
+  if (pendingSaves.length !== 1) return;
+  queueMicrotask(() => {
+    const saves = pendingSaves;
+    pendingSaves = [];
+    enqueue(async () => {
+      const changes = saves.map((s) => ({
+        selector: s.selector,
+        name: s.name,
+        before: was(s.selector, s.name),
+        after: s.value,
+      }));
+      const accepted = await writeChanges(changes);
+      for (const s of saves) {
+        if (accepted) void settle(s.node, s.selector, s.name, s.value, s.inline);
+        else if (s.node.style.getPropertyValue(s.name) === s.inline)
+          s.node.style.removeProperty(s.name);
+      }
+    });
   });
+}
+
+function settleChanges(changes: { selector: string; name: string; after: string | null }[]): void {
+  for (const c of changes) {
+    for (const node of doc()?.querySelectorAll(c.selector) ?? []) {
+      if (styled(node)) void settle(node, c.selector, c.name, c.after);
+    }
+  }
+}
+
+function replay(direction: -1 | 1): void {
+  enqueue(async () => {
+    const step = history.steps[direction === -1 ? history.cursor - 1 : history.cursor];
+    if (step === undefined) return;
+    const changes =
+      direction === 1
+        ? step
+        : step.toReversed().map((c) => ({ ...c, before: c.after, after: c.before }));
+    if (!(await writeChanges(changes, true))) return;
+    settleChanges(changes);
+    history = move(history, direction);
+    storeHistory();
+    await load();
+  });
+}
+
+function historyKey(event: KeyboardEvent): boolean {
+  const direction = historyDirection(event);
+  if (direction === null) return false;
+  const target = event.target;
+  const view = doc()?.defaultView ?? window;
+  if (
+    (target instanceof Element || target instanceof view.Element) &&
+    target.closest("input, textarea, select, [contenteditable]:not([contenteditable=false])")
+  )
+    return false;
+  event.preventDefault();
+  replay(direction);
+  return true;
 }
 
 function beginOffset(): OffsetEdit | null {
@@ -401,10 +529,11 @@ function stepOffset(event: KeyboardEvent): void {
 // baseline, writes nothing.
 function save(value: string | null = `${shown}px`): void {
   const same = value === savedRadius() || (savedRadius() === null && value === `${baseline}px`);
+  const inline = doc()?.documentElement.style.getPropertyValue(NAME);
   enqueue(async () => {
     if (!same && !(await write(ROOT, NAME, value))) return;
     reset.disabled = savedRadius() === null;
-    void settleRadius();
+    void settleRadius(inline);
   });
 }
 
@@ -672,7 +801,7 @@ function onKey(event: KeyboardEvent): void {
 
 // A key goes to the chat first, then to the page's own handling.
 const keyDown = (event: KeyboardEvent): void => {
-  if (!chatKey(event)) onKey(event);
+  if (!historyKey(event) && !chatKey(event)) onKey(event);
 };
 
 const block = (event: Event): void => {
@@ -2420,13 +2549,20 @@ document.body.append(
       "aside",
       { className: "inspector", ariaLabel: "Inspector" },
       element("div", { className: "tools" }, tool),
+      element(
+        "div",
+        { className: "history-tools", ariaLabel: "Edit history", role: "group" },
+        undo,
+        redo,
+        discard,
+      ),
+      message,
       element("h2", {}, "Window"),
       element("div", { className: "row" }, label, field, reset),
       scalePanel,
       selectionPanel,
       typePanel,
       unmatchedPanel,
-      message,
     ),
   ),
 );
@@ -2489,7 +2625,28 @@ reset.addEventListener("click", () => {
   show(baseline);
   save(null);
 });
+undo.addEventListener("click", () => replay(-1));
+redo.addEventListener("click", () => replay(1));
+discard.addEventListener("click", () => {
+  if (!confirm("Discard all saved values since the last commit? This cannot be undone.")) return;
+  enqueue(async () => {
+    const response = await fetch("/__workbench/discard", { method: "POST" });
+    if (!response.ok) {
+      message.textContent = "Could not discard saved values. Nothing was cleared.";
+      return;
+    }
+    history = { steps: [], cursor: 0 };
+    message.textContent = "Saved values discarded.";
+    const previous = [...files].flatMap(([selector, values]) =>
+      [...values.keys()].map((name) => ({ selector, name })),
+    );
+    await load();
+    settleChanges(previous.map((c) => ({ ...c, after: was(c.selector, c.name) })));
+  });
+});
 document.addEventListener("keydown", keyDown);
+window.addEventListener("focus", () => enqueue(refreshStatus));
+import.meta.hot?.on("workbench:values", () => enqueue(refreshStatus));
 frame.addEventListener("load", () => {
   watchFrame();
   void load();
