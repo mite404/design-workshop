@@ -1,6 +1,6 @@
 # Design Workbench - PRD
 
-Status: draft 4, Nov 11 2026. Decisions confirmed by Ethan. This file is the source of truth; the
+Status: draft 5, Nov 11 2026. Decisions confirmed by Ethan. This file is the source of truth; the
 Amp artifact it came from is a copy. Background research: [code-native workbench
 research](research/code-native-workbench.md).
 
@@ -76,7 +76,8 @@ user-choice fixture. Live mode fills the preview; Component mode frames the same
 In development, either button opens the Workbench with that conversation selected, so the
 selection, spacing, and radius tools are reachable without typing an editor URL. Mode switches
 inside the editor stay in its existing frame. Production builds show the mock without editor
-endpoints. The component tree, the focused view and story navigation below remain planned.
+endpoints. The component tree below is built (ETH-114). The focused view (ETH-115) and story
+navigation (ETH-118) remain planned.
 
 The scripted-demo transport bar is removed. Demo conversations open complete without Play,
 typing animation, or a playback wait. Gateway, authentication, and live-model implementations
@@ -93,8 +94,8 @@ as it is in code. The tree is read from the page, so it lists only what is rende
 a row selects its element and opens the component it belongs to in Component mode. In
 Component mode the drawer also lists the stories of components the app is not showing, with
 Storybook's labels, using its index as the source of truth. Outside the Workbench the drawer
-keeps thread history. This is the navigation requirement, not a claim that it is implemented
-today.
+keeps thread history. Built so far (ETH-114): the tree, and selecting an element from a row.
+Opening Component mode from a row is ETH-115, and the story list is ETH-118.
 
 ## 5. Principles
 
@@ -181,39 +182,53 @@ git HEAD ──read baseline + override──> inspector and canvas
 
 ## 9. Requirements
 
+Each requirement ends with its status on Nov 11 2026, read from Linear and the source.
+
 ### Must have for a first usable version
 
 - R1. The Template: shell, component library, Storybook, and completed mock conversations with
   user and agent messages, varied cards, and a user-choice panel, without playback controls.
+  *Built (ETH-99).*
 - R2. The Workbench opens beside the Template's normal dev servers and frames them. It is absent
-  from production builds.
+  from production builds. *Built.*
 - R3. Two modes: Live mode and Component mode, offered under More actions with chat and browser
-  icons.
+  icons. *Partly built: both modes open, but Component mode only frames the chat panel. Focusing
+  one component in place is ETH-115, and opening a story is ETH-118.*
 - R4. The component tree in the side drawer lists the named components on the canvas; click a
-  row or the canvas to select.
+  row or the canvas to select. *Built (ETH-114).*
 - R5. Inspector shows the design values of the selection, with a control per kind: scrub field with
-  grid snap, colour picker with contrast readout, font controls.
-- R6. Live preview while dragging; save on release; app and stories hot reload.
-- R7. Light and dark values are edited separately and clearly labelled.
-- R8. Undo, redo, discard.
-- R9. Check and commit.
+  grid snap, colour picker with contrast readout, font controls. *Built (ETH-101, ETH-105 to
+  ETH-107, ETH-109, ETH-113).*
+- R6. Live preview while dragging; save on release; app and stories hot reload. *Built (ETH-101).*
+- R7. Light and dark values are edited separately and clearly labelled. *Built (ETH-113).*
+- R8. Undo, redo, discard. *Built (ETH-111).*
+- R9. Check and commit. *Built with two presses (ETH-112). The single press is ETH-117.*
 - R10. The Workbench refuses to write any file but the override file, and says why. Its write
-  endpoint exists in development only.
-- R11. Keyboard parity for every handle, as in today's Live mode.
+  endpoint exists in development only. *Built (ETH-100).*
+- R11. Keyboard parity for every handle, as in today's Live mode. *Built, in each handle's ticket.*
+
+**Exit gate.** The first usable version is done when R1 to R11 are all built and the first
+success measure in section 11 has been timed once: the shell re-skinned to a clearly different
+look in under an hour without writing a prompt.
 
 ### Next
 
 - R12. **Request a design value.** Point at something that is not adjustable; the Workbench writes
-  an exact request (element, file and line, current value) for an agent.
+  an exact request (element, file and line, current value) for an agent. *Not started. ETH-110
+  points at an element and discusses it, without the file and line. The agent skill file that
+  section 7 and block 6 name is not written either.*
 - R13. Handles on the canvas for sizes, gaps, padding and radius, with measurement readouts.
-- R14. Rearrange shell regions by drag, saved as layout values.
-- R15. Assets panel: drag a component from the library into an allowed slot.
+  *Partly built: radius (ETH-101), gap and padding (ETH-102) have handles and readouts. Size
+  handles are not started.*
+- R14. Rearrange shell regions by drag, saved as layout values. *Not started.*
+- R15. Assets panel: drag a component from the library into an allowed slot. *Not started.*
 - R16. Themes: a theme is one override file. Save the current values as a theme, switch between
   themes, start a project from one. A preset is a partial theme covering one group of values, such
   as a colour palette or a font pairing (families, sizes and styles), so Ethan can swap to "font
   pairing 2" from the current state without losing his other changes. An agent can draft a theme
   from a component Ethan likes elsewhere by translating its styles into the Template's value names.
-- R17. Motion: scrub a running transition, edit duration and easing curves.
+  *Not started.*
+- R17. Motion: scrub a running transition, edit duration and easing curves. *Not started.*
 
 ### Not doing
 
@@ -236,8 +251,8 @@ Each block is usable and testable before the next starts.
 | 5 | **Check and commit.** | A design session ends in a clean, reviewable commit |
 | 6 | **Request a design value**, plus the agent skill file (R12) | Hitting the edge of what is adjustable does not mean going back to prose |
 | 7 | **Canvas handles and readouts** (R13) | Dragging replaces the inspector for layout work |
-| 8 | **Layout and assets** (R14, R15) |  |
-| 9 | **Themes, motion** (R16, R17) |  |
+| 8 | **Layout and assets** (R14, R15) | The shell can be rearranged by hand, without asking an agent |
+| 9 | **Themes, motion** (R16, R17) | A look carries into the next project in minutes, and motion is tuned by eye |
 
 Why this order: the Template comes first because the Workbench needs a real target, and it replaces
 both the old workbook and the yaklabs calibration step. Blocks 2 and 3 are the translation layer.
@@ -292,8 +307,7 @@ These are Ethan's stated preferences for how the Workbench itself should look an
 - A new project can start from the plain Template, from a saved theme, or from a previous project's
   look. No one of these is the default. Until themes ship (R16), starting from a previous look means
   copying that project's override file.
-- The override file stays as the project's look. Whether to fold a finished look into the baseline
-  is revisited after the first finished app.
+- The override file stays as the project's look.
 - Stories live at `docs/feature/<name>/<name>-story.md` and tickets at
   `docs/feature/<name>/<name>-impl-<Linear ID>.md`. Each ticket ends in a drift log.
 
@@ -302,3 +316,5 @@ These are Ethan's stated preferences for how the Workbench itself should look an
 - How does a designer learn that a change broke or moved something on a screen, a state or a
   story that is not on the canvas? Not at the press (ADR-026). It needs the Workbench to load
   other screens and stories first (ETH-118), so it has no story and no ticket yet.
+- Is a finished look folded into the baseline tokens, or does it stay in the override file for
+  good? Revisited after the first finished app.
