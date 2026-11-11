@@ -17,7 +17,7 @@ jobs:
           node-version: 26
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter storybook exec playwright install --with-deps chromium
+      - run: pnpm --filter storybook exec playwright install chromium
       - run: pnpm typecheck
       - run: pnpm lint
       - run: pnpm format:check
