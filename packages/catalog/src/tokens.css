@@ -9,21 +9,129 @@
 @import "@fontsource-variable/newsreader/opsz-italic.css";
 @import "./primitives.css";
 
+/* Registered as lengths, so each step computes to whole pixels on the root and reads back as
+   one (the Workbench's readouts), and every element inherits that length. */
+@property --text-2xs {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+@property --text-xs {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+@property --text-sm {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+@property --text-base {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+@property --text-lg {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+@property --text-xl {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+@property --text-2xl {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+@property --text-3xl {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+@property --text-4xl {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+@property --text-2xs--line-height {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+@property --text-xs--line-height {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+@property --text-sm--line-height {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+@property --text-base--line-height {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+@property --text-lg--line-height {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+@property --text-xl--line-height {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+@property --text-2xl--line-height {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+@property --text-3xl--line-height {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+@property --text-4xl--line-height {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+
 :root {
   /* Fallback stacks mirror yaklabs.ai. */
   --font-text: "Inter Variable", Inter, Helvetica, Arial, sans-serif;
   --font-display: "Newsreader Variable", Newsreader, Georgia, serif;
-  /* The nine type sizes, under Tailwind's names so its classes follow them (ADR-019): a 12px
-     base times 1.2 per step, rounded down to even. */
-  --text-2xs: 10px;
-  --text-xs: 12px;
-  --text-sm: 14px;
-  --text-base: 16px;
-  --text-lg: 20px;
-  --text-xl: 24px;
-  --text-2xl: 28px;
-  --text-3xl: 34px;
-  --text-4xl: 42px;
+  /* The type scale (ETH-109), which the Workbench's Type panel tunes: each step is the base times
+     the ratio per step from xs, rounded down to even (ADR-015), and its line height is the size
+     times the leading, rounded up to 4px. 1.3 keeps the line height of about half the app's text,
+     more than any other leading (ETH-109's drift log). The nine sizes carry Tailwind's names so
+     its classes follow them (ADR-019): 10, 12, 14, 16, 20, 24, 28, 34 and 42px here. */
+  --type-base: 12px;
+  --type-ratio: 1.2;
+  --type-leading: 1.3;
+  --text-2xs: round(down, var(--type-base) / var(--type-ratio), 2px);
+  --text-xs: round(down, var(--type-base), 2px);
+  --text-sm: round(down, var(--type-base) * var(--type-ratio), 2px);
+  --text-base: round(down, var(--type-base) * pow(var(--type-ratio), 2), 2px);
+  --text-lg: round(down, var(--type-base) * pow(var(--type-ratio), 3), 2px);
+  --text-xl: round(down, var(--type-base) * pow(var(--type-ratio), 4), 2px);
+  --text-2xl: round(down, var(--type-base) * pow(var(--type-ratio), 5), 2px);
+  --text-3xl: round(down, var(--type-base) * pow(var(--type-ratio), 6), 2px);
+  --text-4xl: round(down, var(--type-base) * pow(var(--type-ratio), 7), 2px);
+  --text-2xs--line-height: round(up, var(--text-2xs) * var(--type-leading), 4px);
+  --text-xs--line-height: round(up, var(--text-xs) * var(--type-leading), 4px);
+  --text-sm--line-height: round(up, var(--text-sm) * var(--type-leading), 4px);
+  --text-base--line-height: round(up, var(--text-base) * var(--type-leading), 4px);
+  --text-lg--line-height: round(up, var(--text-lg) * var(--type-leading), 4px);
+  --text-xl--line-height: round(up, var(--text-xl) * var(--type-leading), 4px);
+  --text-2xl--line-height: round(up, var(--text-2xl) * var(--type-leading), 4px);
+  --text-3xl--line-height: round(up, var(--text-3xl) * var(--type-leading), 4px);
+  --text-4xl--line-height: round(up, var(--text-4xl) * var(--type-leading), 4px);
   /* The browser's own surfaces (scrollbars, form fields) follow the theme the root names, not the
      OS: light here, dark under data-theme="dark", whatever the system prefers. */
   color-scheme: light;
@@ -215,6 +323,7 @@ button {
   color: var(--ink);
   padding: 10px 14px;
   font-size: var(--text-xs);
+  line-height: var(--text-xs--line-height);
 }
 button:hover {
   background: var(--paper-deep);
@@ -242,8 +351,8 @@ button:hover {
   background: transparent;
   color: var(--ink);
   font-size: var(--text-sm); /* css */
+  line-height: var(--text-sm--line-height);
   font-weight: 500; /* css */
-  line-height: 1.3;
   white-space: nowrap;
   /* css: only the fill and text colour animate; the border turns moss instantly. */
   transition:
@@ -285,7 +394,7 @@ button:hover {
   background: var(--field-bg);
   color: var(--ink);
   font-size: var(--text-xs);
-  line-height: 1.45;
+  line-height: var(--text-xs--line-height);
   transition: border-color var(--btn-duration, 150ms) ease;
 }
 .field::placeholder {
@@ -467,6 +576,7 @@ button:hover {
 .btn-sm {
   padding: 6px 14px;
   font-size: var(--text-xs);
+  line-height: var(--text-xs--line-height);
 }
 @media (prefers-reduced-motion: reduce) {
   .btn,
@@ -504,7 +614,6 @@ a {
   color: var(--on-blue);
 }
 p {
-  line-height: 1.6;
   color: var(--soft-ink);
 }
 h1,
@@ -515,11 +624,13 @@ p {
 }
 h2 {
   font-size: var(--text-lg);
+  line-height: var(--text-lg--line-height);
   font-weight: 550;
   letter-spacing: -0.6px;
 }
 h3 {
   font-size: var(--text-base);
+  line-height: var(--text-base--line-height);
   font-weight: 550;
 }
 .app {
@@ -541,12 +652,14 @@ aside {
   text-decoration: none;
   font-family: var(--font-display);
   font-size: var(--text-xl);
+  line-height: var(--text-xl--line-height);
   font-weight: 600;
   color: var(--ink);
 }
 .workspace {
   margin-top: 38px;
   font-size: var(--text-2xs);
+  line-height: var(--text-2xs--line-height);
   letter-spacing: 1.8px;
 }
 .workspace span {
@@ -557,6 +670,7 @@ aside {
 }
 .sidebar-label {
   font-size: var(--text-2xs);
+  line-height: var(--text-2xs--line-height);
   letter-spacing: 1.1px;
   color: var(--soft-ink);
   margin-top: 24px;
@@ -571,6 +685,7 @@ nav button {
   text-align: left;
   padding: 12px 10px;
   font-size: var(--text-xs);
+  line-height: var(--text-xs--line-height);
 }
 nav button span {
   float: right;
@@ -585,6 +700,7 @@ nav button[aria-current] {
   margin-top: auto;
   padding-top: 65px;
   font-size: var(--text-2xs);
+  line-height: var(--text-2xs--line-height);
   color: var(--soft-ink);
 }
 .sidebar-note p {
@@ -603,6 +719,7 @@ main {
   justify-content: space-between;
   align-items: center;
   font-size: var(--text-2xs);
+  line-height: var(--text-2xs--line-height);
 }
 .topbar b {
   font-weight: 500;
@@ -612,6 +729,7 @@ main {
 }
 .badge {
   font-size: var(--text-2xs);
+  line-height: var(--text-2xs--line-height);
   white-space: nowrap;
   border-radius: 30px;
   padding: 6px 10px;
@@ -628,6 +746,7 @@ main {
 }
 .eyebrow {
   font-size: var(--text-2xs);
+  line-height: var(--text-2xs--line-height);
   letter-spacing: 1.5px;
   font-weight: 650;
   color: var(--olive);
@@ -636,9 +755,9 @@ main {
 h1 {
   font-family: var(--font-display);
   font-size: var(--text-4xl);
+  line-height: var(--text-4xl--line-height);
   font-weight: 500;
   letter-spacing: -0.8px;
-  line-height: 1.15;
   margin-bottom: 16px;
 }
 h1 span {
@@ -647,6 +766,7 @@ h1 span {
 .intro > p:last-child {
   color: var(--soft-ink);
   font-size: var(--text-xs);
+  line-height: var(--text-xs--line-height);
   max-width: 480px;
 }
 .question {
@@ -667,14 +787,17 @@ h1 span {
   display: grid;
   place-items: center;
   font-size: var(--text-sm);
+  line-height: var(--text-sm--line-height);
 }
 .question small {
   font-size: var(--text-2xs);
+  line-height: var(--text-2xs--line-height);
   letter-spacing: 1px;
   color: var(--soft-ink);
 }
 .question p {
   font-size: var(--text-xs);
+  line-height: var(--text-xs--line-height);
   margin: 3px 0 0;
 }
 .question .badge {
@@ -706,6 +829,7 @@ h1 span {
 }
 .card-heading h2 {
   font-size: var(--text-lg);
+  line-height: var(--text-lg--line-height);
 }
 /* A host's control before the title (ADR-134), such as a lane's collapse: first in the row, its
    glyph pulled back onto the heading's edge, and the title straight after it. A card with no
@@ -742,6 +866,7 @@ h1 span {
 }
 .card-heading .eyebrow {
   font-size: var(--text-2xs);
+  line-height: var(--text-2xs--line-height);
   margin-bottom: 10px;
 }
 .chart {
@@ -751,6 +876,7 @@ h1 span {
 /* The axis labels' size, set here because an SVG attribute cannot read a variable. */
 .chart .recharts-cartesian-axis-tick-value {
   font-size: var(--text-xs);
+  line-height: var(--text-xs--line-height);
 }
 /* Recharts learns a resized box a frame late (its ResizeObserver sets state, React draws after
    the paint) and holds the drawing at the old width in the meantime, so dragging a pane or a
@@ -774,17 +900,17 @@ footer {
   border-top: 1px solid var(--hairline);
   padding: 18px 24px;
   font-size: var(--text-2xs);
-  line-height: 1.8;
+  line-height: var(--text-2xs--line-height);
 }
 footer button {
   font-size: var(--text-2xs);
+  line-height: var(--text-2xs--line-height);
   white-space: nowrap;
 }
-/* A card's footer is laid out in whole pixels (ADR-072): a 17px line for the button and the
-   source line alike, so the text sits exactly 7px inside the 31px button's height and both snap
-   to the same pixel rows whatever the scroll position. */
+/* A card's footer is laid out in whole pixels (ADR-072): the 2xs step's line for the button and
+   the source line alike, so both snap to the same pixel rows whatever the scroll position. */
 .card footer .btn {
-  line-height: 17px;
+  line-height: var(--text-2xs--line-height);
 }
 /* A toggle keeps one width for both labels, centred, so it does not jump when it flips: 128px
    fits the widest label ("View data table", 125.7px) in whole pixels, so its left edge never
@@ -799,12 +925,13 @@ footer button {
 }
 .evaluation-notes > p:not(.eyebrow) {
   font-size: var(--text-xs);
+  line-height: var(--text-xs--line-height);
   color: var(--soft-ink);
 }
 .evaluation-notes ul {
   padding-left: 16px;
   font-size: var(--text-2xs);
-  line-height: 2.2;
+  line-height: var(--text-2xs--line-height);
   color: var(--soft-ink);
 }
 hr {
@@ -814,11 +941,13 @@ hr {
 }
 small {
   font-size: var(--text-2xs);
+  line-height: var(--text-2xs--line-height);
   color: var(--soft-ink);
   letter-spacing: 1px;
 }
 .catalog-entry {
   font-size: var(--text-2xs);
+  line-height: var(--text-2xs--line-height);
 }
 .catalog-entry b {
   color: var(--ink);
@@ -829,11 +958,13 @@ small {
   display: block;
   margin-left: 25px;
   font-size: var(--text-2xs);
+  line-height: var(--text-2xs--line-height);
 }
 .contract {
   margin: 16px 0;
   color: var(--soft-ink);
   font-size: var(--text-xs);
+  line-height: var(--text-xs--line-height);
 }
 summary {
   cursor: pointer;
@@ -844,7 +975,7 @@ pre {
   padding: 18px;
   overflow: auto;
   font-size: var(--text-2xs);
-  line-height: 1.6;
+  line-height: var(--text-2xs--line-height);
   max-height: 320px;
   border-radius: 8px;
 }
@@ -860,6 +991,7 @@ textarea {
 label {
   display: block;
   font-size: var(--text-2xs);
+  line-height: var(--text-2xs--line-height);
   margin-bottom: 8px;
 }
 .backlog {
@@ -872,9 +1004,11 @@ label {
 }
 .backlog h2 {
   font-size: var(--text-lg);
+  line-height: var(--text-lg--line-height);
 }
 .backlog p {
   font-size: var(--text-2xs);
+  line-height: var(--text-2xs--line-height);
   color: var(--soft-ink);
   max-width: 320px;
 }
@@ -902,6 +1036,7 @@ label {
 }
 .endnote {
   font-size: var(--text-2xs);
+  line-height: var(--text-2xs--line-height);
   color: var(--soft-ink);
   border-top: 1px solid var(--hairline);
   padding: 20px 0;
@@ -915,10 +1050,12 @@ label {
 }
 .state p {
   font-size: var(--text-xs);
+  line-height: var(--text-xs--line-height);
   color: var(--soft-ink);
 }
 .state-symbol {
   font-size: var(--text-2xl);
+  line-height: var(--text-2xl--line-height);
   margin-bottom: 24px;
   color: var(--olive);
 }
@@ -928,6 +1065,7 @@ label {
   background: var(--warn-bg);
   color: var(--warn-ink);
   font-size: var(--text-xs);
+  line-height: var(--text-xs--line-height);
   border-radius: 7px;
 }
 .table-wrap {
@@ -939,6 +1077,7 @@ table {
   border-collapse: collapse;
   width: 100%;
   font-size: var(--text-xs);
+  line-height: var(--text-xs--line-height);
   text-align: left;
 }
 caption {
@@ -1004,6 +1143,7 @@ thead {
   }
   h1 {
     font-size: var(--text-3xl);
+    line-height: var(--text-3xl--line-height);
   }
   .intro {
     padding-top: 28px;
@@ -1019,6 +1159,7 @@ thead {
   }
   .card-heading h2 {
     font-size: var(--text-base);
+    line-height: var(--text-base--line-height);
   }
   footer {
     align-items: flex-start;

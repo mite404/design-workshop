@@ -79,3 +79,32 @@ not confidence from a formula. Keep one scale and one calculation path.
 ## Drift log
 
 Record what differed from this plan and why.
+
+* Baseline leading is 1.3. Measured on `f4adfd2` over the shell, `/new` and both demo threads
+  (296 text elements): 12/16, 14/24 and 14/20 are the common size/line pairs. No single leading
+  keeps all of them on a 4px grid; 1.3 keeps 51%, 1.45 to 1.5 keep 29%. So 14px reply prose and
+  card headings now sit on 20px lines, not 24px, and `type-check.mjs` expects 20, then 28.
+  Approved by Ethan on Nov 11 2026: "do 109's proposed baseline leading".
+* The scale is in `tokens.css`: `--type-base`, `--type-ratio` and `--type-leading` on `:root`,
+  each step `round(down, base × pow(ratio, n), 2px)` and each line
+  `round(up, size × leading, 4px)`, as `--text-<step>--line-height`. The 18 results are
+  registered `<length>` properties, so they compute to pixels once on the root and inherit as
+  lengths; the Workbench reads its nine readouts from there.
+* Precision: compared against exact rational maths for bases 6 to 30, ten ratios from 1.067 to 2
+  and leading 1 to 2 in 0.05s, 24,570 cases each in Playwright Chromium and Playwright WebKit
+  (Linux, an approximation of Safari). No step or line differed, with or without an epsilon, so
+  the CSS has none. 12/1.2 stays 10px.
+* Every `line-height` that went with a step's `font-size` now reads that step's line height, and
+  the `leading-*` classes ETH-104 added to keep old lines are removed. Kept: `line-height: 1`
+  and `inherit`, which centre a glyph in a fixed box, not text lines.
+* Base steps by 2px and is saved even (4 to 96px); ratio takes the named ratios with arrows or
+  any typed value from 1.001 to 3; leading steps by 0.05 from 1 to 3. The endpoint checks the
+  same bounds. A drag on a label scrubs, as the corner radius label does.
+* The Text and Display font rows ETH-106 placed by Corner radius moved into the Type panel, which
+  is always shown, so the scale and the two fonts sit together.
+* `scale-check.mjs` joins `pnpm test:browser`. The corner radius lever now finds its label by
+  `for=radius`, since the Type panel adds three more `.scrub` labels.
+* Review fixes: Escape during a label scrub cancels it and its release saves nothing; a typed
+  value must be a whole plain decimal (no `1.5garbage`, `1e1` or `Infinity`) that passes the
+  endpoint's own check, else it is refused with a message and the saved value stays. The panel's
+  ratio minimum is the endpoint's 1.001; only the base is normalized, down to even.

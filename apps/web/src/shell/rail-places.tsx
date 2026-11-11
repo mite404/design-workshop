@@ -113,7 +113,7 @@ function linkOf(place: LivePlace, hrefTo: (path: "/" | "/lab") => string) {
 // How each kind of live place draws its glyph and name: Kay's mark and serif name in ink, the
 // rest in the row's own ink.
 const FACES = {
-  home: { glyph: "text-ink", name: "font-serif text-base leading-7 text-ink" },
+  home: { glyph: "text-ink", name: "font-serif text-base text-ink" },
   route: { glyph: undefined, name: "text-ink" },
   external: { glyph: undefined, name: "text-ink" },
 } as const satisfies Record<LivePlace["kind"], { glyph: string | undefined; name: string }>;

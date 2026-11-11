@@ -80,7 +80,7 @@ export function PublicAccess({ shell, thread, share }: AccessProps) {
               variant="ghost"
               size="sm"
               aria-label={`Public Access: ${value}`}
-              className="h-8 gap-1.5 px-2 text-xs leading-[19.5px] text-ink"
+              className="h-8 gap-1.5 px-2 text-xs text-ink"
             />
           }
         >

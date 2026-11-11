@@ -12,7 +12,7 @@ import { cn } from "cn";
 // and under reduced motion it only fades. Transitions, so a pill that closes as it opens turns
 // back from where it is, and on its way out it takes no pointer.
 const PILL =
-  "z-50 w-fit max-w-xs origin-(--transform-origin) rounded-[12px] bg-ink px-2.5 py-1 text-xs leading-4 font-medium whitespace-nowrap text-(--on-ink) transition-[opacity,scale] duration-110 ease-[cubic-bezier(0.17,1.02,0.58,1)] data-ending-style:scale-97 data-ending-style:opacity-0 data-ending-style:pointer-events-none data-instant:transition-none data-starting-style:scale-97 data-starting-style:opacity-0 motion-reduce:data-ending-style:scale-100 motion-reduce:data-starting-style:scale-100";
+  "z-50 w-fit max-w-xs origin-(--transform-origin) rounded-[12px] bg-ink px-2.5 py-1 text-xs font-medium whitespace-nowrap text-(--on-ink) transition-[opacity,scale] duration-110 ease-[cubic-bezier(0.17,1.02,0.58,1)] data-ending-style:scale-97 data-ending-style:opacity-0 data-ending-style:pointer-events-none data-instant:transition-none data-starting-style:scale-97 data-starting-style:opacity-0 motion-reduce:data-ending-style:scale-100 motion-reduce:data-starting-style:scale-100";
 // A pill shows once the pointer has rested on its trigger 350ms, then the next one in its group
 // opens at once (Base UI's delay group), and it sits 8px off its trigger (ADR-144).
 const PILL_DELAY_MS = 350;

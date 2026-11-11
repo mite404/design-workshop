@@ -20,7 +20,7 @@ import {
 import { parseOverrides, setOverride } from "./overrides.ts";
 import { isSelector } from "./selector.ts";
 import { SPACING } from "./spacing.ts";
-import { isType, TYPE, typeValue } from "./type.ts";
+import { isScale, isType, SCALE, scaleValue, TYPE, typeValue } from "./type.ts";
 
 const OVERRIDES = fileURLToPath(new URL("../../catalog/src/overrides.css", import.meta.url));
 const TOKENS = fileURLToPath(new URL("../../catalog/src/tokens.css", import.meta.url));
@@ -28,7 +28,7 @@ const CATALOG = fileURLToPath(new URL("../../catalog/src/", import.meta.url));
 const FONTS = join(CATALOG, "fonts.css");
 const PAGE = fileURLToPath(new URL("./page.ts", import.meta.url));
 const ROOT = ":root";
-const EDITABLE = ["--window-radius", "--font-text", "--font-display"];
+const EDITABLE = ["--window-radius", "--font-text", "--font-display", ...SCALE];
 const PX = /^\d{1,4}px$/;
 const TRANSLATE = /^-?\d{1,4}px -?\d{1,4}px$/;
 
@@ -87,6 +87,7 @@ function isValue(v: unknown, name: string): v is string | null {
   if (v === null) return true;
   if (typeof v !== "string") return false;
   if (isType(name)) return typeValue(name, v);
+  if (isScale(name)) return scaleValue(name, v);
   if (name.startsWith("--font-")) return isFamilyValue(v);
   return (name === "translate" ? TRANSLATE : PX).test(v);
 }

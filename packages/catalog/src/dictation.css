@@ -17,6 +17,7 @@
   gap: 8px;
   margin: 0;
   font-size: var(--text-sm);
+  line-height: var(--text-sm--line-height);
   font-weight: 600;
 }
 .dictation-time {
@@ -41,6 +42,7 @@
 }
 .device-label {
   font-size: var(--text-xs);
+  line-height: var(--text-xs--line-height);
   color: var(--soft-ink);
   white-space: nowrap;
 }
@@ -51,6 +53,7 @@
   white-space: nowrap;
   padding: 6px 10px;
   font-size: var(--text-xs);
+  line-height: var(--text-xs--line-height);
   border-radius: 8px;
 }
 .device-picker .device-list {
@@ -77,6 +80,7 @@
   background: transparent;
   text-align: left;
   font-size: var(--text-xs);
+  line-height: var(--text-xs--line-height);
 }
 /* With a live microphone each input says under its name what it does, since only the
    system's default turns speech into text (Ethan). Secondary words in 12px
@@ -94,6 +98,7 @@
 }
 .device-hint {
   font-size: var(--text-xs);
+  line-height: var(--text-xs--line-height);
   color: var(--soft-ink);
 }
 .device-picker .device-option:hover,
@@ -127,7 +132,7 @@
   margin: 0;
   overflow-y: auto;
   font-size: var(--text-sm);
-  line-height: 1.55;
+  line-height: var(--text-sm--line-height);
 }
 .dictation-notice {
   margin: 8px 0 0;
@@ -136,6 +141,7 @@
   background: var(--warn-bg);
   color: var(--warn-ink);
   font-size: var(--text-xs);
+  line-height: var(--text-xs--line-height);
 }
 
 /* Resets the lab's global footer rule (divider and padding): no divider here either. */
@@ -147,7 +153,7 @@
   padding: 0;
   border-top: none;
   font-size: var(--text-xs);
-  line-height: 1.4;
+  line-height: var(--text-xs--line-height);
 }
 .dictation-footer div {
   display: flex;
@@ -161,6 +167,7 @@
   padding: 8px 14px;
   border-radius: var(--btn-radius);
   font-size: var(--text-xs);
+  line-height: var(--text-xs--line-height);
 }
 .dictation-done,
 .dictation-done:hover {

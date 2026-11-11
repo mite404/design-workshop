@@ -15,7 +15,7 @@ import { ids } from "../world/ids";
 const ACTION = "h-8 rounded-xl px-3";
 
 // A welcome section's heading: small, spaced capitals in soft ink.
-const LABEL = "text-2xs leading-[16.5px] font-medium tracking-[0.1em] text-soft-ink uppercase";
+const LABEL = "text-2xs font-medium tracking-[0.1em] text-soft-ink uppercase";
 
 // A project row's box; the padding sits outside the column's edge, so the name lines up with
 // the heading above it while the hover fill reaches past it, as a sidebar row's does.

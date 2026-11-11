@@ -116,7 +116,7 @@ await step("the demo brief's first heading is selected and the section shows it"
   assert.equal(await control("style").inputValue(), "550");
   assert.equal(await control("style").locator("option").first().textContent(), "550");
   assert.ok((await control("style").locator("option").allTextContents()).includes("Bold Italic"));
-  assert.equal(await control("line-height").inputValue(), "24");
+  assert.equal(await control("line-height").inputValue(), "20"); // 14px × 1.3 (ETH-109)
   assert.equal(await control("letter-spacing").inputValue(), "-1.4");
   assert.equal(
     await panel.locator("[aria-label='Align left']").getAttribute("aria-pressed"),
@@ -188,21 +188,21 @@ await step("letter spacing -0.5 saves -0.005em", async () => {
   await expectControl("letter-spacing", "-0.5");
 });
 
-await step("Up twice in line height moves 24 to 32", async () => {
+await step("Up twice in line height moves 20 to 28", async () => {
   await control("line-height").focus();
   await page.keyboard.press("ArrowUp");
   await page.keyboard.press("ArrowUp");
-  assert.equal(await css("line-height"), "32px", "live during the change");
+  assert.equal(await css("line-height"), "28px", "live during the change");
   await page.keyboard.press("Enter");
   const decls = [
     "font-size: 15px",
     "font-weight: 700",
     "font-style: italic",
     "letter-spacing: -0.005em",
-    "line-height: 32px",
+    "line-height: 28px",
   ];
-  await expectType(decls, "line-height", "32px");
-  await expectControl("line-height", "32");
+  await expectType(decls, "line-height", "28px");
+  await expectControl("line-height", "28");
 });
 
 const story = [
@@ -210,7 +210,7 @@ const story = [
   "font-weight: 700",
   "font-style: italic",
   "letter-spacing: -0.005em",
-  "line-height: 32px",
+  "line-height: 28px",
   "text-align: center",
 ];
 
@@ -253,7 +253,7 @@ await step("a block taller than its text aligns to the bottom", async () => {
 await step("each reset removes its value and the heading's own value returns", async () => {
   const resets = [
     ["horizontal alignment", "text-align", "start"],
-    ["line height", "line-height", "24px"],
+    ["line height", "line-height", "20px"],
     ["letter spacing", "letter-spacing", "-0.2px"],
     ["style", "font-weight", "550"],
     ["size", "font-size", "14px"],

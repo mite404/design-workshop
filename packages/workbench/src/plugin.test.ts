@@ -154,6 +154,23 @@ describe("writeValue", () => {
     expect(post(file, { ...text, name: "--font-mono" }, ORIGIN).status).toBe(400);
   });
 
+  // The type scale's three values on :root (ETH-109): one each saves, and those each refuses.
+  test.each([
+    ["--type-base", "14px", ["13px", "2px", "98px", "14.5px", "1.4rem", "Infinity"]],
+    ["--type-ratio", "1.333", ["1", "0.8", "3.5", "1.2345", "NaN", "1.2; color: red"]],
+    ["--type-leading", "1.35", ["0.95", "3.05", "1.333", "-1.3", "1.3px"]],
+  ])("saves and resets %s %s on :root, and refuses %j", (name, value, refused) => {
+    const file = overrideFile(SAVED);
+    const scale = { selector: ":root", name, was: null };
+    for (const v of refused) expect(post(file, { ...scale, value: v }, ORIGIN).status).toBe(400);
+    expect(post(file, { ...scale, selector: CARD, value }, ORIGIN).status).toBe(400);
+    expect(readFileSync(file, "utf8")).toBe(SAVED);
+    expect(post(file, { ...scale, value }, ORIGIN).status).toBe(200);
+    expect(readFileSync(file, "utf8")).toBe(SAVED.replace("}", `  ${name}: ${value};\n}`));
+    expect(post(file, { ...scale, value: null, was: value }, ORIGIN).status).toBe(200);
+    expect(readFileSync(file, "utf8")).toBe(SAVED);
+  });
+
   test("refuses a type property on :root and a property off the list", () => {
     const file = overrideFile(SAVED);
     expect(post(file, { ...RADIUS, name: "font-size", value: "15px" }, ORIGIN).status).toBe(400);
@@ -183,6 +200,9 @@ test("readValues reads each token's baseline and override, and each element's va
       "--window-radius": { baseline: "12px", override: "20px" },
       "--font-text": { baseline: null, override: null },
       "--font-display": { baseline: null, override: null },
+      "--type-base": { baseline: null, override: null },
+      "--type-ratio": { baseline: null, override: null },
+      "--type-leading": { baseline: null, override: null },
     },
     saved: { [CARD]: { gap: "22px" } },
   });

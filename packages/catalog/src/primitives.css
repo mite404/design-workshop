@@ -56,6 +56,7 @@
   background: transparent;
   color: var(--ink);
   font-size: var(--text-xs);
+  line-height: var(--text-xs--line-height);
   text-align: left;
   white-space: nowrap;
 }
@@ -79,6 +80,7 @@
 .menu-detail {
   color: var(--soft-ink);
   font-size: var(--text-xs);
+  line-height: var(--text-xs--line-height);
   font-variant-numeric: tabular-nums;
 }
 .menu-shortcut {
@@ -88,6 +90,7 @@
   color: var(--soft-ink);
   font: inherit;
   font-size: var(--text-2xs);
+  line-height: var(--text-2xs--line-height);
 }
 @keyframes menu-in {
   from {
@@ -133,6 +136,7 @@
   overflow: hidden;
   color: var(--soft-ink);
   font-size: var(--text-xs);
+  line-height: var(--text-xs--line-height);
   font-weight: 400;
   font-variant-numeric: tabular-nums;
   text-overflow: ellipsis;
@@ -285,6 +289,7 @@ html[data-carrying] * {
   background: var(--paper-deep);
   color: var(--ink);
   font-size: var(--text-xs);
+  line-height: var(--text-xs--line-height);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -323,6 +328,7 @@ html[data-carrying] * {
 }
 .share-status {
   font-size: var(--text-xs);
+  line-height: var(--text-xs--line-height);
   color: var(--soft-ink);
   white-space: nowrap;
 }

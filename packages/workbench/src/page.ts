@@ -62,10 +62,13 @@ import {
 import {
   emOf,
   percentOf,
+  SCALE,
+  scaleValue,
   STEPS,
   stepOf,
   styleList,
   TYPE,
+  type ScaleName,
   type TextStep,
   type TypeName,
 } from "./type";
@@ -653,6 +656,9 @@ function onKey(event: KeyboardEvent): void {
   } else if (drag !== null) {
     event.preventDefault();
     endDrag(true);
+  } else if (scaleDrag !== null) {
+    event.preventDefault();
+    revertScale(scaleDrag.name);
   } else if (press !== null) {
     event.preventDefault();
     endPress();
@@ -1479,7 +1485,7 @@ familyReset.addEventListener("click", () => {
   resetType("font-family");
 });
 
-// The Template's two fonts, on the frame's root, shown when the window is selected.
+// The Template's two fonts, on the frame's root, in the Type panel.
 const rootFonts = Object.entries(ROOT_FONTS).map(([name, title]) => {
   const value = element("span");
   const open = fontOpener((anchor) => {
@@ -1502,14 +1508,241 @@ const rootFonts = Object.entries(ROOT_FONTS).map(([name, title]) => {
 });
 
 function trackRootFonts(): void {
-  const root = doc()?.documentElement;
-  const visible = root !== undefined && selection !== null && selection.node === windowElement();
+  // A document being replaced has no root element yet, whatever its type says.
+  const root: HTMLElement | null | undefined = doc()?.documentElement;
+  const visible = Boolean(root);
   for (const r of rootFonts) {
     r.row.hidden = !visible;
-    if (!visible) continue;
+    if (!root) continue;
     const family = unquote(style(root).getPropertyValue(r.name).split(",")[0] ?? "");
     if (r.value.textContent !== family) r.value.textContent = family;
     r.clear.disabled = was(ROOT, r.name) === null;
+  }
+}
+
+// The type scale (ETH-109). tokens.css works out the nine steps and their line heights from three
+// values on the frame's root; the panel previews a value inline there, saves it on release, Enter
+// or blur, and reads every step back from the frame, so the app's CSS is the one calculation.
+const RATIOS = [1.125, 1.2, 1.25, 1.333, 1.5];
+// Each value's label, one arrow press, the drag distance per press, its bounds and decimals.
+type ScaleSpec = {
+  title: string;
+  step: number;
+  dragPx: number;
+  min: number;
+  max: number;
+  places: number;
+  unit: string;
+};
+const SCALE_SPECS: Record<ScaleName, ScaleSpec> = {
+  "--type-base": { title: "Base size", step: 2, dragPx: 4, min: 4, max: 96, places: 0, unit: "px" },
+  "--type-ratio": {
+    title: "Ratio",
+    step: 0.01,
+    dragPx: 4,
+    min: 1.001,
+    max: 3,
+    places: 3,
+    unit: "",
+  },
+  "--type-leading": {
+    title: "Leading",
+    step: 0.05,
+    dragPx: 4,
+    min: 1,
+    max: 3,
+    places: 2,
+    unit: "",
+  },
+};
+
+const scaleEdits = new Map<ScaleName, string>(); // each value in hand's value before the change
+let scaleDrag: { name: ScaleName; scrub: HTMLElement; from: number; x: number } | null = null;
+
+// A value the endpoint takes: the base floored to even, the others to their decimals, in bounds.
+function scaleText(name: ScaleName, n: number): string {
+  const { min, max, places, unit } = SCALE_SPECS[name];
+  const fitted = name === "--type-base" ? Math.floor(n / 2) * 2 : Number(n.toFixed(places));
+  return `${Math.min(Math.max(fitted, min), max)}${unit}`;
+}
+const scaleNow = (name: ScaleName): number => {
+  const root = doc()?.documentElement;
+  return root === undefined ? Number.NaN : Number.parseFloat(style(root).getPropertyValue(name));
+};
+// One arrow press from `n`: the ratio moves between the named ratios, the others by their step.
+function scaleStep(name: ScaleName, n: number, sign: 1 | -1): number {
+  if (name !== "--type-ratio") return n + sign * SCALE_SPECS[name].step;
+  const named =
+    sign === 1 ? RATIOS.find((r) => r > n + 1e-9) : RATIOS.findLast((r) => r < n - 1e-9);
+  return named ?? n;
+}
+
+function previewScale(name: ScaleName, n: number): void {
+  const root = doc()?.documentElement;
+  if (root === undefined || !Number.isFinite(n)) return;
+  if (!scaleEdits.has(name)) scaleEdits.set(name, style(root).getPropertyValue(name).trim());
+  root.style.setProperty(name, scaleText(name, n));
+}
+// Saves the value in hand, or drops it when it changes nothing.
+function commitScale(name: ScaleName): void {
+  const root = doc()?.documentElement;
+  const before = scaleEdits.get(name);
+  scaleEdits.delete(name);
+  if (root === undefined || before === undefined) return;
+  const value = root.style.getPropertyValue(name);
+  if (value === before) root.style.removeProperty(name);
+  else saveValue(root, ROOT, name, value);
+}
+// Puts back the value in hand, unsaved, and ends a scrub of it, so its release saves nothing.
+function revertScale(name: ScaleName): void {
+  if (scaleDrag?.name === name) {
+    delete scaleDrag.scrub.dataset.dragging;
+    scaleDrag = null;
+  }
+  if (scaleEdits.delete(name)) doc()?.documentElement.style.removeProperty(name);
+}
+// A typed value as the endpoint saves it, or null: the whole text must be a plain decimal, the
+// base is floored to even, and the value must pass the endpoint's own check.
+function typedScale(name: ScaleName, raw: string): string | null {
+  if (!/^\d*\.?\d+$/.test(raw.trim())) return null;
+  const n = Number(raw);
+  const value = name === "--type-base" ? `${Math.floor(n / 2) * 2}px` : String(n);
+  return scaleValue(name, value) ? value : null;
+}
+
+const ratioList = element(
+  "datalist",
+  { id: "wb-ratios" },
+  ...RATIOS.map((r) => element("option", { value: String(r) })),
+);
+// A drag on a value's label scrubs it one step per `dragPx` px, live, and saves on release.
+function scrubScale(scrub: HTMLLabelElement, name: ScaleName): void {
+  scrub.addEventListener("pointerdown", (event) => {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    scrub.setPointerCapture(event.pointerId);
+    scaleDrag = { name, scrub, from: scaleNow(name), x: event.clientX };
+    scrub.dataset.dragging = "";
+  });
+  scrub.addEventListener("pointermove", (event) => {
+    if (scaleDrag?.name !== name) return;
+    const steps = Math.round((event.clientX - scaleDrag.x) / SCALE_SPECS[name].dragPx);
+    previewScale(name, scaleDrag.from + steps * SCALE_SPECS[name].step);
+  });
+  const endScrub = (cancel: boolean) => {
+    if (scaleDrag?.name !== name) return;
+    scaleDrag = null;
+    delete scrub.dataset.dragging;
+    if (cancel) revertScale(name);
+    else commitScale(name);
+  };
+  scrub.addEventListener("pointerup", () => {
+    endScrub(false);
+  });
+  scrub.addEventListener("pointercancel", () => {
+    endScrub(true);
+  });
+}
+
+const scaleFields = SCALE.map((name) => {
+  const { title } = SCALE_SPECS[name];
+  const id = `wb-${name.slice(2)}`;
+  const input = element("input", { id, inputMode: "decimal", autocomplete: "off" });
+  input.spellcheck = false;
+  if (name === "--type-ratio") input.setAttribute("list", ratioList.id);
+  const scrub = element("label", { htmlFor: id, className: "scrub" }, title);
+  const clear = element("button", { type: "button", className: "reset" }, "Reset");
+  clear.ariaLabel = `Reset ${title.toLowerCase()}`;
+  input.addEventListener("input", () => {
+    input.dataset.dirty = "";
+  });
+  input.addEventListener("keydown", (event) => {
+    const sign = UP_DOWN[event.key];
+    if (sign !== undefined) {
+      event.preventDefault();
+      delete input.dataset.dirty;
+      previewScale(name, scaleStep(name, scaleNow(name), sign));
+    }
+    if (event.key === "Enter") input.blur();
+    if (event.key === "Escape") {
+      event.stopPropagation();
+      delete input.dataset.dirty;
+      revertScale(name);
+      input.blur();
+    }
+  });
+  input.addEventListener("blur", () => {
+    if (input.dataset.dirty !== undefined) {
+      delete input.dataset.dirty;
+      const typed = typedScale(name, input.value);
+      if (typed === null) message.textContent = `Not a ${title.toLowerCase()}: ${input.value}`;
+      else {
+        message.textContent = "";
+        previewScale(name, Number.parseFloat(typed));
+      }
+    }
+    commitScale(name);
+  });
+  scrubScale(scrub, name);
+  clear.addEventListener("click", () => {
+    revertScale(name);
+    const root = doc()?.documentElement;
+    if (root !== undefined && was(ROOT, name) !== null) saveValue(root, ROOT, name, null);
+  });
+  return { name, input, clear, row: element("div", { className: "row" }, scrub, input, clear) };
+});
+
+// The nine steps as the frame works them out: each one's size and line height in px.
+const stepReadouts = STEPS.map((step) => {
+  const size = element("span");
+  const line = element("span");
+  const row = element(
+    "div",
+    { className: "scale-step" },
+    element("code", {}, step),
+    size,
+    element("span", { className: "times" }, "/"),
+    line,
+  );
+  return { step, size, line, row };
+});
+
+const scalePanel = element(
+  "section",
+  { ariaLabel: "Type", className: "scale" },
+  element("h2", {}, "Type"),
+  ...rootFonts.map((r) => r.row),
+  ...scaleFields.map((f) => f.row),
+  ratioList,
+  element(
+    "div",
+    { className: "scale-steps", role: "group", ariaLabel: "Type steps: size / line height" },
+    ...stepReadouts.map((r) => r.row),
+  ),
+);
+
+// Sets `el`'s text only when it changed, so a value under the pointer is not rewritten each frame.
+function setText(el: HTMLElement, value: string): void {
+  if (el.textContent !== value) el.textContent = value;
+}
+
+function trackScale(): void {
+  const root: HTMLElement | null | undefined = doc()?.documentElement;
+  if (!root) return;
+  const s = style(root);
+  for (const { name, input, clear } of scaleFields) {
+    const value = String(Number.parseFloat(s.getPropertyValue(name)) || "");
+    if (input.dataset.dirty === undefined && input.value !== value) input.value = value;
+    clear.disabled = was(ROOT, name) === null && !scaleEdits.has(name);
+  }
+  trackReadouts(s);
+}
+
+// Each step's size and line height in px, blank while the frame's page is still loading.
+function trackReadouts(s: CSSStyleDeclaration): void {
+  for (const r of stepReadouts) {
+    setText(r.size, String(px(s.getPropertyValue(`--text-${r.step}`)) || ""));
+    setText(r.line, String(px(s.getPropertyValue(`--text-${r.step}--line-height`)) || ""));
   }
 }
 
@@ -2165,6 +2398,7 @@ function track(): void {
   trackFields();
   trackType();
   trackRootFonts();
+  trackScale();
   trackUnmatched();
   requestAnimationFrame(track);
 }
@@ -2180,7 +2414,7 @@ document.body.append(
       element("div", { className: "tools" }, tool),
       element("h2", {}, "Window"),
       element("div", { className: "row" }, label, field, reset),
-      ...rootFonts.map((r) => r.row),
+      scalePanel,
       selectionPanel,
       typePanel,
       unmatchedPanel,

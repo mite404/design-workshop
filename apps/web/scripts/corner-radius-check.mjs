@@ -85,7 +85,7 @@ await step("typing 24 and Enter saves it; arrows step by 1 and Shift by 10", asy
 });
 
 await step("scrubbing the label right raises the value in 2px steps", async () => {
-  const label = page.locator(".scrub");
+  const label = page.locator("label[for=radius]");
   assert.equal(await label.evaluate((l) => getComputedStyle(l).cursor), "ew-resize");
   const from = await center(label);
   await page.mouse.move(from.x, from.y);

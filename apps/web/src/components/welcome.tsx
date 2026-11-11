@@ -26,7 +26,7 @@ function Greeting({ name }: { name: string | null }) {
       </p>
       {PARTS.map((part) => (
         <div key={part} data-part={part}>
-          <h1 className="mt-1 font-sans text-xl leading-8 font-semibold tracking-tight text-ink">
+          <h1 className="mt-1 font-sans text-xl font-semibold tracking-tight text-ink">
             {greetingFor(part, name)}
           </h1>
           <p className="mt-1 text-soft-ink">{lineFor(part)}</p>

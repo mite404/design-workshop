@@ -155,3 +155,30 @@ export function styleList(
   if (found.has(`${current.weight}${current.italic ? "i" : ""}`)) return list;
   return [{ ...current, label: styleName(current.weight, current.italic) }, ...list];
 }
+
+/**
+ * The type scale's three `:root` values (ETH-109), which tokens.css turns into the nine steps
+ * and their line heights: the base size, the ratio between steps and the leading.
+ */
+export const SCALE = ["--type-base", "--type-ratio", "--type-leading"] as const;
+
+/** One of the type scale's three values. */
+export type ScaleName = (typeof SCALE)[number];
+
+const within = (pattern: RegExp, low: number, high: number) => (v: string) =>
+  pattern.test(v) && Number.parseFloat(v) >= low && Number.parseFloat(v) <= high;
+
+// Each scale value's check. The base stays even, so xs is on the 2px rhythm (ADR-015); a ratio
+// of 1 or less would flatten or invert the hierarchy, and leading under 1 overlaps lines.
+const SCALE_CHECKS: Record<ScaleName, (v: string) => boolean> = {
+  "--type-base": (v) => within(/^\d{1,2}px$/, 4, 96)(v) && Number.parseInt(v, 10) % 2 === 0,
+  "--type-ratio": within(/^\d(?:\.\d{1,3})?$/, 1.001, 3),
+  "--type-leading": within(/^\d(?:\.\d{1,2})?$/, 1, 3),
+};
+
+/** Whether `name` is one of the type scale's values. */
+export const isScale = (name: string): name is ScaleName =>
+  (SCALE as readonly string[]).includes(name);
+
+/** Whether `value` is one the Workbench may save for the scale value `name`. */
+export const scaleValue = (name: ScaleName, value: string): boolean => SCALE_CHECKS[name](value);

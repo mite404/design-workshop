@@ -267,7 +267,13 @@ describe("the type scale", () => {
     const typed = TEMPLATE_CSS.flatMap(({ file, css }) =>
       [...css.matchAll(/font-size:\s*[\d.]+(px|r?em)\b/g)].map((match) => `${file}: ${match[0]}`),
     );
-    const named = steps.filter((step) => /^\d+px$/.test(String(ROOT.get(`--text-${step}`))));
+    // ETH-109: every step and its line height derive from the scale's base, so the Type panel's
+    // three values move them all.
+    const named = steps.filter(
+      (step) =>
+        ROOT.get(`--text-${step}`)?.includes("var(--type-base)") &&
+        ROOT.get(`--text-${step}--line-height`)?.includes(`var(--text-${step})`),
+    );
     expect(named).toEqual(steps);
     expect(TEMPLATE_CSS.map(({ file }) => file)).toContain("../../ui/src/styles/globals.css");
     expect(typed).toEqual([]);

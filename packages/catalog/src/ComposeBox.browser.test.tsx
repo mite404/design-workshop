@@ -84,8 +84,9 @@ it("sizes an initial draft and reflows unchanged text when the composer width ch
     expect(message.clientHeight).toBe(44);
   });
   host.style.width = "220px";
+  const line = Number(getComputedStyle(message).lineHeight.replace("px", ""));
   await vi.waitFor(() => {
-    expect(message.clientHeight).toBeGreaterThan(80);
+    expect(message.clientHeight).toBeGreaterThanOrEqual(4 * line);
   });
   expect(message.scrollHeight).toBe(message.clientHeight);
   host.style.width = "600px";

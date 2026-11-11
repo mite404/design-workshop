@@ -26,6 +26,7 @@
 }
 .lab-preview > h1 {
   font-size: var(--text-3xl);
+  line-height: var(--text-3xl--line-height);
   margin-block: 0 var(--space);
 }
 .lab-row {
