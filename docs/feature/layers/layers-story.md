@@ -1,7 +1,7 @@
 # Story: find and select components in the drawer's component tree
 
-Status: draft 3, Nov 11 2026. The decisions are Ethan's (ADR-023, ADR-025). The criteria are
-not yet confirmed by him. Ticket: [ETH-114](layers-impl-ETH-114.md).
+Status: confirmed by Ethan, Nov 11 2026 (draft 3). The decisions are his (ADR-023, ADR-025).
+Ticket: [ETH-114](layers-impl-ETH-114.md).
 
 **As** a designer working on a dense screen,
 **I want** a list of the components on the canvas, named as they are in code, in the app's own
