@@ -1,6 +1,15 @@
 // Named DOM roots, retaining instance identity rather than treating a name as a unique key.
 export type ComponentNode = { element: Element; name: string; children: ComponentNode[] };
 
+// Title segments are branches; only a story leaf can be opened.
+export type StoryNode =
+  | { kind: "branch"; name: string; children: StoryNode[] }
+  | { kind: "story"; name: string; id: string };
+
+type StoryIndex = {
+  entries: Record<string, { type: "story" | "docs"; id: string; title: string; name: string }>;
+};
+
 /** The Template's drawer, excluded from its own component tree. */
 export const DRAWER = '[data-slot="sidebar"]';
 
@@ -38,4 +47,23 @@ export function componentTree(root: Element, skip: Element | null = null): Compo
   return name && root.checkVisibility({ visibilityProperty: true, opacityProperty: true })
     ? [{ element: root, name, children }]
     : children;
+}
+
+/** Groups Storybook's index by title, retaining its labels and order and omitting docs. */
+export function storyTree(index: StoryIndex): StoryNode[] {
+  const roots: StoryNode[] = [];
+  for (const entry of Object.values(index.entries)) {
+    if (entry.type !== "story") continue;
+    let children = roots;
+    for (const name of entry.title.split("/")) {
+      let branch = children.find((node) => node.kind === "branch" && node.name === name);
+      if (branch === undefined) {
+        branch = { kind: "branch", name, children: [] };
+        children.push(branch);
+      }
+      if (branch.kind === "branch") children = branch.children;
+    }
+    children.push({ kind: "story", id: entry.id, name: entry.name });
+  }
+  return roots;
 }
