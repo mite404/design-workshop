@@ -1,0 +1,237 @@
+# Design Workbench - PRD
+
+Status: draft 3, Nov 11 2026. Decisions confirmed by Ethan. This file is the source of truth; the
+Amp artifact it came from is a copy. Background research: [code-native workbench
+research](research/code-native-workbench.md).
+
+## 1. Problem
+
+Ethan has built the same app shell three times (yaklabs, garage, sierra-demo). Each time, giving it
+a distinct look meant describing changes to an agent in words. Reworking the yaklabs shell took a
+full day. Words are a poor instrument for spacing, proportion, colour and motion.
+
+## 2. Product
+
+Two things that ship together in this repo:
+
+1. **The Template.** The yaklabs app shell and component library, copied over and scoped to one kind
+   of app: agent-loop chat interfaces. It runs on a mocked agent loop, so design iteration costs no
+   tokens. Its components are developed in Storybook with basic interactive data.
+2. **The Workbench.** A no-code React web app for remixing the Template visually. You click, drag
+   and scrub the real running code.
+
+A new project starts as a copy of the Template, then gets its look in the Workbench. Ethan picks the
+starting look each time: the plain baseline, a saved theme he likes, or the look of a previous
+project carried over and saved as a new one.
+
+## 3. Who it is for
+
+Ethan, working alone, designing the look and layout of web apps. He designs like a motion and
+graphic designer: by eye, by direct manipulation, with numbers available when he wants them.
+
+## 4. The Workbench interface
+
+Laid out like Figma:
+
+| Left panel | Centre | Right panel |
+| --- | --- | --- |
+| Layers: the named regions of what is on the canvas. Assets: components, colours, type styles, looks | Canvas: the live preview, with selection outlines, handles and measurements | Inspector: the editable properties of the selection, as sliders, number fields, pickers and curve editors |
+
+Two views, switched at the top:
+
+- **App Shell.** The canvas is the Template app itself, running the mocked agent loop. For layout,
+  chrome, and how components sit together.
+- **Component Canvas.** The canvas is one Storybook story. For sketching a component without risk to
+  the shell layout. Storybook already renders each story at its own URL, so the Workbench frames
+  that instead of building a second renderer. The story list comes from Storybook's index.
+
+Both views edit the same design values, so a change made on a component shows up in the shell.
+
+## 5. Principles
+
+1. **The preview is the document.** There is no separate canvas file. The saved state is source
+   files in git.
+2. **The Workbench edits values, never code.** Components say which value they use (`border-radius:
+   var(--window-radius)`). A separate file says what each value is. The Workbench only writes that
+   file, which it can read back without loss.
+3. **Constrained beats general.** If something is not exposed as a design value, the Workbench
+   cannot change it. It hands an exact request to an agent, who exposes it.
+4. **Numbers stay honest.** Every handle shows the value it sets, snaps to the scale, and reads back
+   what the browser computed.
+5. **Imported components inherit the look.** As in yaklabs, the standard shadcn variable names
+   (`--background`, `--primary`, `--radius` and the rest) are mapped onto the Template's baseline
+   tokens. A shadcn primitive, block, or shadcn-based library component reads those names, so it
+   arrives already wearing the current theme. Design values are the same vocabulary, so tuning one
+   in the Workbench restyles imported components too.
+
+## 6. The rules: what the Workbench may change
+
+| The Workbench | Files |
+| --- | --- |
+| May write | The override file only (see below) |
+| May read | Everything: the cascade, the DOM, source locations, Storybook's index |
+| Never writes | Components, stories, tests, config, the baseline tokens |
+| May commit | The override file only. It refuses if anything else is staged |
+
+A **design value** is one CSS custom property the app reads: a colour, length, radius, font setting,
+or a layout value such as a track size, an order or a grid area map. Durations and easing curves are
+the same kind of thing and come later.
+
+**The override file.** The Template's baseline tokens stay untouched. The Workbench writes one
+stylesheet that loads after them and holds only the values Ethan has changed. It is a real file in
+the checkout, loaded by both the app and Storybook, so the dev server hot reloads it. Discard is
+emptying it. The diff of that file is the look.
+
+## 7. Two lanes
+
+| Lane | Who | Changes |
+| --- | --- | --- |
+| Values | Ethan, in the Workbench | The override file |
+| Structure | An agent, from a request the Workbench writes | Components, stories, new regions, new design values |
+
+The Workbench's operations (list values, set a value, check) are also a small command line tool, and
+the Template carries one skill file telling any agent the rules. No custom agent harness.
+
+## 8. The loop
+
+| State | Where it lives | How you get there |
+| --- | --- | --- |
+| Committed | git | Press **Check and commit** |
+| Saved | The override file on disk, running in the dev server | Automatic, when you release a handle |
+| In hand | The browser only, while a handle is held | Dragging or scrubbing |
+
+```text
+git HEAD ──read baseline + override──> inspector and canvas
+   ^                              │ drag: instant preview in the browser
+   │                              v release
+   │                       write one value to the override file
+   │                              │ hot reload: app and stories now run the saved value
+   │                              v
+   └── commit override file <── Check and commit: type check, tests, show value diff
+```
+
+**Saving is automatic. Committing is a button.**
+
+- Auto-save keeps the promise that what you see is running code. There is never a hidden draft that
+  differs from the files.
+- Before each write, the Workbench confirms the file on disk is what it last read, and reports a
+  conflict if not.
+- Undo and redo step through edits since the last commit. Discard restores the override file from
+  git.
+- Check and commit runs type check and tests, shows the value diff, and writes the commit message
+  from the change list. No screenshots: the canvas already shows the state.
+
+## 9. Requirements
+
+### Must have for a first usable version
+
+- R1. The Template: shell, component library, Storybook, and a mocked agent loop that replays a
+  scripted conversation at an adjustable speed.
+- R2. The Workbench opens beside the Template's normal dev servers and frames them. It is absent
+  from production builds.
+- R3. Two views: App Shell and Component Canvas.
+- R4. Layers panel lists the named regions on the canvas; click a layer or the canvas to select.
+- R5. Inspector shows the design values of the selection, with a control per kind: scrub field with
+  grid snap, colour picker with contrast readout, font controls.
+- R6. Live preview while dragging; save on release; app and stories hot reload.
+- R7. Light and dark values are edited separately and clearly labelled.
+- R8. Undo, redo, discard.
+- R9. Check and commit.
+- R10. The Workbench refuses to write any file but the override file, and says why. Its write
+  endpoint exists in development only.
+- R11. Keyboard parity for every handle, as in today's Live mode.
+
+### Next
+
+- R12. **Request a design value.** Point at something that is not adjustable; the Workbench writes
+  an exact request (element, file and line, current value) for an agent.
+- R13. Handles on the canvas for sizes, gaps, padding and radius, with measurement readouts.
+- R14. Rearrange shell regions by drag, saved as layout values.
+- R15. Assets panel: drag a component from the library into an allowed slot.
+- R16. Themes: a theme is one override file. Save the current values as a theme, switch between
+  themes, start a project from one. A preset is a partial theme covering one group of values, such
+  as a colour palette or a font pairing (families, sizes and styles), so Ethan can swap to "font
+  pairing 2" from the current state without losing his other changes. An agent can draft a theme
+  from a component Ethan likes elsewhere by translating its styles into the Template's value names.
+- R17. Motion: scrub a running transition, edit duration and easing curves.
+
+### Not doing
+
+- Editing component code, class names or structure from the Workbench.
+- A free canvas with absolute positioning.
+- App types other than agent-loop chat interfaces.
+- Native (Rust, Swift) targets. An Electron or Tauri app with a web UI already qualifies.
+- Figma import or export. Multi-user anything.
+
+## 10. Building blocks, in order
+
+Each block is usable and testable before the next starts.
+
+| # | Block | Proves |
+| --- | --- | --- |
+| 1 | **Template.** Copy the yaklabs monorepo whole (`apps/web`, `apps/storybook`, `packages/ui`, `packages/catalog` and the rest), replacing the workbook on this branch. Its scripted agent is the mocked loop. Prune what the Template does not need afterwards, one removal per ticket | There is a real, good-looking target to design against |
+| 2 | **Override file format.** Parser and writer as pure functions | Read then write returns the same file, byte for byte |
+| 3 | **Dev server plugin and command line.** List values, write a value, ownership and stale checks | A change reaches disk, the app and the stories, and nothing else can be written |
+| 4 | **Workbench frame.** Three panels, two views, selection, inspector controls, undo and discard | A look can be changed without typing a description |
+| 5 | **Check and commit.** | A design session ends in a clean, reviewable commit |
+| 6 | **Request a design value**, plus the agent skill file (R12) | Hitting the edge of what is adjustable does not mean going back to prose |
+| 7 | **Canvas handles and readouts** (R13) | Dragging replaces the inspector for layout work |
+| 8 | **Layout and assets** (R14, R15) |  |
+| 9 | **Themes, motion** (R16, R17) |  |
+
+Why this order: the Template comes first because the Workbench needs a real target, and it replaces
+both the old workbook and the yaklabs calibration step. Blocks 2 and 3 are the translation layer.
+Everything after is interface on top of them.
+
+The first feature, the window's corner radius, cuts a thin slice through blocks 3, 4 and 7 for one
+value. See [the story](feature/corner-radius/corner-radius-story.md).
+
+The current workbook is retired once the Template looks and feels good. The
+`design-tutorial-workshop` branch keeps it as it is today.
+
+## 11. Success measures
+
+- Re-skin the shell to a clearly different look in under an hour without writing a prompt.
+- Every commit the Workbench makes touches the override file only.
+- Starting the next project takes minutes from any of three starting points: the plain Template, a
+  saved theme, or a previous project's look saved as a new one. Ethan chooses how close to the last
+  project it looks.
+
+## 12. Look and interaction references
+
+These are Ethan's stated preferences for how the Workbench itself should look and feel.
+
+- **Charts and data visualisation use bklit.** Any chart in the Workbench comes from
+  [bklit](https://bklit.com/docs/components/area-chart), installed through its shadcn registry
+  (`https://ui.bklit.com/r/{name}.json`), not npm. Curve and bezier interfaces, such as a later
+  easing editor, should match its look: dark, smooth curves, a crosshair, a blurred tooltip. bklit
+  provides charts, not a bezier editor, so that editor is its own ticket. Example: [bklit replica
+  thread](https://ampcode.com/threads/T-01a1be6a-57b0-7782-b617-247441f518b4).
+- **Sliders and drag handles look sleek and minimal.** The reference is the [Moving mountains
+  thread](https://ampcode.com/threads/T-01a1be69-69d6-77ac-97bc-2c6be01e9bd3), for its look only:
+  small quiet handles, a readout pill beside the handle that shows the value and highlights on hover
+  and drag, cursors that say which way a handle moves, and nothing decorative. How that example was
+  built does not bind us. Each ticket picks the simplest technique that gives this look. Handles
+  follow the pointer exactly, with no lag or bounce, and every handle also works from the keyboard
+  (R11).
+
+## 13. Decided
+
+- Repo shape: a monorepo shaped like yaklabs.
+- The Template starts as a whole copy of yaklabs, pruned later. The shell imports the runtime,
+  world, demo and session code, so picking out components first would mean untangling most of the
+  repo before anything runs.
+- Themes come from both sources: Ethan's own tuned components, and components he likes elsewhere,
+  translated by an agent.
+- Themes and presets are not in the first usable version. One look at a time is enough to start.
+- A new project can start from the plain Template, from a saved theme, or from a previous project's
+  look. No one of these is the default. Until themes ship (R16), starting from a previous look means
+  copying that project's override file.
+- The override file stays as the project's look. Whether to fold a finished look into the baseline
+  is revisited after the first finished app.
+- Stories live at `docs/feature/<name>/<name>-story.md` and tickets at
+  `docs/feature/<name>/<name>-impl-<Linear ID>.md`. Each ticket ends in a drift log.
+
+## 14. Open questions
+
+None right now.
