@@ -11,10 +11,11 @@ import {
   writeFileSync,
 } from "node:fs";
 import { execFileSync } from "node:child_process";
-import type { IncomingMessage } from "node:http";
+import type { IncomingMessage, ServerResponse } from "node:http";
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Plugin, ViteDevServer } from "vite";
+import { commitLook, committing, previewCommit } from "./commit.ts";
 import {
   FONT_HOST,
   fontFiles,
@@ -380,17 +381,104 @@ async function answer(server: ViteDevServer, req: IncomingMessage): Promise<Repl
   }
   const write = WRITES[path ?? ""];
   if (write !== undefined && req.method === "POST") {
-    const body = await read(req);
-    const reply = await write.run({ origin: req.headers.origin, host: req.headers.host, body });
-    if (reply.status === 200) await reload(server, write.file);
-    return reply;
+    return answerWrite(server, req, write);
   }
   return { status: 404, body: { error: `no Workbench route ${req.method} ${path}` } };
+}
+
+async function answerWrite(
+  server: ViteDevServer,
+  req: IncomingMessage,
+  write: (typeof WRITES)[string],
+): Promise<Reply> {
+  const body = await read(req);
+  if (committing(OVERRIDES))
+    return { status: 409, body: { error: "A commit is running. Cancel it before editing." } };
+  const reply = await write.run({ origin: req.headers.origin, host: req.headers.host, body });
+  if (reply.status === 200) await reload(server, write.file);
+  return reply;
+}
+
+function sendReply(res: ServerResponse, { status, body }: Reply): void {
+  const html = typeof body === "string";
+  res.statusCode = status;
+  res.setHeader("content-type", html ? "text/html" : "application/json");
+  res.end(html ? body : JSON.stringify(body));
+}
+
+async function startCommit(
+  server: ViteDevServer,
+  req: IncomingMessage,
+  res: ServerResponse,
+  active: { controller: AbortController | null },
+): Promise<void> {
+  const input = json(await read(req));
+  const head = field(input, "head");
+  const source = field(input, "source");
+  if (typeof head !== "string" || typeof source !== "string") {
+    sendReply(res, { status: 400, body: { error: "Review the diff before committing." } });
+    return;
+  }
+  if (committing(OVERRIDES)) {
+    sendReply(res, { status: 409, body: { error: "A commit is already running." } });
+    return;
+  }
+  const controller = new AbortController();
+  active.controller = controller;
+  res.on("close", () => {
+    controller.abort();
+  });
+  res.writeHead(200, { "content-type": "application/x-ndjson", "cache-control": "no-store" });
+  try {
+    await commitLook(
+      OVERRIDES,
+      { head, source },
+      (event) => {
+        res.write(`${JSON.stringify(event)}\n`);
+        if (event.kind === "success") server.ws.send({ type: "custom", event: "workbench:values" });
+      },
+      controller.signal,
+    );
+  } finally {
+    active.controller = null;
+  }
+  res.end();
+}
+
+async function commitRoute(
+  server: ViteDevServer,
+  req: IncomingMessage,
+  res: ServerResponse,
+  active: { controller: AbortController | null },
+): Promise<void> {
+  if (req.method !== "POST") {
+    sendReply(res, { status: 405, body: { error: "Use POST for commit actions." } });
+    return;
+  }
+  if (foreign({ origin: req.headers.origin, host: req.headers.host, body: "" })) {
+    sendReply(res, FOREIGN);
+    return;
+  }
+  switch (req.url?.split("?")[0] ?? "") {
+    case "/__workbench/commit/preview":
+      sendReply(res, { status: 200, body: previewCommit(OVERRIDES) });
+      return;
+    case "/__workbench/commit/cancel":
+      active.controller?.abort();
+      sendReply(res, { status: 200, body: { requested: active.controller !== null } });
+      return;
+    case "/__workbench/commit":
+      await startCommit(server, req, res, active);
+      return;
+    default:
+      sendReply(res, { status: 404, body: { error: "Unknown commit action." } });
+  }
 }
 
 /** The Workbench page and its values endpoint, on the dev server only. */
 export function workbench(): Plugin {
   let watcher: ReturnType<typeof watch> | undefined;
+  const active: { controller: AbortController | null } = { controller: null };
   return {
     name: "workbench",
     apply: "serve",
@@ -408,15 +496,19 @@ export function workbench(): Plugin {
           next();
           return;
         }
-        const send = ({ status, body }: Reply) => {
-          const html = typeof body === "string";
-          res.statusCode = status;
-          res.setHeader("content-type", html ? "text/html" : "application/json");
-          res.end(html ? body : JSON.stringify(body));
-        };
-        answer(server, req).then(send, (error: unknown) => {
-          send({ status: 500, body: { error: String(error) } });
-        });
+        if (req.url.startsWith("/__workbench/commit")) {
+          void commitRoute(server, req, res, active).catch((error: unknown) => {
+            if (res.headersSent) res.end();
+            else sendReply(res, { status: 500, body: { error: String(error) } });
+          });
+          return;
+        }
+        answer(server, req).then(
+          (reply) => sendReply(res, reply),
+          (error: unknown) => {
+            sendReply(res, { status: 500, body: { error: String(error) } });
+          },
+        );
       });
     },
   };
