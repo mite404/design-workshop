@@ -121,3 +121,11 @@ Record here anything built differently from this plan, and why.
   because yaklabs' agent rules should not apply here. No code or test reads either file. ADR
   numbers in code comments now cite the yaklabs log, at `docs/adr/adr.md` in
   `github.com/mite404/yaklabs`.
+* **No git hooks.** yaklabs' lefthook setup is removed: `lefthook.yml`, the `prepare` script and
+  the `lefthook` devDependency in `package.json`, its `allowBuilds` entry in
+  `pnpm-workspace.yaml`, and the two scripts only its hooks ran, `scripts/install-if-behind.js` and
+  `scripts/wrap-md.js`. `pnpm-lock.yaml` drops lefthook to match. The `prepare` script ran
+  `lefthook install --reset-hooks-path` on every install, which unset the orb's global
+  `core.hooksPath` and with it Amp's `prepare-commit-msg` hook. Lint and format stay available as
+  `pnpm lint` and `pnpm format:check`. `bts.jsonc` still lists lefthook as a scaffold addon,
+  because no tool reads that file to run anything.

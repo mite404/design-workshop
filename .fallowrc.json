@@ -19,7 +19,7 @@
     "minOccurrences": 3
   },
   "health": {
-    // Dev scripts (DevTools snippets, wrap-md, the browser levers) are tools, not product code;
+    // Dev scripts (DevTools snippets, the browser levers) are tools, not product code;
     // complexity gates police the components.
     "ignore": ["scripts/**", "apps/web/scripts/**"]
   },

@@ -17,13 +17,11 @@
     "format": "oxfmt --write",
     "format:check": "oxfmt --check",
     "fallow": "fallow",
-    "fallow:audit": "fallow audit",
-    "prepare": "lefthook install --reset-hooks-path"
+    "fallow:audit": "fallow audit"
   },
   "devDependencies": {
     "@yaklabs/config": "workspace:*",
     "fallow": "^3.28.0",
-    "lefthook": "^2.1.12",
     "oxfmt": "^0.70.0",
     "oxlint": "^1.85.0",
     "oxlint-tsgolint": "^7.0.2003",
