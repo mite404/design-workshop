@@ -176,6 +176,50 @@ await step("hovering the gap handle highlights the gap and shows its value", asy
   await page.screenshot({ path: `${out}/02-gap-hovered.png` });
 });
 
+await step("gap readouts stay centered above or below their handle without clipping", async () => {
+  const original = await card.getAttribute("style");
+  const from = await center(bar("gap"));
+  const failures = [];
+  try {
+    for (const [name, y] of [
+      ["middle", 450],
+      ["top", 4],
+      ["bottom", 896],
+    ]) {
+      await card.evaluate((el, dy) => {
+        el.style.translate = `0 ${dy}px`;
+      }, y - from.y);
+      await page.waitForFunction((want) => {
+        const b = document
+          .querySelector(".bar[data-name=gap]:not([hidden])")
+          .getBoundingClientRect();
+        return Math.abs(b.y + b.height / 2 - want) < 1;
+      }, y);
+      const handle = await center(bar("gap"));
+      await page.mouse.move(handle.x - 35, handle.y);
+      await page.mouse.move(handle.x, handle.y, { steps: 4 });
+      await page.screenshot({ path: `${out}/gap-${name}.png` });
+      const label = await page.locator(".pill").boundingBox();
+      if (Math.abs(label.x + label.width / 2 - handle.x) > 1)
+        failures.push(`${name}: not centered`);
+      if (name === "top" ? label.y <= handle.y : label.y + label.height >= handle.y) {
+        failures.push(`${name}: wrong side of handle`);
+      }
+      if (label.y < 0 || label.y + label.height > 900) failures.push(`${name}: clipped`);
+    }
+    assert.deepEqual(failures, []);
+  } finally {
+    await card.evaluate((el, saved) => {
+      if (saved === null) el.removeAttribute("style");
+      else el.setAttribute("style", saved);
+    }, original);
+    await page.waitForFunction((want) => {
+      const b = document.querySelector(".bar[data-name=gap]:not([hidden])").getBoundingClientRect();
+      return Math.abs(b.y + b.height / 2 - want) < 1;
+    }, from.y);
+  }
+});
+
 await step("dragging the gap handle 7px down snaps the gap to 8", async () => {
   await dragBy(bar("gap"), 3, 7, [], async () => {
     assert.equal(await computed(card, "gap"), 8, "live while dragging"); // 7 → 8

@@ -1118,6 +1118,24 @@ function trackGaps(node: Styled, content: Box): void {
     bar.axis = space.axis;
     const { left, top, width, height } = space.box;
     placeBar(bar, left + width / 2, top + height / 2, space.box, gap);
+    if (bar.el.matches(":hover, [data-dragging]")) {
+      const x = Math.max(
+        4,
+        Math.min(
+          left + width / 2 - pill.offsetWidth / 2,
+          overlay.clientWidth - pill.offsetWidth - 4,
+        ),
+      );
+      const above = top + height / 2 - 14 - pill.offsetHeight;
+      const y = Math.max(
+        4,
+        Math.min(
+          above >= 4 ? above : top + height / 2 + 14,
+          overlay.clientHeight - pill.offsetHeight - 4,
+        ),
+      );
+      pill.style.translate = `${x}px ${y}px`;
+    }
   }
 }
 
