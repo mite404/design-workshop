@@ -79,8 +79,8 @@
   font-size: 13px;
 }
 /* With a live microphone each input says under its name what it does, since only the
-   system's default turns speech into text (Ethan). Secondary words in the guide's
-   12px soft ink. The radio stays on the name's line. */
+   system's default turns speech into text (Ethan). Secondary words in 12px
+   soft ink. The radio stays on the name's line. */
 .device-picker .device-option:has(.device-hint) {
   align-items: flex-start;
 }

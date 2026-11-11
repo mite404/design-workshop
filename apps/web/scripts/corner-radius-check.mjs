@@ -66,9 +66,6 @@ const step = async (name, run) => {
 await step("the Workbench frames the app; clicking the window selects it", async () => {
   await page.goto(`${base}/__workbench/`);
   await frame.locator("[data-slot=window]").waitFor({ timeout: 30_000 });
-  const skip = frame.getByRole("button", { name: "Skip tour" });
-  await skip.waitFor({ timeout: 10_000 }).catch(() => {});
-  if ((await skip.count()) > 0) await skip.click();
   await expectRadius(12, EMPTY);
   await frame.locator("[data-slot=window-body]").click({ position: { x: 600, y: 300 } });
   await page.locator(".overlay[data-selected=true]").waitFor();

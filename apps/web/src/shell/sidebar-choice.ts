@@ -17,7 +17,6 @@ const WIDTH_KEY = "kay.sidebar-width";
 // A window this wide opens with the sidebar open, until the visitor chooses.
 const WIDE_PX = 1280;
 
-// The guide temporarily expands the panel separately; this is only the visitor's own choice.
 function readSidebarOpen(key: string): boolean {
   try {
     const stored = localStorage.getItem(key); // → "open" | "closed" | null

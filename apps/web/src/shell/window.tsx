@@ -1,7 +1,6 @@
 import { SidebarProvider, useSidebar } from "@yaklabs/ui/components/sidebar";
 import { useRef, type ReactNode } from "react";
 import { useChrome } from "../chrome";
-import { FirstVisitGuide, useFirstVisitGuide } from "../components/first-visit-guide";
 import type { ThemeChoice } from "../theme";
 import { useMatch } from "react-router";
 import { Rail } from "./rail";
@@ -50,8 +49,6 @@ export function Window({
   children: ReactNode;
 }) {
   const choice = useSidebarOpen();
-  const guide = useFirstVisitGuide();
-  const projectsGuide = guide.stage === "projects";
   const sized = useSidebarWidth();
   const chrome = useChrome();
   const rail = useRef<HTMLDivElement>(null);
@@ -63,9 +60,7 @@ export function Window({
         className="fixed inset-0 flex flex-col overflow-hidden bg-paper md:inset-4 md:rounded-[var(--window-radius)] md:border md:border-hairline md:shadow-[0_8px_32px_var(--shadow)]"
       >
         <SidebarProvider
-          {...(projectsGuide
-            ? { open: true, openMobile: true, "data-instant": "", "data-guide-projects": "" }
-            : choice)}
+          {...choice}
           className="min-h-0 flex-1 flex-col transition-transform duration-300 ease-out data-instant:transition-none motion-reduce:transition-none max-md:data-mobile-open:translate-x-(--sidebar-width-mobile)"
           style={sidebarVars(sized.width)}
         >
@@ -85,7 +80,6 @@ export function Window({
               <Workspace>{children}</Workspace>
             </div>
           </div>
-          <FirstVisitGuide guide={guide} />
         </SidebarProvider>
       </div>
       <SharePermissions />

@@ -41,7 +41,6 @@ export function LayoutSwitch({ shell }: { shell: Shell | null }) {
                 <ToggleGroupItem
                   value={each}
                   aria-label={label}
-                  data-guide-target={each === "canvas" ? "canvas" : undefined}
                   className="size-7 min-w-7 rounded-[3px] px-0 text-soft-ink hover:text-ink max-md:h-8 max-md:w-auto max-md:shrink-0 max-md:gap-1.5 max-md:rounded-[var(--radius)] max-md:px-3 max-md:text-xs"
                 />
               }

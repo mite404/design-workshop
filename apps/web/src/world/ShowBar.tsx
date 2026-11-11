@@ -92,7 +92,6 @@ function PlayButton({ show, state }: On) {
           size="icon-sm"
           className={GHOST}
           aria-label={label}
-          data-guide-target="play"
           data-callout={state.status === "playing" ? undefined : ""}
           onClick={() => {
             if (state.status === "playing") show.pause();

@@ -41,10 +41,6 @@ await step(
   async () => {
     await page.goto(`${base}/`);
     await page.waitForURL(/\/t\/playground$/, { timeout: 20_000 });
-    await page
-      .getByRole("dialog", { name: "A quick look around" })
-      .getByRole("button", { name: "Skip tour" })
-      .click();
     await page.locator(".welcome").waitFor({ timeout: 20_000 });
     const names = await page.locator(".welcome [data-slot='welcome-project']").allInnerTexts();
     assert.deepEqual(

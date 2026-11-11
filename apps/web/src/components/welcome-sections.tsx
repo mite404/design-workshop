@@ -37,7 +37,6 @@ function ProjectRow({ project, entry }: { project: Project; entry: ThreadId | un
       <Link
         to={pathTo(entry)}
         data-slot="welcome-project"
-        data-guide-target={project.id}
         className={`${ROW} outline-hidden hover:bg-paper-deep focus-visible:ring-2 focus-visible:ring-ring`}
       >
         {words}
