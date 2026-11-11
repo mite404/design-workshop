@@ -4,6 +4,7 @@
   --wb-ink: #1e1e1e;
   --wb-soft-ink: #6b6b6b;
   --wb-line: #e6e6e6;
+  --wb-space: #f24e9b;
   font:
     12px/1.4 system-ui,
     sans-serif;
@@ -66,8 +67,88 @@ body {
   background: var(--wb-accent);
 }
 
-.overlay[data-selected="false"] :is(.outline, .handle) {
+.overlay[data-selected="false"] :is(.outline, .handle, .bar, .space),
+.overlay[data-window="false"] .handle {
   display: none;
+}
+
+/* A spacing handle: a short bar across its drag axis, in a larger hit area. */
+.bar {
+  position: absolute;
+  top: -10px;
+  left: -10px;
+  width: 20px;
+  height: 20px;
+  pointer-events: auto;
+  touch-action: none;
+  outline: none;
+}
+
+.bar::after {
+  content: "";
+  position: absolute;
+  inset: 3px 8px;
+  border-radius: 2px;
+  background: var(--wb-space);
+  box-shadow: 0 0 0 1px #fff;
+}
+
+.bar[data-axis="x"] {
+  cursor: ew-resize;
+}
+
+.bar[data-axis="y"] {
+  cursor: ns-resize;
+}
+
+.bar[data-axis="y"]::after {
+  inset: 8px 3px;
+}
+
+.bar:is(:hover, :focus-visible, [data-dragging])::after {
+  box-shadow:
+    0 0 0 1px #fff,
+    0 0 0 3px var(--wb-space);
+}
+
+/* Handles show while the pointer is over the selection, or one is in use. Hidden ones stay in
+   the tab order. */
+.overlay:not([data-hover="true"]):not(:has(.bar:focus-visible, .bar[data-dragging]))
+  .bar:not(:focus-visible) {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.space {
+  position: absolute;
+  box-sizing: border-box;
+  background: color-mix(in srgb, var(--wb-space) 22%, transparent);
+  opacity: 0;
+}
+
+.bar:is(:hover, :focus-visible, [data-dragging]) + .space,
+.space[data-active="true"],
+.overlay:has(.bar[data-name="gap"]:is(:hover, :focus-visible, [data-dragging]))
+  .space[data-name="gap"] {
+  opacity: 1;
+}
+
+.inplace {
+  position: absolute;
+  top: -12px;
+  left: -24px;
+  box-sizing: border-box;
+  width: 48px;
+  height: 24px;
+  padding: 0 6px;
+  border: 1px solid var(--wb-space);
+  border-radius: 4px;
+  background: #fff;
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  pointer-events: auto;
+  outline: none;
 }
 
 .pill {
@@ -90,6 +171,11 @@ body {
   background: var(--wb-accent);
 }
 
+.overlay:has(.bar:hover, .bar[data-dragging]) .pill {
+  opacity: 1;
+  background: var(--wb-space);
+}
+
 .inspector {
   padding: 12px 16px;
   border-left: 1px solid var(--wb-line);
@@ -97,9 +183,80 @@ body {
 }
 
 .inspector h2 {
-  margin: 0 0 12px;
+  margin: 20px 0 12px;
   font-size: 11px;
   font-weight: 600;
+}
+
+.tools {
+  display: flex;
+  margin-bottom: -4px;
+}
+
+.tool {
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid var(--wb-line);
+  border-radius: 4px;
+  background: #fff;
+  color: var(--wb-soft-ink);
+  font: inherit;
+  cursor: pointer;
+}
+
+.tool[aria-pressed="true"] {
+  border-color: var(--wb-accent);
+  background: var(--wb-accent);
+  color: #fff;
+}
+
+.selector {
+  display: block;
+  margin: -6px 0 10px;
+  color: var(--wb-soft-ink);
+  font-size: 10px;
+  overflow-wrap: anywhere;
+}
+
+.row + .row {
+  margin-top: 6px;
+}
+
+.row label {
+  color: var(--wb-soft-ink);
+}
+
+.row input:disabled,
+.row input:read-only {
+  color: var(--wb-soft-ink);
+}
+
+.note {
+  margin: 8px 0 0;
+  color: var(--wb-soft-ink);
+}
+
+.unmatched {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.unmatched li {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px 8px;
+  align-items: center;
+}
+
+.unmatched li + li {
+  margin-top: 8px;
+}
+
+.unmatched code {
+  grid-column: 1 / -1;
+  font-size: 10px;
+  overflow-wrap: anywhere;
 }
 
 .row {

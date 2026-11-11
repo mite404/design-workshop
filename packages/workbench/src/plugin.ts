@@ -5,10 +5,13 @@ import type { IncomingMessage } from "node:http";
 import { fileURLToPath } from "node:url";
 import type { Plugin, ViteDevServer } from "vite";
 import { parseOverrides, setOverride } from "./overrides.ts";
+import { isSelector } from "./selector.ts";
+import { SPACING } from "./spacing.ts";
 
 const OVERRIDES = fileURLToPath(new URL("../../catalog/src/overrides.css", import.meta.url));
 const TOKENS = fileURLToPath(new URL("../../catalog/src/tokens.css", import.meta.url));
 const PAGE = fileURLToPath(new URL("./page.ts", import.meta.url));
+const ROOT = ":root";
 const EDITABLE = ["--window-radius"];
 const PX = /^\d{1,4}px$/;
 
@@ -30,21 +33,39 @@ function baseline(tokens: string, name: string): string | null {
   return new RegExp(`^\\s*${name}: ([^;]+);`, "m").exec(tokens)?.[1] ?? null; // → "12px"
 }
 
-/** Each editable name's baseline (tokens.css) and override (the override file) values. */
+/**
+ * Each editable `:root` name's baseline (tokens.css) and override values, and every element's
+ * saved values by selector, so the page can list those that match no element.
+ */
 export function readValues(
   overrides: string,
   tokens: string,
-): Record<string, { baseline: string | null; override: string | null }> {
-  const root = parseOverrides(overrides).get(":root");
-  return Object.fromEntries(
-    EDITABLE.map((n) => [n, { baseline: baseline(tokens, n), override: root?.get(n) ?? null }]),
-  );
+): {
+  tokens: Record<string, { baseline: string | null; override: string | null }>;
+  saved: Record<string, Record<string, string>>;
+} {
+  const blocks = parseOverrides(overrides);
+  const root = blocks.get(ROOT);
+  return {
+    tokens: Object.fromEntries(
+      EDITABLE.map((n) => [n, { baseline: baseline(tokens, n), override: root?.get(n) ?? null }]),
+    ),
+    saved: Object.fromEntries(
+      [...blocks].filter(([s]) => s !== ROOT).map(([s, v]) => [s, Object.fromEntries(v)]),
+    ),
+  };
 }
 
-// A POST body, checked: one editable name, its new px value or null, and the value last read.
-type Write = { name: string; value: string | null; was: string | null };
+// A POST body, checked: a selector, one name it may set, the new px value or null, and the
+// value last read.
+type Write = { selector: string; name: string; value: string | null; was: string | null };
 
-const isName = (v: unknown): v is string => typeof v === "string" && EDITABLE.includes(v);
+// `:root` takes the editable tokens; an element, by a selector of the grammar its function
+// makes, takes gap and the four paddings.
+function namesOf(selector: string): readonly string[] {
+  if (selector === ROOT) return EDITABLE;
+  return isSelector(selector) ? SPACING : [];
+}
 const isPx = (v: unknown): v is string | null =>
   v === null || (typeof v === "string" && PX.test(v));
 const isWas = (v: unknown): v is string | null => v === null || typeof v === "string";
@@ -61,18 +82,26 @@ function parseWrite(body: string): Write | string {
   const input = json(body); // string → unknown
   const field = (key: string): unknown =>
     typeof input === "object" && input !== null ? Reflect.get(input, key) : undefined;
-  const [name, value, was] = [field("name"), field("value"), field("was")];
-  if (!isName(name)) return `not an editable name: ${JSON.stringify(name)}`;
+  const [selector, name, value, was] = ["selector", "name", "value", "was"].map((key) =>
+    field(key),
+  );
+  if (
+    typeof selector !== "string" ||
+    typeof name !== "string" ||
+    !namesOf(selector).includes(name)
+  ) {
+    return `not an editable selector and name: ${JSON.stringify([selector, name])}`;
+  }
   if (!isPx(value)) return `not a pixel length: ${JSON.stringify(value)}`;
   if (!isWas(was)) return "was must be a string or null";
-  return { name, value, was };
+  return { selector, name, value, was };
 }
 
 /**
  * Sets one editable value in the override file at `file`, or removes it when `value` is null,
- * through a temp file and a rename. Refuses, writing nothing, a foreign `origin` (403), a name
- * off the editable list or a value that is not a pixel length (400), and a `was` that is not the
- * value now on disk (409).
+ * through a temp file and a rename. Refuses, writing nothing, a foreign `origin` (403), a
+ * selector off the grammar, a name it may not set or a value that is not a whole pixel length
+ * (400), and a `was` that is not the value now on disk (409).
  */
 export function writeValue(
   file: string,
@@ -84,14 +113,17 @@ export function writeValue(
   const write = parseWrite(request.body);
   if (typeof write === "string") return { status: 400, body: { error: write } };
   const text = readFileSync(file, "utf8");
-  const now = parseOverrides(text).get(":root")?.get(write.name) ?? null;
+  const now = parseOverrides(text).get(write.selector)?.get(write.name) ?? null;
   if (now !== write.was) {
     return { status: 409, body: { error: "the override file changed since it was read", now } };
   }
   const temp = `${file}.${process.pid}.tmp`;
-  writeFileSync(temp, setOverride(text, ":root", write.name, write.value));
+  writeFileSync(temp, setOverride(text, write.selector, write.name, write.value));
   renameSync(temp, file);
-  return { status: 200, body: { name: write.name, override: write.value } };
+  return {
+    status: 200,
+    body: { selector: write.selector, name: write.name, override: write.value },
+  };
 }
 
 async function read(req: IncomingMessage): Promise<string> {

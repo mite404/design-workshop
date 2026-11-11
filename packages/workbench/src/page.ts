@@ -1,7 +1,8 @@
 // The Workbench page: the running app in a frame (the canvas), an overlay of handles over it, and
-// the inspector. One value, the window's corner radius, has three inputs (ADR-005): the field,
-// a scrub on its label, and four handles on the canvas. All three set `shown`, the one value in
-// hand, which lives inline on the frame's root until the override file has it (ADR-004).
+// the inspector. Clicking in the frame selects an element (ETH-102). Each value has up to three
+// inputs (ADR-005): a field, a scrub or arrow keys, and handles on the canvas. A change lives
+// inline on its element until the override file has it (ADR-004): the window's corner radius on
+// the frame's root, the selection's gap and padding on the selection.
 import "./page.css";
 import {
   clampRadius,
@@ -13,29 +14,84 @@ import {
   type Box,
   type Corner,
 } from "./radius";
+import {
+  applied,
+  chain,
+  element,
+  inside,
+  laysOut,
+  matches,
+  place,
+  px,
+  selectorOf,
+  spacingOf,
+  style,
+  wholeNumber,
+  type Styled,
+} from "./dom";
+import { pick } from "./selector";
+import {
+  dragSpace,
+  gapSpaces,
+  paddingMoved,
+  paddingSides,
+  paddingSpace,
+  SIDES,
+  SPACING,
+  type Side,
+  type Spacing,
+} from "./spacing";
 
 const NAME = "--window-radius";
+const ROOT = ":root";
 const ENDPOINT = "/__workbench/values";
 const LEAST_INSET = 8;
+const PADDING_INSET = 5; // a padding handle's least distance inside its edge
+const DRAG_START = 3; // px a press moves before it is a drag rather than a click
 const CURSOR: Record<Corner, string> = {
   nw: "nwse-resize",
   ne: "nesw-resize",
   se: "nwse-resize",
   sw: "nesw-resize",
 };
+const LABEL: Record<Spacing, string> = {
+  gap: "Gap",
+  "padding-top": "Top",
+  "padding-right": "Right",
+  "padding-bottom": "Bottom",
+  "padding-left": "Left",
+};
+const ARROWS: Record<string, 1 | -1> = { ArrowUp: 1, ArrowRight: 1, ArrowDown: -1, ArrowLeft: -1 };
+const UP_DOWN: Record<string, 1 | -1> = { ArrowUp: 1, ArrowDown: -1 };
+// What the app must not see while the select tool is on.
+const BLOCKED = [
+  "pointerdown",
+  "pointerup",
+  "mousedown",
+  "mouseup",
+  "click",
+  "dblclick",
+  "auxclick",
+  "contextmenu",
+];
 
-// A drag in progress: the control dragged, the value before it, and where the pointer started.
+// A radius drag in progress: the control dragged, the value before it, and where it started.
 type Drag = { control: HTMLElement; from: number; x: number; y: number };
-
-function element<K extends keyof HTMLElementTagNameMap>(
-  tag: K,
-  props: Partial<HTMLElementTagNameMap[K]> = {},
-  ...children: (Node | string)[]
-): HTMLElementTagNameMap[K] {
-  const node = Object.assign(document.createElement(tag), props);
-  node.append(...children);
-  return node;
-}
+// The selection: the element, its selector, and the values its own `style` attribute sets,
+// which no stylesheet can override.
+type Selection = { node: Styled; selector: string; locked: Set<Spacing> };
+// A change to the selection's spacing: the values before it, and the names it set inline.
+type Edit = { selection: Selection; before: Record<Spacing, number>; touched: Set<Spacing> };
+// A spacing handle: its element, the highlight of the space it controls, and its drag axis.
+type Bar = {
+  el: HTMLElement;
+  space: HTMLElement;
+  name: Spacing;
+  side: Side | null;
+  axis: "x" | "y";
+};
+// A press on a spacing handle: where it started, and whether it has moved enough to be a drag.
+type Press = { bar: Bar; x: number; y: number; moved: boolean };
 
 const frame = element("iframe", { src: "/", title: "Canvas", className: "frame" });
 const outline = element("div", { className: "outline" });
@@ -43,35 +99,92 @@ const handles = CORNERS.map(() =>
   element("div", { className: "handle", tabIndex: 0, ariaLabel: "Corner radius" }),
 );
 const pill = element("div", { className: "pill", ariaHidden: "true" });
-const overlay = element("div", { className: "overlay" }, outline, ...handles, pill);
+const paddingLayer = element("div");
+const gapLayer = element("div");
+const inplace = element("input", { className: "inplace", inputMode: "numeric", hidden: true });
+const overlay = element(
+  "div",
+  { className: "overlay" },
+  outline,
+  paddingLayer,
+  gapLayer,
+  ...handles,
+  pill,
+  inplace,
+);
+const tool = element(
+  "button",
+  { type: "button", className: "tool", ariaPressed: "true" },
+  "Select",
+);
 const field = element("input", { id: "radius", inputMode: "numeric", autocomplete: "off" });
 const label = element("label", { htmlFor: "radius", className: "scrub" }, "Corner radius");
 const reset = element("button", { type: "button", className: "reset" }, "Reset");
+const selectorText = element("code", { className: "selector" });
+const note = element(
+  "p",
+  { className: "note" },
+  "Read-only fields are set in the element's own style attribute, which no stylesheet overrides.",
+);
+const unmatchedList = element("ul", { className: "unmatched" });
 const message = element("p", { className: "message", role: "status" });
 
-let baseline = 0; // tokens.css's value, in px
-let saved: string | null = null; // the override file's value as last read: the next write's `was`
-let shown = 0; // the value in hand, in px
+let baseline = 0; // tokens.css's radius, in px
+let files = new Map<string, Map<string, string>>(); // the override file as last read: each `was`
+let shown = 0; // the radius in hand, in px
 let drag: Drag | null = null;
-let selected = false;
+let selecting = true;
+let selection: Selection | null = null;
+let edit: Edit | null = null;
+let press: Press | null = null;
+let inplaceBar: Bar | null = null;
+let pointer = { x: -1, y: -1 }; // in the canvas's coordinates
+let unmatchedKey = "";
 let queue = Promise.resolve();
 
-// oxlint-disable-next-line prefer-number-coercion -- Number("20px") is NaN
-const px = (value: string): number => Number.parseFloat(value); // "20px" → 20
 const prop = (value: unknown, key: string): unknown =>
   typeof value === "object" && value !== null ? Reflect.get(value, key) : undefined;
+const entries = (value: unknown): [string, unknown][] =>
+  typeof value === "object" && value !== null ? Object.entries(value) : [];
 const text = (value: unknown): string | null => (typeof value === "string" ? value : null);
 const doc = (): Document | null => frame.contentDocument;
 const windowElement = (): Element | null => doc()?.querySelector("[data-slot=window]") ?? null;
 const box = (): Box => windowElement()?.getBoundingClientRect() ?? new DOMRect(0, 0, 0, 0);
-const onDisk = (): number => (saved === null ? baseline : px(saved));
+const was = (selector: string, name: string): string | null =>
+  files.get(selector)?.get(name) ?? null;
+const savedRadius = (): string | null => was(ROOT, NAME);
+const onDisk = (): number => px(savedRadius() ?? `${baseline}px`);
 const nextFrame = () =>
   new Promise<void>((resolve) => {
     requestAnimationFrame(() => {
       resolve();
     });
   });
-const style = (node: Element) => (node.ownerDocument.defaultView ?? window).getComputedStyle(node);
+// Drops `node`'s inline `name` once the frame's copy of the override file gives `expected`.
+// Stops early when something newer has changed the inline value.
+async function settle(
+  node: Styled,
+  selector: string,
+  name: string,
+  expected: string | null,
+): Promise<void> {
+  const inline = node.style.getPropertyValue(name);
+  for (let i = 0; i < 300; i++) {
+    if (node.style.getPropertyValue(name) !== inline) return;
+    const d = doc();
+    if (d !== null && applied(d, selector, name) === expected) {
+      node.style.removeProperty(name);
+      return;
+    }
+    // oxlint-disable-next-line no-await-in-loop -- one look per painted frame
+    await nextFrame();
+  }
+}
+
+const settleRadius = async (): Promise<void> => {
+  const root = doc()?.documentElement;
+  if (root !== undefined) await settle(root, ROOT, NAME, savedRadius());
+};
 
 function show(radius: number): void {
   shown = radius;
@@ -81,65 +194,80 @@ function show(radius: number): void {
   doc()?.documentElement.style.setProperty(NAME, `${radius}px`);
 }
 
-// Drops the inline value once the frame's own stylesheets give `expected`: after the override
-// file's hot reload. Stops early when a newer change has taken the value in hand.
-async function settle(expected: number): Promise<void> {
-  for (let i = 0; i < 300; i++) {
-    const root = doc()?.documentElement;
-    if (root === undefined || shown !== expected || drag !== null) return;
-    root.style.removeProperty(NAME);
-    if (px(style(root).getPropertyValue(NAME)) === expected) return;
-    root.style.setProperty(NAME, `${expected}px`);
-    // oxlint-disable-next-line no-await-in-loop -- one look per painted frame
-    await nextFrame();
-  }
-}
-
 async function load(): Promise<void> {
   const values: unknown = await (await fetch(ENDPOINT)).json();
-  baseline = px(text(prop(prop(values, NAME), "baseline")) ?? "0");
-  saved = text(prop(prop(values, NAME), "override"));
-  reset.disabled = saved === null;
+  const token = prop(prop(values, "tokens"), NAME);
+  baseline = px(text(prop(token, "baseline")) ?? "0");
+  files = new Map(
+    entries(prop(values, "saved")).map(([selector, rule]) => [
+      selector,
+      new Map(entries(rule).flatMap(([n, v]) => (typeof v === "string" ? [[n, v]] : []))),
+    ]),
+  );
+  const radius = text(prop(token, "override"));
+  if (radius !== null) files.set(ROOT, new Map([[NAME, radius]]));
+  reset.disabled = savedRadius() === null;
   show(onDisk());
-  await settle(shown);
+  await settleRadius();
 }
 
-async function write(value: string | null): Promise<void> {
+function record(selector: string, name: string, value: string | null): void {
+  const block = files.get(selector) ?? new Map<string, string>();
+  if (value === null) block.delete(name);
+  else block.set(name, value);
+  files.set(selector, block);
+}
+
+// Writes one value, or removes it when `value` is null. True when the file now has it.
+async function write(selector: string, name: string, value: string | null): Promise<boolean> {
   const response = await fetch(ENDPOINT, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ name: NAME, value, was: saved }),
+    body: JSON.stringify({ selector, name, value, was: was(selector, name) }),
   });
   if (response.status === 409) {
     message.textContent = "The override file changed on disk, so this was not saved. Showing it.";
     await load();
-    return;
+    return false;
   }
   if (!response.ok) {
     const body: unknown = await response.json();
     message.textContent = `Not saved: ${text(prop(body, "error")) ?? response.statusText}`;
-    return;
+    return false;
   }
-  saved = value;
-  reset.disabled = saved === null;
+  record(selector, name, value);
   message.textContent = "";
-  await settle(onDisk());
+  return true;
 }
 
-// Writes the value in hand, or null to reset, one write at a time (ADR-004). A value the file
-// already gives, saved or baseline, writes nothing.
+// Runs `task` after every earlier write: one write at a time (ADR-004).
+function enqueue(task: () => Promise<void>): void {
+  queue = queue.then(task).catch((error: unknown) => {
+    message.textContent = `Not saved: ${String(error)}`;
+  });
+}
+
+// Saves `selector`'s `name` from `node`'s inline value, or removes it when `value` is null, then
+// drops the inline value once the file applies.
+function saveValue(node: Styled, selector: string, name: string, value: string | null): void {
+  enqueue(async () => {
+    if (await write(selector, name, value)) void settle(node, selector, name, value);
+  });
+}
+
+// Writes the radius in hand, or null to reset. A value the file already gives, saved or
+// baseline, writes nothing.
 function save(value: string | null = `${shown}px`): void {
-  const same = value === saved || (saved === null && value === `${baseline}px`);
-  queue = queue
-    .then(() => (same ? settle(shown) : write(value)))
-    .catch((error: unknown) => {
-      message.textContent = `Not saved: ${String(error)}`;
-    });
+  const same = value === savedRadius() || (savedRadius() === null && value === `${baseline}px`);
+  enqueue(async () => {
+    if (!same && !(await write(ROOT, NAME, value))) return;
+    reset.disabled = savedRadius() === null;
+    void settleRadius();
+  });
 }
 
 function commitField(): void {
-  const typed = /^\s*(\d+)\s*(?:px)?\s*$/.exec(field.value)?.[1]; // " 20px " → "20"
-  const radius = typed === undefined ? Number.NaN : Number(typed);
+  const radius = wholeNumber(field.value) ?? Number.NaN;
   if (radius <= maxRadius(box())) show(radius);
   else field.value = String(shown);
   save();
@@ -183,48 +311,428 @@ function draggable(control: HTMLElement, moved: (dx: number, dy: number) => numb
   });
 }
 
-function onKey(event: KeyboardEvent): void {
-  if (event.key === "Escape" && drag !== null) {
-    event.preventDefault();
-    endDrag(true);
+// Saves each value the edit changed, and drops the inline values it put back.
+function commit(): void {
+  if (edit === null) return;
+  const { selection: target, before, touched } = edit;
+  edit = null;
+  for (const name of touched) {
+    const value = target.node.style.getPropertyValue(name);
+    if (px(value) === before[name]) target.node.style.removeProperty(name);
+    else saveValue(target.node, target.selector, name, value);
   }
 }
 
-// Follows the frame's document across reloads: selection by click, and Escape while it has focus.
+// Puts back every value the edit changed, unsaved.
+function revert(): void {
+  if (edit === null) return;
+  for (const name of edit.touched) edit.selection.node.style.removeProperty(name);
+  edit = null;
+}
+
+function begin(): Edit | null {
+  if (selection === null) return null;
+  if (edit?.selection !== selection) {
+    commit();
+    edit = { selection, before: spacingOf(selection.node), touched: new Set() };
+  }
+  return edit;
+}
+
+function setSpacing(name: Spacing, value: number): void {
+  const current = begin();
+  if (current === null || current.selection.locked.has(name)) return;
+  current.selection.node.style.setProperty(name, `${value}px`);
+  current.touched.add(name);
+}
+
+const readout = (bar: Bar): string => {
+  const value = selection === null ? 0 : spacingOf(selection.node)[bar.name];
+  return `${bar.side === null ? "Gap" : "Padding"} ${value}`;
+};
+
+function highlightOpposite(bar: Bar, sides: Side[]): void {
+  for (const other of paddingBars) {
+    other.space.dataset.active = String(
+      other.side !== bar.side && sides.includes(other.side ?? "top"),
+    );
+  }
+}
+
+function dragBar(bar: Bar, dx: number, dy: number, event: PointerEvent): void {
+  const before = edit?.before;
+  if (before === undefined) return;
+  const step = event.shiftKey ? 10 : 2;
+  if (bar.side === null) {
+    setSpacing("gap", dragSpace(before.gap, bar.axis === "x" ? dx : dy, step));
+  } else {
+    const value = dragSpace(before[bar.name], paddingMoved(bar.side, dx, dy), step);
+    const sides = paddingSides(bar.side, event.altKey, event.shiftKey);
+    for (const side of SIDES) {
+      const name: Spacing = `padding-${side}`;
+      setSpacing(name, sides.includes(side) ? value : before[name]);
+    }
+    highlightOpposite(bar, sides);
+  }
+  pill.textContent = readout(bar);
+}
+
+function endPress(): void {
+  if (press !== null) delete press.bar.el.dataset.dragging;
+  for (const bar of paddingBars) delete bar.space.dataset.active;
+  press = null;
+}
+
+function openInplace(bar: Bar): void {
+  if (selection === null) return;
+  inplaceBar = bar;
+  inplace.value = String(spacingOf(selection.node)[bar.name]);
+  inplace.style.translate = bar.el.style.translate;
+  inplace.ariaLabel = bar.el.ariaLabel;
+  inplace.hidden = false;
+  inplace.focus();
+  inplace.select();
+}
+
+function closeInplace(keep: boolean): void {
+  const bar = inplaceBar;
+  if (bar === null) return;
+  inplaceBar = null;
+  inplace.hidden = true;
+  const typed = wholeNumber(inplace.value);
+  if (keep && typed !== null) {
+    setSpacing(bar.name, typed);
+    commit();
+  } else {
+    revert();
+  }
+}
+
+function stepBar(bar: Bar, event: KeyboardEvent): void {
+  const sign = ARROWS[event.key];
+  if (sign === undefined || selection === null) return;
+  event.preventDefault();
+  const from = spacingOf(selection.node)[bar.name];
+  setSpacing(bar.name, Math.max(from + sign * (event.shiftKey ? 10 : 2), 0));
+  pill.textContent = readout(bar);
+}
+
+function wireBar(bar: Bar): void {
+  const { el } = bar;
+  el.addEventListener("pointerdown", (event) => {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    el.setPointerCapture(event.pointerId);
+    commit();
+    begin();
+    press = { bar, x: event.clientX, y: event.clientY, moved: false };
+  });
+  el.addEventListener("pointermove", (event) => {
+    if (press?.bar !== bar) return;
+    const [dx, dy] = [event.clientX - press.x, event.clientY - press.y];
+    if (!press.moved && Math.abs(dx) + Math.abs(dy) < DRAG_START) return;
+    press.moved = true;
+    el.dataset.dragging = "";
+    dragBar(bar, dx, dy, event);
+  });
+  el.addEventListener("pointerup", () => {
+    if (press?.bar !== bar) return;
+    const { moved } = press;
+    endPress();
+    if (moved) commit();
+    else openInplace(bar);
+  });
+  el.addEventListener("pointercancel", () => {
+    if (press?.bar !== bar) return;
+    endPress();
+    revert();
+  });
+  el.addEventListener("pointerenter", () => {
+    pill.textContent = readout(bar);
+  });
+  el.addEventListener("focus", () => {
+    begin();
+  });
+  el.addEventListener("keydown", (event) => {
+    stepBar(bar, event);
+    if (event.key === "Enter") commit();
+  });
+  el.addEventListener("blur", commit);
+}
+
+function makeBar(name: Spacing, side: Side | null, axis: "x" | "y"): Bar {
+  const aria = side === null ? "Gap" : `Padding ${side}`;
+  const el = element("div", { className: "bar", tabIndex: 0, role: "slider", ariaLabel: aria });
+  const space = element("div", { className: "space" });
+  el.dataset.name = name;
+  space.dataset.name = name;
+  const bar = { el, space, name, side, axis };
+  wireBar(bar);
+  return bar;
+}
+
+const paddingBars = SIDES.map((side) =>
+  makeBar(`padding-${side}`, side, side === "top" || side === "bottom" ? "y" : "x"),
+);
+const gapBars: Bar[] = [];
+
+function select(node: Styled | null): void {
+  commit();
+  closeInplace(false);
+  selection =
+    node === null
+      ? null
+      : {
+          node,
+          selector: selectorOf(node),
+          locked: new Set(SPACING.filter((n) => node.style.getPropertyValue(n) !== "")),
+        };
+  selectorText.textContent = selection?.selector ?? "";
+}
+
+function onKey(event: KeyboardEvent): void {
+  if (event.key !== "Escape") return;
+  if (drag !== null) {
+    event.preventDefault();
+    endDrag(true);
+  } else if (press !== null) {
+    event.preventDefault();
+    endPress();
+    revert();
+  } else if (selecting && selection !== null && !(event.target instanceof HTMLInputElement)) {
+    event.preventDefault();
+    select(chain(selection.node).at(-2) ?? null);
+  }
+}
+
+const block = (event: Event): void => {
+  if (!selecting) return;
+  event.preventDefault();
+  event.stopImmediatePropagation();
+};
+
+// Follows the frame's document across reloads: selection by click, and keys while it has focus.
 function watchFrame(): void {
-  const frameDoc = doc();
-  if (frameDoc === null) return;
-  frameDoc.addEventListener("keydown", onKey);
-  frameDoc.addEventListener(
+  const view = frame.contentWindow;
+  if (view === null) return;
+  select(null);
+  view.addEventListener(
     "pointerdown",
     (event) => {
-      // The path, not `instanceof Element`: the frame's nodes belong to the frame's own realm.
-      const target = windowElement();
-      selected = target !== null && event.composedPath().includes(target);
+      if (!selecting || event.button !== 0) return;
+      const under = view.document.elementFromPoint(event.clientX, event.clientY);
+      select(pick(chain(under), chain(selection?.node ?? null)));
     },
     true,
   );
+  for (const type of BLOCKED) view.addEventListener(type, block, true);
+  view.addEventListener("pointermove", (event) => {
+    pointer = { x: event.clientX, y: event.clientY };
+  });
+  view.addEventListener("keydown", onKey);
 }
 
-// ponytail: reads the window's box every frame, so the overlay follows resize, scroll, layout
-// and hot reloads alike; switch to observers if it ever shows in a profile.
-function track(): void {
+function trackRadius(): void {
   const rect = box();
-  overlay.dataset.selected = String(selected && rect.width > 0);
   const target = windowElement();
   const radius = target === null ? 0 : px(style(target).borderTopLeftRadius);
-  Object.assign(outline.style, {
-    left: `${rect.left}px`,
-    top: `${rect.top}px`,
-    width: `${rect.width}px`,
-    height: `${rect.height}px`,
-    borderRadius: `${radius}px`,
-  });
   for (const [i, handle] of handles.entries()) {
     const { x, y } = handlePoint(CORNERS[i] ?? "nw", rect, radius, LEAST_INSET);
     handle.style.translate = `${x}px ${y}px`;
     handle.ariaValueMax = String(maxRadius(rect));
   }
+}
+
+function placeBar(bar: Bar, x: number, y: number, space: Box, value: number): void {
+  bar.el.style.translate = `${x}px ${y}px`;
+  bar.el.dataset.axis = bar.axis;
+  bar.el.ariaValueNow = String(value);
+  place(bar.space, space);
+}
+
+function trackPadding(node: Styled, border: Box, s: CSSStyleDeclaration): Box {
+  const inner = {
+    left: border.left + px(s.borderLeftWidth),
+    top: border.top + px(s.borderTopWidth),
+    width: border.width - px(s.borderLeftWidth) - px(s.borderRightWidth),
+    height: border.height - px(s.borderTopWidth) - px(s.borderBottomWidth),
+  };
+  const v = spacingOf(node);
+  const padding = {
+    top: v["padding-top"],
+    right: v["padding-right"],
+    bottom: v["padding-bottom"],
+    left: v["padding-left"],
+  };
+  for (const bar of paddingBars) {
+    const side = bar.side ?? "top";
+    const band = paddingSpace(side, inner, padding);
+    const inset = Math.max(padding[side] / 2, PADDING_INSET);
+    const mid = { x: band.left + band.width / 2, y: band.top + band.height / 2 };
+    const at: Record<Side, [number, number]> = {
+      top: [mid.x, inner.top + inset],
+      right: [inner.left + inner.width - inset, mid.y],
+      bottom: [mid.x, inner.top + inner.height - inset],
+      left: [inner.left + inset, mid.y],
+    };
+    placeBar(bar, ...at[side], band, padding[side]);
+    bar.el.hidden = selection?.locked.has(bar.name) === true;
+  }
+  return {
+    left: inner.left + padding.left,
+    top: inner.top + padding.top,
+    width: inner.width - padding.left - padding.right,
+    height: inner.height - padding.top - padding.bottom,
+  };
+}
+
+function trackGaps(node: Styled, content: Box): void {
+  const laidOut = laysOut(node) && selection?.locked.has("gap") !== true;
+  const children = [...node.children].filter((c) => {
+    const cs = style(c);
+    return cs.display !== "none" && cs.position !== "absolute" && cs.position !== "fixed";
+  });
+  const spaces = laidOut
+    ? gapSpaces(
+        content,
+        children.map((c) => c.getBoundingClientRect()),
+      )
+    : [];
+  while (gapBars.length < spaces.length) {
+    const bar = makeBar("gap", null, "x");
+    gapBars.push(bar);
+    gapLayer.append(bar.el, bar.space);
+  }
+  const gap = spacingOf(node).gap;
+  for (const [i, bar] of gapBars.entries()) {
+    const space = spaces[i];
+    bar.el.hidden = space === undefined;
+    bar.space.hidden = space === undefined;
+    if (space === undefined) continue;
+    bar.axis = space.axis;
+    const { left, top, width, height } = space.box;
+    placeBar(bar, left + width / 2, top + height / 2, space.box, gap);
+  }
+}
+
+// ponytail: reads the selection's box every frame, so the overlay follows resize, scroll, layout
+// and hot reloads alike; switch to observers if it ever shows in a profile.
+function trackSelection(): void {
+  if (selection !== null && !selection.node.isConnected) select(null);
+  const node = selection?.node;
+  overlay.dataset.selected = String(node !== undefined);
+  overlay.dataset.window = String(node !== undefined && node === windowElement());
+  if (node === undefined) return;
+  const rect = node.getBoundingClientRect();
+  const s = style(node);
+  place(outline, rect);
+  outline.style.borderRadius = s.borderTopLeftRadius;
+  overlay.dataset.hover = String(inside(pointer, rect));
+  trackGaps(node, trackPadding(node, rect, s));
+}
+
+const rows = SPACING.map((name) => {
+  const input = element("input", { id: `wb-${name}`, inputMode: "numeric", autocomplete: "off" });
+  const clear = element("button", { type: "button", className: "reset" }, "Reset");
+  clear.ariaLabel = `Reset ${LABEL[name].toLowerCase()}`;
+  const row = element(
+    "div",
+    { className: "row" },
+    element("label", { htmlFor: input.id }, LABEL[name]),
+    input,
+    clear,
+  );
+  const commitInput = () => {
+    const typed = wholeNumber(input.value);
+    if (typed !== null) setSpacing(name, typed);
+    commit();
+    if (selection !== null) input.value = String(spacingOf(selection.node)[name]);
+  };
+  input.addEventListener("focus", () => {
+    begin();
+  });
+  input.addEventListener("keydown", (event) => {
+    const sign = UP_DOWN[event.key];
+    if (sign !== undefined && selection !== null && !input.readOnly) {
+      event.preventDefault();
+      const value = Math.max(spacingOf(selection.node)[name] + sign * (event.shiftKey ? 10 : 1), 0);
+      setSpacing(name, value);
+      input.value = String(value);
+    }
+    if (event.key === "Enter") commitInput();
+  });
+  input.addEventListener("blur", commitInput);
+  clear.addEventListener("click", () => {
+    if (selection !== null) saveValue(selection.node, selection.selector, name, null);
+  });
+  return { name, input, clear, row };
+});
+const selectionPanel = element(
+  "section",
+  { ariaLabel: "Selection" },
+  element("h2", {}, "Selection"),
+  selectorText,
+  ...rows.map((r) => r.row),
+  note,
+);
+const unmatchedPanel = element(
+  "section",
+  { ariaLabel: "Saved values that match nothing" },
+  element("h2", {}, "Saved, matching nothing"),
+  unmatchedList,
+);
+
+function trackFields(): void {
+  selectionPanel.hidden = selection === null;
+  if (selection === null) return;
+  const { node, selector, locked } = selection;
+  const v = spacingOf(node);
+  const laidOut = laysOut(node);
+  for (const { name, input, clear } of rows) {
+    if (document.activeElement !== input) input.value = String(v[name]);
+    input.readOnly = locked.has(name);
+    input.disabled = name === "gap" && !laidOut;
+    clear.disabled = was(selector, name) === null;
+  }
+  note.hidden = locked.size === 0;
+}
+
+// Lists saved values whose selector matches nothing in the frame's page, each with a delete.
+function trackUnmatched(): void {
+  const d = doc();
+  if (d === null || windowElement() === null) return;
+  const lost = [...files]
+    .filter(([selector]) => selector !== ROOT && !matches(d, selector))
+    .flatMap(([selector, rule]) => [...rule].map(([name, value]) => ({ selector, name, value })));
+  const key = JSON.stringify(lost);
+  if (key === unmatchedKey) return;
+  unmatchedKey = key;
+  unmatchedPanel.hidden = lost.length === 0;
+  unmatchedList.replaceChildren(
+    ...lost.map(({ selector, name, value }) => {
+      const remove = element("button", { type: "button", className: "reset" }, "Delete");
+      remove.ariaLabel = `Delete ${name} of ${selector}`;
+      remove.addEventListener("click", () => {
+        enqueue(async () => {
+          await write(selector, name, null);
+        });
+      });
+      return element(
+        "li",
+        {},
+        element("code", {}, selector),
+        element("span", {}, `${name}: ${value}`),
+        remove,
+      );
+    }),
+  );
+}
+
+function track(): void {
+  trackRadius();
+  trackSelection();
+  trackFields();
+  trackUnmatched();
   requestAnimationFrame(track);
 }
 
@@ -236,12 +744,17 @@ document.body.append(
     element(
       "aside",
       { className: "inspector", ariaLabel: "Inspector" },
+      element("div", { className: "tools" }, tool),
       element("h2", {}, "Window"),
       element("div", { className: "row" }, label, field, reset),
+      selectionPanel,
+      unmatchedPanel,
       message,
     ),
   ),
 );
+paddingLayer.append(...paddingBars.flatMap((b) => [b.el, b.space]));
+unmatchedPanel.hidden = true;
 
 for (const [i, handle] of handles.entries()) {
   const corner = CORNERS[i] ?? "nw";
@@ -251,7 +764,7 @@ for (const [i, handle] of handles.entries()) {
   handle.style.cursor = CURSOR[corner];
   draggable(handle, (dx, dy) => handleMoved(corner, dx, dy));
   handle.addEventListener("keydown", (event) => {
-    nudge(event, { ArrowUp: 1, ArrowRight: 1, ArrowDown: -1, ArrowLeft: -1 });
+    nudge(event, ARROWS);
     if (event.key === "Enter") save();
   });
   handle.addEventListener("blur", () => {
@@ -260,13 +773,37 @@ for (const [i, handle] of handles.entries()) {
 }
 draggable(label, (dx) => dx);
 overlay.addEventListener("pointermove", (event) => {
-  // Below right of the pointer, or below left where the canvas would clip it.
-  const right = event.clientX + 14 + pill.offsetWidth <= overlay.clientWidth;
-  const x = right ? event.clientX + 14 : event.clientX - 14 - pill.offsetWidth;
-  pill.style.translate = `${x}px ${event.clientY + 14}px`;
+  const spacingBar = event.target instanceof HTMLElement ? event.target.closest(".bar") : null;
+  const bounds = selection?.node.getBoundingClientRect();
+  // Keep spacing readouts beside the selected box, rather than on top of its content.
+  const left = spacingBar?.getAttribute("data-name") === "padding-left";
+  const edge = spacingBar === null ? event.clientX : (bounds?.right ?? event.clientX);
+  const x = left
+    ? Math.max(0, (bounds?.left ?? event.clientX) - 14 - pill.offsetWidth)
+    : Math.min(edge + 14, overlay.clientWidth - pill.offsetWidth);
+  const y = spacingBar === null ? event.clientY + 14 : event.clientY - pill.offsetHeight / 2;
+  pill.style.translate = `${x}px ${y}px`;
+});
+document.addEventListener("pointermove", (event) => {
+  const origin = overlay.getBoundingClientRect();
+  pointer = { x: event.clientX - origin.left, y: event.clientY - origin.top };
+});
+inplace.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") closeInplace(true);
+  if (event.key !== "Escape") return;
+  event.stopPropagation();
+  closeInplace(false);
+});
+inplace.addEventListener("blur", () => {
+  closeInplace(true);
+});
+tool.addEventListener("click", () => {
+  selecting = !selecting;
+  tool.ariaPressed = String(selecting);
+  if (!selecting) select(null);
 });
 field.addEventListener("keydown", (event) => {
-  nudge(event, { ArrowUp: 1, ArrowDown: -1 });
+  nudge(event, UP_DOWN);
   if (event.key === "Enter") commitField();
 });
 field.addEventListener("blur", commitField);

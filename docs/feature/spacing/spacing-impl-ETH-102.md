@@ -145,3 +145,13 @@ lists them.
 ## Drift log
 
 Record here anything built differently from this plan, and why.
+
+* The browser check uses the scripted demo's Catalog limit card, which has multiple flex-column
+  children and exposes both gap and padding handles. Its screenshots show the selected card,
+  hovered gap, and live Alt-padding drag.
+* Saved writes stay sequential, but inline-style cleanup no longer blocks the write queue. Vite
+  can coalesce adjacent CSS updates, so waiting for each intermediate stylesheet state kept later
+  values from being written. Each inline value is removed when the framed stylesheet catches up.
+* Spacing readouts sit beside the selected card instead of over its content, and Alt highlights
+  both affected padding bands. The existing radius browser check selects the window's Reset
+  button by its accessible name because the inspector now contains additional spacing Reset buttons.
