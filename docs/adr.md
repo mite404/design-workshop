@@ -230,3 +230,6 @@ exists in development only, the first Workbench interface inside the app; the th
 not shown while the app is in the Workbench; the fade of ADR-024 must leave the drawer
 visible; and a story is shown in a frame inside the app, so that the drawer stays, which puts
 the document being edited two frames down from the Workbench.
+Amended 2026-11-11: a row is a component and nothing else. The elements inside a component,
+its named parts included, are selected by clicking the canvas. (Ethan: "no layers, no child
+elements. if i want to edit just a `<p>` inside a component then i can click on it directly".)

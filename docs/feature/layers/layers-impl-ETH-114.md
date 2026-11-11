@@ -44,8 +44,9 @@ below means criterion 3 in `layers-story.md`.
 component, in source. This is the Structure lane; the Workbench does not write it (ADR-001).
 
 **The tree's data.** A pure function in `packages/workbench` takes a root element and
-returns the nested list of elements that have a `data-wb` or `data-slot` name, in page order.
-It skips a subtree it is told to skip, which is the drawer.
+returns the nested list of elements that have a `data-wb` name, in page order. An element
+with only a `data-slot` name is a part of a component and is not listed. It skips a subtree it
+is told to skip, which is the drawer.
 
 **The tree's rows.** In development, inside the Workbench's frame, the drawer renders the
 tree in place of `ProjectTree`, with the drawer's existing row components, so its look does
@@ -77,7 +78,7 @@ component library; the tree is a nested list with the standard tree roles.
 * Add `data-wb` to each catalog component's root (AC 1, 2). Ten of the files render a
   fragment or a portal somewhere; where a component has no single root element, note it in
   the drift log and leave it unnamed.
-* Add the tree function: a root element in, nested named elements out, in page order,
+* Add the tree function: a root element in, nested component roots out, in page order,
   without the skipped subtree (AC 3, 6, 7, 8).
 * Render the tree in the drawer when the app is inside the Workbench in development, with
   tree roles and keys (AC 3, 4, 9, 13).
@@ -89,11 +90,11 @@ component library; the tree is a nested list with the standard tree roles.
 ## Test plan
 
 * A unit test covers the tree function: nesting, page order, two instances of one name as
-  two rows, an unnamed element between two named ones skipped without losing the nesting,
+  two rows, a `data-slot` part between two components skipped without losing the nesting,
   and the skipped subtree left out.
 * One browser test: click a row and assert the same selector is selected as clicking that
-  element on the canvas; select an unnamed element on the canvas and assert its nearest
-  named ancestor's row is marked; navigate the app and assert the tree changed.
+  element on the canvas; select a paragraph inside a component on the canvas and assert the
+  component's row is marked; navigate the app and assert the tree changed.
 * Drive the tree with the keyboard only and assert Enter selects.
 * Open the app outside the Workbench and assert the drawer lists threads.
 * Compare a screenshot of the drawer listing components with one listing threads; only the

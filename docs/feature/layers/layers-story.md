@@ -1,6 +1,6 @@
 # Story: find and select components in the drawer's component tree
 
-Status: draft 2, Nov 11 2026. The decisions are Ethan's (ADR-023, ADR-025). The criteria are
+Status: draft 3, Nov 11 2026. The decisions are Ethan's (ADR-023, ADR-025). The criteria are
 not yet confirmed by him. Ticket: [ETH-114](layers-impl-ETH-114.md).
 
 **As** a designer working on a dense screen,
@@ -24,23 +24,25 @@ of the left Layers panel earlier drafts had.
 
 ### The tree
 
-3. While the app runs inside the Workbench, the side drawer lists what is on the canvas as a
-   tree, in place of the thread list. Rows are nested as the elements are in the page and
-   labelled by name. A named element is a component's root or a named part of a component.
+3. While the app runs inside the Workbench, the side drawer lists the components on the
+   canvas as a tree, in place of the thread list. A row is a component, labelled by its name.
+   A component inside another component is nested under it. The elements inside a component,
+   its named parts included, are not rows.
 4. The drawer looks as it does today. Only what it lists changes.
 5. The tree lists only what is rendered. It updates when the app navigates, when the mode
    changes, and when a hot reload changes the page.
 6. Each instance of a repeated component is its own row.
 7. The tree does not list the drawer or itself.
-8. An element with no name stays selectable on the canvas. It is not listed.
+8. An element inside a component, a paragraph for example, is selected by clicking it on the
+   canvas. It is not listed.
 9. Outside the Workbench the drawer lists threads, as today.
 
 ### Selecting
 
 10. Clicking a row selects its element exactly as clicking it on the canvas does: the
     outline, the handles and the inspector follow.
-11. Selecting on the canvas marks the selected element's row, or its nearest named
-    ancestor's, and scrolls it into view. A closed drawer stays closed.
+11. Selecting on the canvas marks the row of the selected component, or of the component the
+    selected element is inside, and scrolls it into view. A closed drawer stays closed.
 12. Hovering a row outlines its element on the canvas.
 13. The tree works from the keyboard: Up and Down move, Right and Left open and close, Enter
     selects.
@@ -51,7 +53,8 @@ of the left Layers panel earlier drafts had.
 
 ## Differences from Figma
 
-- Figma lists every layer. This tree lists named elements only.
+- Figma lists every layer. This tree lists components only. An element inside a component is
+  selected on the canvas.
 - Figma's layers panel belongs to the editor. This tree is drawn by the app being designed,
   in its own drawer.
 
