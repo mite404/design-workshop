@@ -139,7 +139,7 @@ await step("a write over a file changed on disk is refused with a message", asyn
 await step("Reset removes the value and the baseline 12px returns", async () => {
   await page.getByRole("button", { name: "Reset", exact: true }).click();
   await expectRadius(12, EMPTY);
-  assert.equal(await page.getByRole("button", { name: "Reset", exact: true }).isDisabled(), true);
+  await page.getByRole("button", { name: "Reset", exact: true, disabled: true }).waitFor();
   await page.mouse.move(700, 450);
   await page.screenshot({ path: `${out}/03-after-reset.png` });
 });

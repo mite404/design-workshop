@@ -13,6 +13,8 @@ const { page, context, errors } = await workbenchPage(browser);
 const frame = page.frameLocator("iframe");
 const card = frame.locator("section.card.state").first();
 const button = (name) => page.getByRole("button", { name, exact: true });
+// The toolbar follows history a frame later, so a disabled button is waited for, not read.
+const off = (name) => page.getByRole("button", { name, exact: true, disabled: true }).waitFor();
 const state = () =>
   page.evaluate(() => JSON.parse(sessionStorage.getItem("workbench-history")).history);
 const disk = () => readFileSync(file, "utf8");
@@ -82,9 +84,9 @@ try {
   await page.goto(`${base}/__workbench/`);
   await frame.locator("[data-slot=window]").waitFor();
   await page.waitForFunction(() => document.querySelector("#radius").value === "12");
-  assert.ok(await button("Undo").isDisabled());
-  assert.ok(await button("Redo").isDisabled());
-  assert.ok(await button("Discard").isDisabled());
+  await off("Undo");
+  await off("Redo");
+  await off("Discard");
   await page.locator(".tool").click();
   await page.frames()[1].goto(`${base}/t/demo-brief`);
   await card.waitFor();
@@ -192,7 +194,7 @@ try {
   await cursor(beforeUndo - 1);
   await type("#wb-type-base", "18");
   await cursor(beforeUndo);
-  assert.ok(await button("Redo").isDisabled(), "new edit drops redo");
+  await off("Redo");
   const expectedHistory = await state();
   const external = disk().replace("--type-base: 18px", "--type-base: 20px");
   writeFileSync(file, external);
@@ -219,19 +221,19 @@ try {
   await button("Discard").click();
   await expectFile(starting);
   await cursor(0);
-  assert.ok(await button("Redo").isDisabled());
-  assert.ok(await button("Discard").isDisabled());
+  await off("Redo");
+  await off("Discard");
   await page.reload();
   await frame.locator("[data-slot=window]").waitFor();
   await cursor(0);
-  assert.ok(await button("Undo").isDisabled());
+  await off("Undo");
   console.log("ok discard confirmation, HEAD restore, disabled state and cleared session history");
   writeFileSync(file, starting.replace(":root {\n", ":root {\n  --window-radius: 18px;\n"));
   await page.waitForFunction(
     () =>
       ![...document.querySelectorAll("button")].find((b) => b.textContent === "Discard").disabled,
   );
-  assert.ok(await button("Undo").isDisabled(), "external changes are not local history");
+  await off("Undo");
   page.once("dialog", (dialog) => dialog.accept());
   await button("Discard").click();
   await expectFile(starting);

@@ -273,7 +273,7 @@ await step("each Reset removes its value, and the app's own scale returns", asyn
   }
   await expectScale(BASELINE, []);
   await expectField("base", "12");
-  assert.ok(await page.getByRole("button", { name: "Reset leading" }).isDisabled());
+  await page.getByRole("button", { name: "Reset leading", disabled: true }).waitFor();
 });
 
 await browser.close();

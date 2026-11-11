@@ -284,7 +284,7 @@ await step("a value set in the element's own style is read-only", async () => {
 await step("Reset on the gap field removes it and the card's own 0 returns", async () => {
   await page.getByRole("button", { name: "Reset gap" }).click();
   await expectSpacing("gap", 0, saved.slice(1));
-  assert.equal(await page.getByRole("button", { name: "Reset gap" }).isDisabled(), true);
+  await page.getByRole("button", { name: "Reset gap", disabled: true }).waitFor();
 });
 
 await step("clicking empty space deselects", async () => {

@@ -279,7 +279,7 @@ await step("a type value in the element's own style is read-only", async () => {
   await page.locator("section[aria-label=Typography]:not([hidden])").waitFor({ state: "detached" });
   await select(heading);
   await page.waitForFunction(() => document.querySelector("#wb-font-size").readOnly);
-  assert.equal(await page.getByRole("button", { name: "Size steps" }).isDisabled(), true);
+  await page.getByRole("button", { name: "Size steps", disabled: true }).waitFor();
   assert.equal(await panel.locator(".type-note").isVisible(), true);
   await heading.evaluate((el) => el.style.removeProperty("font-size"));
 });
