@@ -146,3 +146,25 @@ second reference for pointer capture and keyboard parity.
 ## Drift log
 
 Record here anything built differently from this plan, and why.
+
+* The spike worked: a dev-only plugin in `packages/workbench/src/plugin.ts` serves the page at
+  `/__workbench/` from React Router's dev server, ahead of the app's routes. No alternative needed.
+* Drags snap to 2px, or 10px with Shift (ADR-010), for the label scrub as well as the handles.
+  The plan said the scrub moves 1 per pixel; it still adds 1 per pixel moved, then snaps. Arrow
+  keys keep 1 and 10, so odd values stay possible (ADR-015).
+* The field does not clamp typed input. A value above half the window's shorter side is refused
+  and the last good value stays (AC 5). Drags and arrow keys clamp (AC 3).
+* A handle sits on its corner's diagonal at the radius, but never closer than 8px to the corner,
+  so a radius of 0 still leaves the handles inside the window. Each handle is also a focusable
+  slider with arrow keys, for keyboard parity on the canvas (ADR-005).
+* The write endpoint checks `Origin` against the request's own `Host`, not a fixed address, so
+  it also works through an orb portal. A missing or opaque `Origin` is refused.
+* `vite.config.ts` loads the plugin in Node, which needs explicit `.ts` imports, so
+  `apps/web/tsconfig.json` and the workbench tsconfig allow them.
+* Vite does not watch `packages/workbench`, so a change to the page or the plugin needs a dev
+  server restart. The override file itself does hot reload, as AC 9 needs.
+* The page is plain DOM in one module and one stylesheet, not React. It has one field, one label
+  and an overlay, and needs no JSX setup in the package.
+* The browser test is a lever, `apps/web/scripts/corner-radius-check.mjs`, run by hand against
+  the dev server like the other levers. It also covers the conflict message (AC 13). It writes
+  the real override file and leaves it empty.
