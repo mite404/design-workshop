@@ -1,7 +1,7 @@
 import Color from "colorjs.io";
 import { AtRule, parse, Rule, type Container, type Document, type Root } from "postcss";
 import valueParser from "postcss-value-parser";
-import ts from "typescript";
+import ts from "@typescript/typescript6";
 import type {
   AuthoredColor,
   ColorInventory,

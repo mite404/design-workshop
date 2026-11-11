@@ -136,6 +136,8 @@ review, so each commit message or report names them.
 
 2026-11-11 - Accepted.
 The whole repo, Template included, moves to TypeScript 7 for the native compiler's speed.
+One deviation: `tools/verify-ui-drift` parses scripts with `@typescript/typescript6`, because
+TypeScript 7 no longer ships the in-process compiler API; it still typechecks on TypeScript 7.
 
 ## ADR-019 - Type steps use Tailwind's names
 
