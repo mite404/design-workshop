@@ -1,6 +1,7 @@
 /// <reference types="vite/client" />
 import type { Decorator, Preview } from "@storybook/react-vite";
 import { trackInputModality } from "@yaklabs/catalog/inputModality";
+import overridesCss from "@yaklabs/catalog/overrides.css?inline";
 import catalogCss from "@yaklabs/catalog/tokens.css?inline";
 import appCss from "./app-cascade.css?inline";
 
@@ -15,9 +16,10 @@ const withTheme: Decorator = (Story, context) => {
 // One stylesheet at a time, first in the head, where the tokens import always sat: the catalog's
 // own CSS, or for a story that asks for `cascade: "app"` (the shadcn components in packages/ui)
 // the web app's Tailwind cascade. Loading Tailwind for every story would restyle the catalog's,
-// which the app draws in its own layer (ADR-082).
+// which the app draws in its own layer (ADR-082). Either way the override file comes last and
+// outside every layer, as in the app, so a saved value reaches stories too (ADR-002).
 const withCascade: Decorator = (Story, context) => {
-  const css = context.parameters.cascade === "app" ? appCss : catalogCss;
+  const css = (context.parameters.cascade === "app" ? appCss : catalogCss) + overridesCss;
   let sheet = document.querySelector<HTMLStyleElement>("style#cascade");
   if (sheet === null) {
     sheet = document.createElement("style");

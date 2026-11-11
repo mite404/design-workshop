@@ -1,0 +1,19 @@
+{
+  "name": "@yaklabs/workbench",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./overrides": "./src/overrides.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "@yaklabs/config": "workspace:*",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

@@ -128,3 +128,17 @@ export function setOverride(
 ## Drift log
 
 Record here anything built differently from this plan, and why.
+
+* The app loads the file from `apps/web/src/root.tsx`, right after `./index.css`, not from inside
+  `index.css`. CSS puts every `@import` before all other rules, so an unlayered import in
+  `index.css` would load before the rest of that file, and `index.css`'s own `:root`
+  values (`--panel-peek`, `--traffic-close` and others) would beat a saved value. Loaded after it,
+  a saved `--panel-peek: 999ms` won over the app's 220ms in the browser. The catalog exports the
+  file as `@yaklabs/catalog/overrides.css` for this.
+* Storybook appends the file in `preview.ts` to whichever cascade a story uses, not inside
+  `app-cascade.css`. The same `@import` ordering applies, and one line covers both cascades.
+* `setOverride` throws when the selector, name or value would not fit the file's one-line shape,
+  such as a value holding `;`, `{` or a newline. Writing it would make a file that
+  `parseOverrides` refuses.
+* The throwaway element for the hand-typed check was injected through the browser, so no source
+  file held it.

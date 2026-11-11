@@ -20,7 +20,8 @@
     "./thread": "./src/thread.ts",
     "./threadShare": "./src/threadShare.ts",
     "./transcript": "./src/transcript.ts",
-    "./tokens.css": "./src/tokens.css"
+    "./tokens.css": "./src/tokens.css",
+    "./overrides.css": "./src/overrides.css"
   },
   "scripts": {
     "test": "vitest run",

@@ -1,0 +1,4 @@
+{
+  "extends": "@yaklabs/config/tsconfig.base.json",
+  "include": ["src"]
+}
