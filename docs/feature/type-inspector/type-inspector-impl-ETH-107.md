@@ -134,3 +134,19 @@ a parent's `gap`, and two margins that meet can merge into one, as CSS defines.
 ## Drift log
 
 Record here anything built differently from this plan, and why.
+
+* Chrome reads `trim-both cap alphabetic` back as `cap alphabetic`, its shortest form, so the
+  endpoint accepts both spellings and the override file holds `text-box: cap alphabetic`.
+* Every control keeps the Typography section's rule that a value equal to the computed one is
+  not saved. So upper case saves `font-variant-caps: normal` only after small caps was saved,
+  and bulleted on a paragraph saves `display` and `list-style-position`, since its
+  `list-style-type` is already `disc`.
+* The browser test selects a list item rather than a `ul`, because a `ul` holds no text of its
+  own and so shows no Typography section. A list item takes the same markers-only path.
+* Escape with any popover open now only closes it. Before, with focus outside a text field, it
+  also selected the parent, in the Basics popover and in the Size list.
+* The popover opens beside the inspector, as Figma's does, so the section stays in view.
+* Browsers: the levers run in Playwright Chromium 153 on Linux. Playwright WebKit (Safari 26.6
+  engine on Linux, an approximation of Safari) passed the same flow: every control set, pressed
+  and reset, with no page errors. Actual Safari, Google Chrome on macOS and Helium were not
+  exercised for this ticket.

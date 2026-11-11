@@ -4,7 +4,9 @@
 // Italic, set letter spacing to -0.5, press Up twice in line height, align centre, align a taller
 // block to the bottom, then reset each. Then the font picker (ETH-106), with no network: open it,
 // type "news", move to Newsreader Variable and back out with Escape, pick it, reset it, and see
-// the missing font warning for a made-up family. Each step checks the computed style, the control
+// the missing font warning for a made-up family. Then the Basics popover (ETH-107) on a paragraph:
+// justify, underline, small caps then upper case, cap height trim, bulleted, and paragraph spacing
+// up three times, each reset after; and numbered on a list item saves its markers alone. Each step checks the computed style, the control
 // and the override file. Screenshots go to .artifacts/type/. Exits 1 when any step fails. It
 // writes the real override file and leaves it empty, so start from an empty one.
 //
@@ -39,7 +41,8 @@ const frame = page.frameLocator("iframe");
 const heading = frame.locator("h2").first();
 const panel = page.locator("section[aria-label=Typography]");
 const control = (id) => page.locator(`#wb-${id}`);
-const css = (name) => heading.evaluate((el, n) => getComputedStyle(el).getPropertyValue(n), name);
+let subject = heading; // the element the checks read
+const css = (name) => subject.evaluate((el, n) => getComputedStyle(el).getPropertyValue(n), name);
 let sel = "";
 const file = (decls) =>
   decls.length === 0 ? EMPTY : `${EMPTY}${sel} {\n${decls.map((d) => `  ${d};\n`).join("")}}\n`;
@@ -70,12 +73,12 @@ async function expectType(decls, name, value) {
   }
   const note = await page.locator(".message").textContent();
   assert.equal(readFileSync(OVERRIDES, "utf8"), file(decls), `override file ${note}`);
-  await heading.evaluate(async (el) => {
+  await subject.evaluate(async (el) => {
     for (let i = 0; i < 100 && el.getAttribute("style"); i++) {
       await new Promise((r) => requestAnimationFrame(r));
     }
   });
-  assert.equal((await heading.getAttribute("style")) ?? "", "", "no inline value left behind");
+  assert.equal((await subject.getAttribute("style")) ?? "", "", "no inline value left behind");
   for (let i = 0; i < 50 && (await css(name)) !== value; i++) await page.waitForTimeout(100);
   assert.equal(await css(name), value, `computed ${name} from the file`);
 }
@@ -116,7 +119,7 @@ await step("the demo brief's first heading is selected and the section shows it"
   assert.equal(await control("line-height").inputValue(), "24");
   assert.equal(await control("letter-spacing").inputValue(), "-1.4");
   assert.equal(
-    await page.locator("[aria-label='Align left']").getAttribute("aria-pressed"),
+    await panel.locator("[aria-label='Align left']").getAttribute("aria-pressed"),
     "true",
   );
   assert.equal(await page.locator(".type-align").nth(1).isHidden(), true, "one line, no vertical");
@@ -450,6 +453,199 @@ await step("a saved family that is nowhere shows the missing font warning", asyn
   assert.equal(await post(null, made), 200);
   await warning.waitFor({ state: "hidden" });
   assert.equal(readFileSync(OVERRIDES, "utf8"), EMPTY);
+});
+
+const para = frame.locator("p", { hasText: "The backlog fell" });
+const basics = page.locator("#wb-basics");
+const inBasics = (name) => basics.getByRole("button", { name, exact: true });
+const pressed = async (name) => (await inBasics(name).getAttribute("aria-pressed")) === "true";
+const openBasics = async () => {
+  if ((await basics.isVisible()) === true) return;
+  await page.getByRole("button", { name: "Type settings" }).click();
+  await basics.waitFor();
+};
+/** @type {string[]} */
+let paraDecls = [];
+const basicsStep = (name, decls, run, prop, value) =>
+  step(name, async () => {
+    await run();
+    paraDecls = decls;
+    await expectType(paraDecls, prop, value);
+  });
+
+await step("the settings button opens the Basics popover in Figma's order", async () => {
+  await page.keyboard.press("Escape");
+  subject = para;
+  await para.scrollIntoViewIfNeeded();
+  await select(para);
+  sel = (await page.locator(".selector").textContent()) ?? "";
+  await panel.waitFor();
+  await openBasics();
+  const rows = await basics.locator(".basics-row > span").allTextContents();
+  assert.deepEqual(rows, [
+    "Alignment",
+    "Decoration",
+    "Case",
+    "Vertical trim",
+    "List style",
+    "Paragraph spacing",
+  ]);
+  assert.ok(await pressed("Align left"), "filled from the computed style");
+  assert.ok(await pressed("No decoration"));
+  assert.ok(await pressed("As typed"));
+  assert.ok(await pressed("Standard"));
+  assert.ok(await pressed("No list"));
+  assert.equal(
+    await page.getByRole("button", { name: "Type settings" }).getAttribute("aria-expanded"),
+    "true",
+  );
+  await page.waitForTimeout(200);
+  await page.screenshot({ path: `${out}/14-basics.png` });
+});
+
+await basicsStep(
+  "justify",
+  ["text-align: justify"],
+  () => inBasics("Justify").click(),
+  "text-align",
+  "justify",
+);
+await basicsStep(
+  "underline",
+  [...paraDecls, "text-decoration-line: underline"],
+  () => inBasics("Underline").click(),
+  "text-decoration-line",
+  "underline",
+);
+await step(
+  "small caps saves font-variant-caps alone; upper case puts it back to normal",
+  async () => {
+    await inBasics("Small caps").click();
+    paraDecls = [...paraDecls, "font-variant-caps: small-caps"];
+    await expectType(paraDecls, "font-variant-caps", "small-caps");
+    assert.ok(await pressed("Small caps"));
+    await inBasics("Upper case").click();
+    paraDecls = [
+      ...paraDecls.slice(0, -1),
+      "font-variant-caps: normal",
+      "text-transform: uppercase",
+    ];
+    await expectType(paraDecls, "text-transform", "uppercase");
+    assert.equal(await css("font-variant-caps"), "normal");
+    assert.ok(await pressed("Upper case"));
+  },
+);
+// Chrome saves the shortest form of "trim-both cap alphabetic".
+await basicsStep(
+  "cap height to baseline trim",
+  [...paraDecls, "text-box: cap alphabetic"],
+  () => inBasics("Cap height to baseline").click(),
+  "text-box",
+  "cap alphabetic",
+);
+await step("bulleted makes a plain block one list item", async () => {
+  await inBasics("Bulleted list").click();
+  // A paragraph's list-style-type is already disc, so it is not saved again.
+  paraDecls = [...paraDecls, "display: list-item", "list-style-position: inside"];
+  await expectType(paraDecls, "display", "list-item");
+  assert.equal(await css("list-style-type"), "disc");
+  assert.equal(await css("list-style-position"), "inside");
+  assert.ok(await pressed("Bulleted list"));
+});
+await step("Up three times in paragraph spacing adds 6px", async () => {
+  const from = Number(String(await css("margin-bottom")).replace(/px$/, "")); // "16px" → 16
+  await control("margin-bottom").focus();
+  for (let i = 0; i < 3; i++) await page.keyboard.press("ArrowUp");
+  assert.equal(await css("margin-bottom"), `${from + 6}px`, "live during the change");
+  await page.keyboard.press("Enter");
+  paraDecls = [...paraDecls, `margin-bottom: ${from + 6}px`];
+  await expectType(paraDecls, "margin-bottom", `${from + 6}px`);
+  await expectControl("margin-bottom", String(from + 6));
+  await control("margin-bottom").focus(); // Enter left the field
+  for (let i = 0; i < 3; i++) await page.keyboard.press("Shift+ArrowDown"); // 22, 12, 2, 0
+  assert.equal(await css("margin-bottom"), "0px", "never below 0");
+  await page.keyboard.press("Escape");
+  assert.equal(await css("margin-bottom"), `${from + 6}px`, "Escape puts it back");
+  await openBasics();
+  await page.waitForTimeout(200);
+  await page.screenshot({ path: `${out}/15-basics-applied.png` });
+  await para.screenshot({ path: `${out}/16-paragraph-applied.png` });
+  assert.deepEqual(
+    changed(),
+    sorted([...new Set([...before, "packages/catalog/src/overrides.css"])]),
+  );
+});
+await step("Escape closes the popover, keeps the selection, and focus returns", async () => {
+  await inBasics("Justify").focus();
+  await page.keyboard.press("Escape");
+  await basics.waitFor({ state: "hidden" });
+  assert.equal(await page.evaluate(() => document.activeElement?.ariaLabel), "Type settings");
+  assert.equal(await page.locator(".selector").textContent(), sel, "still the paragraph");
+  await openBasics();
+  await page.locator(".inspector h2").first().click(); // outside the popover
+  await basics.waitFor({ state: "hidden" });
+  await openBasics();
+  await control("margin-bottom").press("Enter"); // focus leaves for the page
+  await page.keyboard.press("Escape");
+  await basics.waitFor({ state: "hidden" });
+  assert.equal(await page.locator(".selector").textContent(), sel, "Escape only closed it");
+});
+
+await step("each reset removes what its control wrote", async () => {
+  await openBasics();
+  // Each reset: what it removes, and a computed value that shows the paragraph's own returned.
+  const resets = [
+    { label: "alignment", names: ["text-align"], name: "text-align", value: "start" },
+    {
+      label: "decoration",
+      names: ["text-decoration-line"],
+      name: "text-decoration-line",
+      value: "none",
+    },
+    {
+      label: "case",
+      names: ["text-transform", "font-variant-caps"],
+      name: "text-transform",
+      value: "none",
+    },
+    { label: "vertical trim", names: ["text-box"], name: "text-box", value: "normal" },
+    {
+      label: "list style",
+      names: ["display", "list-style-type", "list-style-position"],
+      name: "display",
+      value: "block",
+    },
+    {
+      label: "paragraph spacing",
+      names: ["margin-bottom"],
+      name: "list-style-type",
+      value: "disc",
+    },
+  ];
+  for (const { label, names, name, value } of resets) {
+    await basics.getByRole("button", { name: `Reset ${label}` }).click();
+    paraDecls = paraDecls.filter((d) => names.every((n) => !d.startsWith(`${n}:`)));
+    await expectType(paraDecls, name, value);
+  }
+  assert.equal(readFileSync(OVERRIDES, "utf8"), EMPTY);
+  assert.ok(await pressed("No list"));
+});
+
+await step("numbered on a list item saves list-style-type alone", async () => {
+  await page.keyboard.press("Escape");
+  const item = frame.locator("li", { hasText: "Access requests are few" });
+  subject = item;
+  await item.scrollIntoViewIfNeeded();
+  await select(item);
+  sel = (await page.locator(".selector").textContent()) ?? "";
+  await openBasics();
+  assert.ok(await pressed("Bulleted list"));
+  await inBasics("Numbered list").click();
+  await expectType(["list-style-type: decimal"], "list-style-type", "decimal");
+  assert.equal(await css("display"), "list-item");
+  await basics.getByRole("button", { name: "Reset list style" }).click();
+  await expectType([], "list-style-type", "disc");
+  assert.deepEqual(changed(), before, "the repo is unchanged");
 });
 
 await context.close();

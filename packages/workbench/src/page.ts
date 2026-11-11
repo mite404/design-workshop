@@ -621,6 +621,7 @@ function select(node: Styled | null): void {
   if (stepList.matches(":popover-open")) stepList.hidePopover();
   endFonts();
   if (fontPicker.matches(":popover-open")) fontPicker.hidePopover();
+  if (basics.matches(":popover-open")) basics.hidePopover();
   closeInplace(false);
   selection =
     node === null
@@ -636,6 +637,13 @@ function select(node: Styled | null): void {
   selectorText.textContent = selection?.selector ?? "";
 }
 
+// Whether Escape selects the parent: the select tool is on, focus is not in a field, and no
+// popover is open, whose own Escape closes it.
+const climbs = (event: KeyboardEvent): boolean =>
+  selecting &&
+  !(event.target instanceof HTMLInputElement) &&
+  document.querySelector(":popover-open") === null;
+
 function onKey(event: KeyboardEvent): void {
   stepOffset(event);
   if (event.key !== "Escape") return;
@@ -649,7 +657,7 @@ function onKey(event: KeyboardEvent): void {
     event.preventDefault();
     endPress();
     revert();
-  } else if (selecting && selection !== null && !(event.target instanceof HTMLInputElement)) {
+  } else if (selection !== null && climbs(event)) {
     event.preventDefault();
     select(chain(selection.node).at(-2) ?? null);
   }
@@ -922,8 +930,6 @@ const offsetRows = (["x", "y"] as const).map((axis) => {
 // A type value set inline during a change: the selection it is on, and its computed value before.
 const typeEdits = new Map<TypeName, { target: Selection; before: string }>();
 const BLOCKS = new Set(["block", "inline-block", "flow-root", "list-item"]);
-const H_ALIGN = { left: "Align left", center: "Align center", right: "Align right" };
-const V_ALIGN = { start: "Align top", center: "Align middle", end: "Align bottom" };
 // 12px icons, stroked in the text colour.
 const ICONS = {
   lineHeight: "M1 1.5h10M1 10.5h10M3.6 8.3 6 3.7l2.4 4.6M4.3 7h3.4",
@@ -937,6 +943,14 @@ const ICONS = {
   reset: "M3 3.6A4 4 0 1 1 2 6M3 1.2v2.6h2.6",
   chevron: "M3.5 4.75 6 7.25l2.5-2.5",
   warning: "M6 1.5 11 10.5H1L6 1.5ZM6 5v2.4M6 8.9v.1",
+  justify: "M1.5 2.5h9M1.5 6h9M1.5 9.5h9",
+  settings:
+    "M1.5 3.5h1M5.5 3.5h5M1.5 8.5h5M9.5 8.5h1M5.5 3.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0ZM9.5 8.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Z",
+  trimNone: "M1.5 1.5h9M1.5 10.5h9M3.6 8.3 6 3.7l2.4 4.6M4.3 7h3.4",
+  trimCap: "M1.5 3.7h9M1.5 8.3h9M3.6 8.3 6 3.7l2.4 4.6M4.3 7h3.4",
+  bulleted: "M2 3h.01M2 6h.01M2 9h.01M4.5 3h6M4.5 6h6M4.5 9h6",
+  numbered: "M1.5 2.2l1-.7v3M1.5 7.6c.3-.5 1.5-.5 1.5.2 0 .6-1.5 1.2-1.5 2h1.6M5 3h5.5M5 8.5h5.5",
+  paragraph: "M1.5 1.5h9M1.5 4h6M1.5 8h9M1.5 10.5h6",
 };
 
 function icon(path: string): HTMLElement {
@@ -1659,43 +1673,258 @@ trackingReset.addEventListener("click", () => {
   resetType("letter-spacing");
 });
 
-// A row of three buttons that each set `name` to their value.
-function segmented(name: TypeName, labels: Record<string, string>, icons: string[]) {
-  const buttons = Object.entries(labels).map(([value, title], i) => {
+// Sets each value live, then saves them one request after another; null removes a saved value.
+function setTypes(values: [TypeName, string | null][]): void {
+  for (const [name, value] of values) {
+    if (value === null) resetType(name);
+    else setType(name, value);
+  }
+  for (const [name] of values) commitType(name);
+}
+
+// A row of buttons with a pressed state, one per option, and its reset after it.
+function segmented(
+  aria: string,
+  options: Record<string, [title: string, content: HTMLElement]>,
+  onPick: (value: string) => void,
+  onReset: () => void,
+) {
+  const buttons = Object.entries(options).map(([value, [title, content]]) => {
     const button = element(
       "button",
       { type: "button", ariaLabel: title, title, ariaPressed: "false" },
-      icon(icons[i] ?? ""),
+      content,
     );
     button.dataset.value = value;
     button.addEventListener("click", () => {
-      setType(name, value);
-      commitType(name);
+      onPick(value);
     });
     return button;
   });
-  const clear = typeReset(name === "text-align" ? "horizontal alignment" : "vertical alignment");
-  clear.addEventListener("click", () => {
-    resetType(name);
-  });
+  const clear = typeReset(aria.toLowerCase());
+  clear.addEventListener("click", onReset);
   const group = element("div", { className: "segmented", role: "group" }, ...buttons);
-  group.ariaLabel = name === "text-align" ? "Horizontal alignment" : "Vertical alignment";
+  group.ariaLabel = aria;
   return { buttons, clear, cell: element("div", { className: "type-align" }, group, clear) };
 }
-const hAlign = segmented("text-align", H_ALIGN, [ICONS.left, ICONS.center, ICONS.right]);
-const vAlign = segmented("align-content", V_ALIGN, [ICONS.start, ICONS.middle, ICONS.end]);
+type Segmented = ReturnType<typeof segmented>;
+
+// A row that sets one property: a pick saves the option's value, its reset removes it.
+const one = (name: TypeName) =>
+  [
+    (value: string) => {
+      setTypes([[name, value]]);
+    },
+    () => {
+      resetType(name);
+    },
+  ] as const;
+const hAlign = segmented(
+  "Horizontal alignment",
+  {
+    left: ["Align left", icon(ICONS.left)],
+    center: ["Align center", icon(ICONS.center)],
+    right: ["Align right", icon(ICONS.right)],
+  },
+  ...one("text-align"),
+);
+const vAlign = segmented(
+  "Vertical alignment",
+  {
+    start: ["Align top", icon(ICONS.start)],
+    center: ["Align middle", icon(ICONS.middle)],
+    end: ["Align bottom", icon(ICONS.end)],
+  },
+  ...one("align-content"),
+);
+
+const cell = (...children: HTMLElement[]) =>
+  element("div", { className: "type-field" }, ...children);
+
+// The Basics popover (ETH-107): the type settings used less often, behind the section's
+// settings button, in Figma's order. Each row saves plain CSS like the section's controls.
+
+// A short line of text as a button's face, for the options Figma shows as letters.
+function glyph(face: string, css = ""): HTMLElement {
+  const span = element("span", { className: "glyph", ariaHidden: "true" }, face);
+  span.style.cssText = css;
+  return span;
+}
+
+// How list style applies to an element: a list's markers only, the element as one list item,
+// or not at all.
+type ListMode = "markers" | "item" | null;
+const LISTS = new Set(["UL", "OL", "LI"]);
+const LIST: TypeName[] = ["display", "list-style-type", "list-style-position"];
+function listMode(target: Selection, s: CSSStyleDeclaration): ListMode {
+  if (LISTS.has(target.node.tagName)) return "markers";
+  return s.display === "block" || current(target, "display") === "list-item" ? "item" : null;
+}
+
+const basicsAlign = segmented(
+  "Alignment",
+  {
+    left: ["Align left", icon(ICONS.left)],
+    center: ["Align center", icon(ICONS.center)],
+    right: ["Align right", icon(ICONS.right)],
+    justify: ["Justify", icon(ICONS.justify)],
+  },
+  ...one("text-align"),
+);
+const decoration = segmented(
+  "Decoration",
+  {
+    none: ["No decoration", glyph("–")],
+    underline: ["Underline", glyph("U", "text-decoration: underline")],
+    "line-through": ["Strikethrough", glyph("S", "text-decoration: line-through")],
+  },
+  ...one("text-decoration-line"),
+);
+const textCase = segmented(
+  "Case",
+  {
+    none: ["As typed", glyph("–")],
+    uppercase: ["Upper case", glyph("AG")],
+    lowercase: ["Lower case", glyph("ag")],
+    capitalize: ["Title case", glyph("Ag")],
+    "small-caps": ["Small caps", glyph("Aɢ")],
+  },
+  (value) => {
+    const small = value === "small-caps";
+    setTypes([
+      ["text-transform", small ? "none" : value],
+      ["font-variant-caps", small ? "small-caps" : "normal"],
+    ]);
+  },
+  () => {
+    resetType("text-transform", "font-variant-caps");
+  },
+);
+const trim = segmented(
+  "Vertical trim",
+  {
+    normal: ["Standard", icon(ICONS.trimNone)],
+    "trim-both cap alphabetic": ["Cap height to baseline", icon(ICONS.trimCap)],
+  },
+  ...one("text-box"),
+);
+const listStyle = segmented(
+  "List style",
+  {
+    none: ["No list", glyph("–")],
+    disc: ["Bulleted list", icon(ICONS.bulleted)],
+    decimal: ["Numbered list", icon(ICONS.numbered)],
+  },
+  (value) => {
+    if (selection === null) return;
+    const mode = listMode(selection, style(selection.node));
+    if (mode === "markers") setTypes([["list-style-type", value]]);
+    else if (value === "none") setTypes(LIST.map((n) => [n, null]));
+    else {
+      setTypes([
+        ["display", "list-item"],
+        ["list-style-type", value],
+        ["list-style-position", "inside"],
+      ]);
+    }
+  },
+  () => {
+    resetType(...LIST);
+  },
+);
+const listNote = element(
+  "p",
+  { className: "type-note" },
+  "List style needs a block or a list, not an inline or laid out element.",
+);
+const paragraphInput = typeField(
+  "wb-margin-bottom",
+  "Paragraph spacing",
+  "margin-bottom",
+  (event, sign) => {
+    if (selection === null) return null;
+    const now = Math.round(px(style(selection.node).marginBottom));
+    return `${Math.max(now + sign * (event.shiftKey ? 10 : 2), 0)}px`;
+  },
+  (raw) => {
+    const n = wholeNumber(raw);
+    return n === null ? null : `${n}px`;
+  },
+);
+const paragraphReset = typeReset("paragraph spacing");
+paragraphReset.addEventListener("click", () => {
+  resetType("margin-bottom");
+});
+
+const basicsRow = (name: string, control: HTMLElement) =>
+  element("div", { className: "basics-row" }, element("span", {}, name), control);
+const basics = element(
+  "div",
+  { id: "wb-basics", className: "basics", role: "dialog", ariaLabel: "Type settings" },
+  element("h3", {}, "Basics"),
+  basicsRow("Alignment", basicsAlign.cell),
+  basicsRow("Decoration", decoration.cell),
+  basicsRow("Case", textCase.cell),
+  basicsRow("Vertical trim", trim.cell),
+  basicsRow("List style", listStyle.cell),
+  listNote,
+  basicsRow(
+    "Paragraph spacing",
+    element(
+      "div",
+      { className: "type-align" },
+      cell(
+        element(
+          "label",
+          { htmlFor: paragraphInput.id, title: "Paragraph spacing" },
+          icon(ICONS.paragraph),
+        ),
+        paragraphInput,
+      ),
+      paragraphReset,
+    ),
+  ),
+);
+basics.popover = "auto";
+const basicsOpen = element(
+  "button",
+  {
+    type: "button",
+    className: "type-open",
+    ariaLabel: "Type settings",
+    title: "Type settings",
+    ariaHasPopup: "dialog",
+    ariaExpanded: "false",
+  },
+  icon(ICONS.settings),
+);
+basicsOpen.popoverTargetElement = basics;
+// Opens beside the inspector, as Figma's does, so the section stays in view.
+basics.addEventListener("beforetoggle", (event) => {
+  if (event.newState !== "open") return;
+  const rect = basicsOpen.getBoundingClientRect();
+  const inspector = basicsOpen.closest(".inspector")?.getBoundingClientRect() ?? rect;
+  basics.style.left = `${inspector.left - 280 - 8}px`; // its width, 8px clear of the inspector
+  basics.style.top = `${Math.max(rect.top - 8, 8)}px`;
+});
+basics.addEventListener("toggle", (event) => {
+  const open = event.newState === "open";
+  basicsOpen.ariaExpanded = String(open);
+  if (!open) return;
+  const overflow = basics.getBoundingClientRect().bottom - (innerHeight - 8);
+  if (overflow > 0) basics.style.top = `${Math.max(px(basics.style.top) - overflow, 8)}px`;
+  basics.querySelector<HTMLButtonElement>("[aria-pressed=true]:enabled")?.focus();
+});
 
 const typeNote = element(
   "p",
   { className: "type-note" },
   "Read-only fields are set in the element's own style attribute, which no stylesheet overrides.",
 );
-const cell = (...children: HTMLElement[]) =>
-  element("div", { className: "type-field" }, ...children);
 const typePanel = element(
   "section",
   { ariaLabel: "Typography", className: "type" },
-  element("h2", {}, "Typography"),
+  element("div", { className: "type-head" }, element("h2", {}, "Typography"), basicsOpen),
   element(
     "div",
     { className: "type-grid" },
@@ -1802,28 +2031,51 @@ function trackSize(target: Selection, s: CSSStyleDeclaration): void {
   sizeOpen.disabled = sizeInput.readOnly;
 }
 
-function trackAlign(target: Selection, s: CSSStyleDeclaration): void {
-  const h = H_ALIGNED[s.textAlign] ?? s.textAlign;
-  const v = V_ALIGNED[s.alignContent] ?? s.alignContent;
-  for (const [{ buttons, clear }, name, value] of [
-    [hAlign, "text-align", h],
-    [vAlign, "align-content", v],
-  ] as const) {
-    for (const b of buttons) {
-      b.ariaPressed = String(b.dataset.value === value);
-      b.disabled = target.locked.has(name);
-    }
-    clear.disabled = was(target.selector, name) === null;
+// Presses the option `value` names, and shows whether `names` are read-only or saved.
+function trackChoice(target: Selection, row: Segmented, value: string, names: TypeName[]): void {
+  for (const b of row.buttons) {
+    b.ariaPressed = String(b.dataset.value === value);
+    b.disabled = names.some((n) => target.locked.has(n));
   }
+  row.clear.disabled = names.every((n) => was(target.selector, n) === null);
+}
+
+function trackAlign(target: Selection, s: CSSStyleDeclaration): void {
+  trackChoice(target, hAlign, H_ALIGNED[s.textAlign] ?? s.textAlign, ["text-align"]);
+  trackChoice(target, vAlign, V_ALIGNED[s.alignContent] ?? s.alignContent, ["align-content"]);
   // Vertical alignment only moves text in a block taller than its text.
   const { node } = target;
   const content = node.clientHeight - px(s.paddingTop) - px(s.paddingBottom);
   vAlign.cell.hidden = !BLOCKS.has(s.display) || content <= textHeight(node, s.lineHeight) + 1;
 }
 
+function trackList(target: Selection, s: CSSStyleDeclaration): void {
+  const mode = listMode(target, s);
+  const list = mode === "item" && s.display !== "list-item" ? "none" : s.listStyleType;
+  trackChoice(target, listStyle, list, mode === "markers" ? ["list-style-type"] : LIST);
+  if (mode === null) for (const b of listStyle.buttons) b.disabled = true;
+  listNote.hidden = mode !== null;
+}
+
+function trackBasics(target: Selection, s: CSSStyleDeclaration): void {
+  trackChoice(target, basicsAlign, H_ALIGNED[s.textAlign] ?? s.textAlign, ["text-align"]);
+  trackChoice(target, decoration, s.textDecorationLine, ["text-decoration-line"]);
+  const small = s.fontVariantCaps === "small-caps" && s.textTransform === "none";
+  trackChoice(target, textCase, small ? "small-caps" : s.textTransform, [
+    "text-transform",
+    "font-variant-caps",
+  ]);
+  const trimmed = s.getPropertyValue("text-box") !== "normal";
+  trackChoice(target, trim, trimmed ? "trim-both cap alphabetic" : "normal", ["text-box"]);
+  trackList(target, s);
+  const spacing = String(Math.round(px(s.marginBottom)));
+  trackField(target, "margin-bottom", paragraphInput, spacing, paragraphReset);
+}
+
 function trackType(): void {
   const target = selection;
   typePanel.hidden = target === null || ownText(target.node) === undefined;
+  if (typePanel.hidden && basics.matches(":popover-open")) basics.hidePopover();
   if (target === null || typePanel.hidden) return;
   const s = style(target.node);
   trackStyle(target, s);
@@ -1833,6 +2085,7 @@ function trackType(): void {
   const tracking = String(spacingNow(target.node));
   trackField(target, "letter-spacing", trackingInput, tracking, trackingReset);
   trackAlign(target, s);
+  trackBasics(target, s);
   typeNote.hidden = !TYPE.some((n) => target.locked.has(n));
 }
 
@@ -1935,7 +2188,7 @@ document.body.append(
     ),
   ),
 );
-document.body.append(stepList, fontPicker);
+document.body.append(stepList, fontPicker, basics);
 paddingLayer.append(...paddingBars.flatMap((b) => [b.el, b.space]));
 unmatchedPanel.hidden = true;
 

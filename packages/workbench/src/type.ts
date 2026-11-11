@@ -13,6 +13,15 @@ export const TYPE = [
   "letter-spacing",
   "text-align",
   "align-content",
+  // The Basics popover (ETH-107).
+  "text-decoration-line",
+  "text-transform",
+  "font-variant-caps",
+  "text-box",
+  "list-style-type",
+  "list-style-position",
+  "display",
+  "margin-bottom",
 ] as const;
 
 /** A type property the Workbench sets. */
@@ -28,6 +37,11 @@ const WHOLE_PX = /^[1-9]\d{0,3}px$/;
 const STEP_VAR = new RegExp(`^var\\(--text-(?:${STEPS.join("|")})\\)$`);
 const EM = /^-?\d(?:\.\d{1,3})?em$/;
 const WEIGHT = /^(?:[1-9]\d{0,2}|1000)$/;
+const PX_FROM_0 = /^(?:0|[1-9]\d{0,3})px$/;
+const oneOf =
+  (...values: string[]) =>
+  (v: string): boolean =>
+    values.includes(v);
 
 // Each type property's check: the whole value must pass before it reaches the file.
 const CHECKS: Record<TypeName, (v: string) => boolean> = {
@@ -37,8 +51,17 @@ const CHECKS: Record<TypeName, (v: string) => boolean> = {
   "font-size": (v) => STEP_VAR.test(v) || WHOLE_PX.test(v),
   "line-height": (v) => WHOLE_PX.test(v),
   "letter-spacing": (v) => EM.test(v) && Number.parseFloat(v) >= -1 && Number.parseFloat(v) <= 2,
-  "text-align": (v) => v === "left" || v === "center" || v === "right",
-  "align-content": (v) => v === "start" || v === "center" || v === "end",
+  "text-align": oneOf("left", "center", "right", "justify"),
+  "align-content": oneOf("start", "center", "end"),
+  "text-decoration-line": oneOf("none", "underline", "line-through"),
+  "text-transform": oneOf("none", "uppercase", "lowercase", "capitalize"),
+  "font-variant-caps": oneOf("normal", "small-caps"),
+  // Chrome serializes trim-both, the default edge, away: both spellings are one value.
+  "text-box": oneOf("normal", "trim-both cap alphabetic", "cap alphabetic"),
+  "list-style-type": oneOf("none", "disc", "decimal"),
+  "list-style-position": oneOf("inside"),
+  display: oneOf("list-item"),
+  "margin-bottom": (v) => PX_FROM_0.test(v),
 };
 
 /** Whether `name` is a type property the Workbench sets. */
