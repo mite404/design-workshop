@@ -233,3 +233,28 @@ the document being edited two frames down from the Workbench.
 Amended 2026-11-11: a row is a component and nothing else. The elements inside a component,
 its named parts included, are selected by clicking the canvas. (Ethan: "no layers, no child
 elements. if i want to edit just a `<p>` inside a component then i can click on it directly".)
+
+## ADR-026 - Check and commit is one press, and its review is what else changed
+
+2026-11-11 - Accepted. Changes PRD section 8 and criteria 2 and 7 of the check and commit
+story. The first half reverses what ETH-112 shipped.
+Pressing **Check and commit** is the decision. The Workbench does not show the value diff or
+the commit message first, and does not ask for a second press. (Ethan: "for a visual designer,
+we don't need to see the commit message or the value change. just pressing check & commit is
+enough to know that we're concretizing a decision".) The message is still written from the
+change list. It is read in git.
+The review worth a designer's time is what the change did to the things they did not edit.
+(Ethan: "the more important thing is checking that the visual change doesn't break the app or
+shift other elements or components in unexpected ways. but that should probably be a new
+feature plan & ticket".) It is planned as its own ticket, and its criteria stay a draft until
+Ethan confirms them.
+This is not the drift check ADR-020 removed. That check held the look to a stored baseline, so
+every intended change failed it. This one stores nothing and fails nothing. It lays the screen
+out with the last commit's values and with the values now, and lists what moved or changed
+size besides the elements that were edited. The intended change is the point, and the list is
+everything else.
+Rejected: comparing screenshots pixel by pixel, which is slow, needs stored images, and cannot
+name the component that moved.
+The costs: the note that repository hooks still run, which Ethan asked to keep visible, loses
+the review it sat in and has to stay beside the progress; and with no second press, cancelling
+during the checks is the only way back from a press made by mistake.

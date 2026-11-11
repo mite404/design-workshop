@@ -161,7 +161,7 @@ git HEAD ──read baseline + override──> inspector and canvas
    │                       write one value to the override file
    │                              │ hot reload: app and stories now run the saved value
    │                              v
-   └── commit override file <── Check and commit: type check, tests, show value diff
+   └── commit override file <── Check and commit: one press, then type check and tests
 ```
 
 **Saving is automatic. Committing is a button.**
@@ -172,8 +172,12 @@ git HEAD ──read baseline + override──> inspector and canvas
   conflict if not.
 - Undo and redo step through edits since the last commit. Discard restores the override file from
   git.
-- Check and commit runs type check and tests, shows the value diff, and writes the commit message
-  from the change list. No screenshots: the canvas already shows the state.
+- Check and commit is one press (ADR-026). It runs type check and tests and commits, with the
+  message written from the change list. It shows no value diff and no message. No screenshots:
+  the canvas already shows the state.
+- Not built yet: the single press, where the build still shows the diff and waits for a second
+  press; and, before the checks, a list of what else on the screen moved or changed size. See
+  [the story](feature/check-and-commit/check-and-commit-story.md).
 
 ## 9. Requirements
 
