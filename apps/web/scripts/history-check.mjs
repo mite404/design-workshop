@@ -237,6 +237,9 @@ try {
   page.once("dialog", (dialog) => dialog.accept());
   await button("Discard").click();
   await expectFile(starting);
+  // Discard turns itself off once the Workbench has reloaded its values; typing before that
+  // races the reload, which puts the field back to 12.
+  await off("Discard");
   await page.waitForFunction(() => document.querySelector("#radius").value === "12");
   console.log("ok external edits enable Discard without a reload");
 
