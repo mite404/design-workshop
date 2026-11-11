@@ -21,7 +21,9 @@ const withTheme: Decorator = (Story, context) => {
 // outside every layer, as in the app, so a saved value reaches stories too (ADR-002).
 const withCascade: Decorator = (Story, context) => {
   const css =
-    (context.parameters.cascade === "app" ? appCss : catalogCss) + fontsCss + overridesCss;
+    (context.parameters.cascade === "app" ? appCss : `@layer catalog {${catalogCss}}`) +
+    fontsCss +
+    overridesCss;
   let sheet = document.querySelector<HTMLStyleElement>("style#cascade");
   if (sheet === null) {
     sheet = document.createElement("style");

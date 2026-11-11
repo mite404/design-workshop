@@ -16,7 +16,6 @@ import {
 } from "./interactive";
 import { LiveSentence, ShowWork, StepSlider, StopChart, TRANSITION_MS } from "./interactiveParts";
 import { prefersReducedMotion } from "./reducedMotion";
-import "./interactive.css";
 
 // Whether the bars are easing from one stop to another: true from the moment the stop changes,
 // and as the card first draws, for TRANSITION_MS. Only then may Recharts animate. It animates any

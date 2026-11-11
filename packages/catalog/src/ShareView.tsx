@@ -4,7 +4,6 @@ import { InteractiveCard } from "./InteractiveCard";
 import { decodeCard } from "./share";
 import { SharedThreadView, type LoadShare } from "./SharedThreadView";
 import { readThreadLink } from "./threadShare";
-import "./thread.css";
 
 // The page's own fragment, as an external store: opening a new link in the same tab changes
 // only the fragment, so the page re-reads it on `hashchange`. Server renders have no fragment.

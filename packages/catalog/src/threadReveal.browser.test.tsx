@@ -4,6 +4,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { ChatThreadPanel } from "./ChatThreadPanel";
 import type { Thread, ThreadMessage } from "./thread";
 import { centerInScroller } from "./threadReveal";
+import "./tokens.css";
 
 let host: HTMLElement;
 let root: Root;

@@ -3,9 +3,6 @@ import { expect, userEvent, waitFor, within } from "storybook/test";
 import { CatalogCard } from "./CatalogCard";
 import { App } from "./App";
 import { scenarios } from "./fixtures";
-// A card in a thread is styled by the thread's sheet, which the app always has around it; the
-// card alone does not load it, so without this the context control would change nothing.
-import "./thread.css";
 
 const meta = {
   title: "Catalog/Approved answers",

@@ -59,7 +59,6 @@ import {
 import { stampOf } from "./turnTime";
 import { AgentTurn, AnsweredTurns, UserTurn } from "./Turns";
 import { REVEAL_STEP } from "./WorkDetails";
-import "./thread.css";
 
 /**
  * A question the host asks in the thread's dock, in the agent's card (ADR-039) but answered to

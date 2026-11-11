@@ -8,6 +8,10 @@
 /* Newsreader's own italics, so an italic word in a headline is a real italic (ADR-160). */
 @import "@fontsource-variable/newsreader/opsz-italic.css";
 @import "./primitives.css";
+@import "./thread.css";
+@import "./interactive.css";
+@import "./dictation.css";
+@import "./motion.css";
 
 /* Registered as lengths, so each step computes to whole pixels on the root and reads back as
    one (the Workbench's readouts), and every element inherits that length. */

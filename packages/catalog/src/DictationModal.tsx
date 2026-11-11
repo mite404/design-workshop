@@ -4,7 +4,6 @@ import { useDictationView } from "./dictationSession";
 import { DevicePicker } from "./DevicePicker";
 import { Modal } from "./Modal";
 import { Waveform } from "./Waveform";
-import "./dictation.css";
 
 /** Where audio comes from: a deterministic simulation, or the user's real microphone. */
 export type DictationSource = "simulated" | "microphone";

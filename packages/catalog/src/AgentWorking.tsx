@@ -1,5 +1,4 @@
 import type { CSSProperties } from "react";
-import "./motion.css";
 
 // React's style type has no custom properties; this widens it to the `--name` ones.
 type StyleWithVars = CSSProperties & Record<`--${string}`, string | number>;
