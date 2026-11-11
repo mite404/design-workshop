@@ -4,6 +4,7 @@
   "type": "module",
   "exports": {
     "./overrides": "./src/overrides.ts",
+    "./tree": "./src/tree.ts",
     "./plugin": "./src/plugin.ts"
   },
   "scripts": {

@@ -137,3 +137,6 @@ Record here anything built differently from this plan, and why.
   Component mode may use a name for a shared edit. Existing saved selectors remain valid.
 * The override file now supports Light and Dark colour blocks from ETH-113. This ticket does
   not rewrite saved values or change either theme's cascade.
+* Inactive tabs and panes remain mounted under `data-retain` with `inert`. The reader skips
+  those subtrees and observes `inert` changes, so navigation and mode changes list only the
+  components on screen rather than retained, off-screen instances.

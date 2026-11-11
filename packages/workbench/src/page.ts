@@ -4,6 +4,7 @@
 // inline on its element until the override file has it (ADR-004): the window's corner radius on
 // the frame's root, the selection's gap and padding on the selection.
 import "./page.css";
+import { DRAWER, TREE_EVENT } from "./tree";
 import { COLOUR_ROOT, CONTRAST, contrast, HEX } from "./colour";
 import {
   historyDirection,
@@ -158,6 +159,8 @@ const frame = element("iframe", {
   className: "frame",
 });
 const outline = element("div", { className: "outline" });
+const treeOutline = element("div", { className: "tree-outline", hidden: true });
+let treeHover: Element | null = null;
 const handles = CORNERS.map(() =>
   element("div", { className: "handle", tabIndex: 0, ariaLabel: "Corner radius" }),
 );
@@ -169,6 +172,7 @@ const overlay = element(
   "div",
   { className: "overlay" },
   outline,
+  treeOutline,
   paddingLayer,
   gapLayer,
   ...handles,
@@ -927,6 +931,7 @@ function select(node: Styled | null): void {
           nudgeLocked: hasNativeTransform(node),
         };
   selectorText.textContent = selection?.selector ?? "";
+  doc()?.dispatchEvent(new CustomEvent(TREE_EVENT.selected, { detail: node }));
 }
 
 // Whether Escape selects the parent: the select tool is on, focus is not in a field, and no
@@ -961,10 +966,12 @@ function onKey(event: KeyboardEvent): void {
 // A key goes to the chat first, then to the page's own handling.
 const keyDown = (event: KeyboardEvent): void => {
   if (commitDialog.open) return;
-  if (!historyKey(event) && !chatKey(event)) onKey(event);
+  if (historyKey(event) || drawerEvent(event)) return;
+  if (!chatKey(event)) onKey(event);
 };
 
 const block = (event: Event): void => {
+  if (drawerEvent(event)) return;
   if (!selecting && !referencing()) return;
   event.preventDefault();
   event.stopImmediatePropagation();
@@ -974,33 +981,65 @@ function cancelBody(): void {
   if (bodyPress !== null) endOffset(true);
 }
 
+// Drawer controls belong to the app even while canvas clicks belong to the select tool.
+function drawerEvent(event: Event): boolean {
+  const target = event.target;
+  return (
+    target instanceof (doc()?.defaultView ?? window).Element &&
+    target.closest(
+      `${DRAWER}, [data-slot="sidebar-trigger"], [data-slot="sidebar-push-scrim"], [data-slot="sidebar-hot-zone"]`,
+    ) !== null
+  );
+}
+
+// A press within the selection starts its offset drag rather than selecting beneath it.
+function pressSelection(event: PointerEvent, under: Element | null): boolean {
+  if (selection === null) return false;
+  if (!inside({ x: event.clientX, y: event.clientY }, selection.node.getBoundingClientRect()))
+    return false;
+  if (beginOffset() === null) return false;
+  selection.node.setPointerCapture(event.pointerId);
+  bodyPress = {
+    x: event.clientX,
+    y: event.clientY,
+    id: event.pointerId,
+    under,
+    moved: false,
+  };
+  return true;
+}
+
 // Follows the frame's document across reloads: selection by click, and keys while it has focus.
 function watchFrame(): void {
   const view = frame.contentWindow;
   if (view === null) return;
+  treeHover = null;
   select(null);
+  view.document.addEventListener(TREE_EVENT.select, (event) => {
+    if (!("detail" in event)) return;
+    const node = event.detail;
+    if (
+      node instanceof (doc()?.defaultView ?? window).Element &&
+      node.isConnected &&
+      styled(node)
+    ) {
+      select(node);
+    }
+  });
+  view.document.addEventListener(TREE_EVENT.hover, (event) => {
+    if (!("detail" in event)) return;
+    treeHover =
+      event.detail instanceof (doc()?.defaultView ?? window).Element ? event.detail : null;
+  });
   watchReference(view, frame);
   view.addEventListener(
     "pointerdown",
     (event) => {
+      if (drawerEvent(event)) return;
       if (!selecting || event.button !== 0 || bodyPress !== null) return;
       view.focus();
       const under = view.document.elementFromPoint(event.clientX, event.clientY);
-      if (
-        selection !== null &&
-        inside({ x: event.clientX, y: event.clientY }, selection.node.getBoundingClientRect()) &&
-        beginOffset() !== null
-      ) {
-        selection.node.setPointerCapture(event.pointerId);
-        bodyPress = {
-          x: event.clientX,
-          y: event.clientY,
-          id: event.pointerId,
-          under,
-          moved: false,
-        };
-        return;
-      }
+      if (pressSelection(event, under)) return;
       select(pick(chain(under), chain(selection?.node ?? null)));
     },
     true,
@@ -1142,6 +1181,9 @@ function trackGaps(node: Styled, content: Box): void {
 // ponytail: reads the selection's box every frame, so the overlay follows resize, scroll, layout
 // and hot reloads alike; switch to observers if it ever shows in a profile.
 function trackSelection(): void {
+  treeOutline.hidden = treeHover === null || !treeHover.isConnected;
+  if (!treeOutline.hidden && treeHover !== null)
+    place(treeOutline, treeHover.getBoundingClientRect());
   if (selection !== null && !selection.node.isConnected) select(null);
   const node = selection?.node;
   overlay.dataset.selected = String(node !== undefined);

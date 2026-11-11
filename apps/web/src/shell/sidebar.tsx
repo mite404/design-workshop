@@ -1,11 +1,16 @@
 import { Sidebar, SidebarContent, SidebarFooter, useSidebar } from "@yaklabs/ui/components/sidebar";
-import { useEffect, useRef, type ReactNode, type RefObject } from "react";
+import { lazy, Suspense, useEffect, useRef, type ReactNode, type RefObject } from "react";
 import { useLocation } from "react-router";
 import { Account, type Looks } from "./account";
 import { ProjectTree } from "./project-tree";
 import { RailPlaces } from "./rail-places";
 import { PeekHotZone, peekProps, useSidebarPeek, type SidebarPeek } from "./sidebar-peek";
 import { SidebarResizeHandle } from "./sidebar-resize";
+
+const DrawerTree =
+  import.meta.env.DEV && typeof window !== "undefined" && window.self !== window.top
+    ? lazy(() => import("./component-tree"))
+    : ProjectTree;
 
 // On a phone the sidebar is a drawer that pushes the page aside (ADR-121), so every arrival
 // somewhere new (by a row, a place or a "+") closes it: what was chosen is what shows.
@@ -78,7 +83,9 @@ export function AppSidebar({
             <RailPlaces look="row" />
           </PhoneOnly>
           <SidebarContent>
-            <ProjectTree />
+            <Suspense fallback={null}>
+              <DrawerTree />
+            </Suspense>
           </SidebarContent>
         </div>
         <PhoneOnly>

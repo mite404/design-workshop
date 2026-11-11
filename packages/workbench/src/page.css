@@ -132,7 +132,8 @@ body {
   pointer-events: none;
 }
 
-.outline {
+.outline,
+.tree-outline {
   position: absolute;
   box-sizing: border-box;
   border: 1px solid var(--wb-accent);
