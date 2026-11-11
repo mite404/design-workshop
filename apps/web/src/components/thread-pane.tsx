@@ -196,8 +196,6 @@ function useHosting(thread: ThreadSummary) {
  * (ADR-134); in the frame too while the turns come.
  * @param trailing A control at the title bar's far end, after the thread's own actions, such as
  * a lane's close.
- * @param welcome What the thread shows while it has no turns (ADR-136); the main pane's
- * greeting, and nothing in a lane.
  * @param bare A main thread's own pane: no window frame and no title bar, so no actions or
  * rename in the pane, since its tab carries the name, the rename and the menu (ADR-138). Only a
  * lane on the canvas is a window.
@@ -206,13 +204,11 @@ export function ThreadPane({
   thread,
   leading,
   trailing,
-  welcome,
   bare = false,
 }: {
   thread: ThreadSummary;
   leading?: ReactNode;
   trailing?: ReactNode;
-  welcome?: ReactNode;
   bare?: boolean;
 }) {
   const runtime = useRuntime();
@@ -240,7 +236,6 @@ export function ThreadPane({
           headerActions={actions}
           {...hosting}
           leading={leading}
-          empty={welcome}
           bare={bare}
           footnote={thread.place.kind === "child" ? <ChildFootnote thread={thread} /> : undefined}
         />

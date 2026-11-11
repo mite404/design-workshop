@@ -37,15 +37,34 @@ Laid out like Figma:
 | --- | --- | --- |
 | Layers: the named regions of what is on the canvas. Assets: components, colours, type styles, looks | Canvas: the live preview, with selection outlines, handles and measurements | Inspector: the editable properties of the selection, as sliders, number fields, pickers and curve editors |
 
-Two views, switched at the top:
+Two modes, offered under **More actions** on the welcome:
 
-- **App Shell.** The canvas is the Template app itself, running the mocked agent loop. For layout,
-  chrome, and how components sit together.
-- **Component Canvas.** The canvas is one Storybook story. For sketching a component without risk to
-  the shell layout. Storybook already renders each story at its own URL, so the Workbench frames
-  that instead of building a second renderer. The story list comes from Storybook's index.
+- **Live mode**, with the chat icon and tab. The preview is the Template app itself, running the
+  mocked agent loop. This mode is for layout, chrome, and how components sit together. "Live" means
+  the running UI, not a connection to a live model.
+- **Component mode**, with the browser icon and tab. This is what earlier drafts called Component
+  Canvas. The target is one Storybook story, framed at its own URL instead of a second renderer.
+  The story list comes from Storybook's index.
 
 Both views edit the same design values, so a change made on a component shows up in the shell.
+
+### Welcome and mock chat
+
+Keep the current Vitruvian welcome and Atlas empty canvas. Remove the other splash artworks and
+their picker. The welcome has no chat composer. The mock conversation shows the complete chat
+thread, including user bubbles, agent bubbles, a card, and the user-choice modal.
+The initial Component mode uses the catalog's shared chat fixture; the Storybook index and
+single-story navigation below remain planned.
+
+The existing lane-and-card canvas remains a layout within the running Template. It is not the
+Storybook-backed Component mode. Mode changes must not discard its saved lanes, cards, or threads.
+
+### Chat-history panel in Component mode
+
+The panel that rolls out for chat history can list components in Component mode. Preserve
+Storybook's group, component, and story hierarchy and labels, using its index as the source of
+truth. Selecting a story shows that story in the component preview. Live mode keeps thread history.
+This is the navigation requirement, not a claim that Storybook navigation is implemented today.
 
 ## 5. Principles
 
@@ -134,7 +153,7 @@ git HEAD ──read baseline + override──> inspector and canvas
   scripted conversation at an adjustable speed.
 - R2. The Workbench opens beside the Template's normal dev servers and frames them. It is absent
   from production builds.
-- R3. Two views: App Shell and Component Canvas.
+- R3. Two modes: Live mode and Component mode, offered under More actions with chat and browser icons.
 - R4. Layers panel lists the named regions on the canvas; click a layer or the canvas to select.
 - R5. Inspector shows the design values of the selection, with a control per kind: scrub field with
   grid snap, colour picker with contrast readout, font controls.
@@ -226,6 +245,11 @@ These are Ethan's stated preferences for how the Workbench itself should look an
 - The Template starts as a whole copy of yaklabs, pruned later. The shell imports the runtime,
   world, demo and session code, so picking out components first would mean untangling most of the
   repo before anything runs.
+- Sign-in, the gateway, and the live-model client remain intact but outside the main app flow.
+  The default design session uses mocked data without sign-in or a gateway request. Revisit that
+  boundary before sharing the app with other users.
+- Browser targets are Helium, Chrome and Safari. Type changes need a Safari font-rendering check;
+  Chromium alone does not establish Safari behavior.
 - Themes come from both sources: Ethan's own tuned components, and components he likes elsewhere,
   translated by an agent.
 - Themes and presets are not in the first usable version. One look at a time is enough to start.

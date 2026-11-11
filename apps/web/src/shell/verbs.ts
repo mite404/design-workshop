@@ -15,10 +15,12 @@ import {
   leavesChild,
   markRead,
   parseShell,
+  setMode,
   setPane,
   setSplit,
   visit,
   type BrowserStep,
+  type Mode,
   type PaneKind,
   type ShellState,
 } from "./state";
@@ -40,6 +42,8 @@ export type ShellVerbs = ThreadVerbs &
     newProject(): void;
     /** Shows a pane beside a main; leaving the canvas on a child's address goes to its main's. */
     setPane(main: ThreadId, pane: PaneKind): void;
+    /** Switches the main thread's design mode, preserving its live layout. */
+    setMode(main: ThreadId, mode: Mode): void;
     setSplit(main: ThreadId, split: number): void;
     browse(main: ThreadId, step: BrowserStep): void;
     markRead(ids: string[]): void;
@@ -180,8 +184,12 @@ export function verbs(deps: Deps, doc: ShellState): ShellVerbs {
       startThread(deps, newProjectIn);
     },
     setPane: (main, pane) => {
-      change((current) => setPane(current, main, pane));
+      change((current) => setMode(setPane(current, main, pane), main, "live"));
       if (leavesChild(active, main, pane)) go(main);
+    },
+    setMode: (main, mode) => {
+      change((current) => setMode(current, main, mode));
+      if (active?.focus !== null && active?.main === main) go(main);
     },
     setSplit: (main, split) => {
       change((current) => setSplit(current, main, split));

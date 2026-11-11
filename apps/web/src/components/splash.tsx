@@ -1,6 +1,3 @@
-import { useLayoutEffect } from "react";
-import { showSplashFor, useSplash } from "../splash";
-
 // The splash (ADR-113, ADR-136): the field's dots, a clearing of plain paper behind the words, a
 // sheet of construction lines and Atlas with his globe ringing the words, all drawn in
 // index.css. It is a picture only: hidden from the tree, and a press or a carried card goes
@@ -29,18 +26,4 @@ export function SplashDrawing({ where = "canvas" }: { where?: keyof typeof SLOTS
       <div data-slot={slots.figure} className="splash-drawing" />
     </div>
   );
-}
-
-/**
- * The picture behind a new thread's welcome: Vitruvian's sheet, or one of the paintings, which
- * index.css draws off `<html data-splash>`. A visitor's first welcome is abstract; each later
- * thread's welcome rolls one of the three (`showSplashFor`), before it paints.
- */
-export function WelcomeArt({ threadId }: { threadId: string }) {
-  const { style } = useSplash();
-  useLayoutEffect(() => {
-    showSplashFor(threadId);
-  }, [threadId]);
-  if (style === "vitruvian") return <SplashDrawing where="welcome" />;
-  return <div className="welcome-art" aria-hidden="true" />;
 }

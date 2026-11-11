@@ -33,6 +33,7 @@ const viewSchema = z.object({
   pane: paneSchema,
   split: z.number().min(SPLIT.min).max(SPLIT.max),
   browser: browserSchema,
+  mode: z.enum(["live", "component"]).optional(),
 });
 
 // The document the page saves whole (the runtime keeps it as opaque JSON). `tabs` are open main
@@ -51,6 +52,8 @@ export type PaneKind = z.infer<typeof paneSchema>;
 export type BrowserState = z.infer<typeof browserSchema>;
 /** One main thread's view: its pane, its split, its browser. */
 export type View = z.infer<typeof viewSchema>;
+/** The running mocked app or the isolated component preview; neither connects a live model. */
+export type Mode = NonNullable<View["mode"]>;
 /** The shell's saved document; the page is its only writer. */
 export type ShellState = z.infer<typeof shellSchema>;
 
@@ -127,8 +130,8 @@ export function visit(state: ShellState, at: Located): ShellState {
     ? state
     : { ...state, tabs: [...state.tabs, at.main] };
   const view = viewOf(tabbed, at.main);
-  if (at.focus === null || view.pane === "canvas") return tabbed;
-  return withView(tabbed, at.main, { ...view, pane: "canvas" });
+  if (at.focus === null || (view.pane === "canvas" && view.mode === "live")) return tabbed;
+  return withView(tabbed, at.main, { ...view, pane: "canvas", mode: "live" });
 }
 
 /**
@@ -181,6 +184,12 @@ export function awayFrom(
 export function setPane(state: ShellState, main: ThreadId, pane: PaneKind): ShellState {
   const view = viewOf(state, main);
   return view.pane === pane ? state : withView(state, main, { ...view, pane });
+}
+
+/** Switches design modes without replacing the live layout or browser history. */
+export function setMode(state: ShellState, main: ThreadId, mode: Mode): ShellState {
+  const view = viewOf(state, main);
+  return view.mode === mode ? state : withView(state, main, { ...view, mode });
 }
 
 /** Keeps where the divider was left, within the thread pane's floor and ceiling. */

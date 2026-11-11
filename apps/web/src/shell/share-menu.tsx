@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@yaklabs/ui/components/dropdown-menu";
 import { Timer, Users, X } from "lucide-react";
+import { env } from "../env";
 import { MenuStatus, statusName } from "./menu-status";
 import type { Shell } from "./model";
 import { LIFETIMES, liveShare } from "./share-thread";
@@ -117,6 +118,14 @@ function LifetimeItems({ shell, thread, isPublic }: ShareProps & { isPublic: boo
  * never a guess.
  */
 export function ShareItem({ shell, thread }: ShareProps) {
+  if (env.agent.kind === "lab") {
+    return (
+      <DropdownMenuItem disabled>
+        <ShareIcon />
+        Sharing is off in the mock app
+      </DropdownMenuItem>
+    );
+  }
   const share = shareOf(shell, thread); // → ThreadShare | undefined
   const status = shareStatus(share); // → "Private" | "Until Fri 9:00"
   return (
@@ -142,6 +151,13 @@ export function ShareItem({ shell, thread }: ShareProps) {
  * shows its glyph filled in, and its name says until when, so the state is never a guess.
  */
 export function ThreadShareButton({ shell, thread }: ShareProps) {
+  if (env.agent.kind === "lab") {
+    return (
+      <Button variant="ghost" size="icon-sm" disabled aria-label="Sharing is off in the mock app">
+        <ShareIcon />
+      </Button>
+    );
+  }
   const share = shareOf(shell, thread); // → ThreadShare | undefined
   const status = shareStatus(share); // → "Private" | "Until Fri 9:00"
   return (

@@ -1,19 +1,17 @@
 import type { Project, ThreadId, ThreadSummary } from "@yaklabs/runtime";
 import { sidebarTree } from "@yaklabs/runtime";
 import { Button } from "@yaklabs/ui/components/button";
-import { FileText, Folder, Globe, Plus, Terminal } from "lucide-react";
+import { Folder, Globe, MessageSquareText, Plus } from "lucide-react";
 import { Link } from "react-router";
 import { usePaths } from "../runtime";
 import { useShell } from "../shell/model";
 import { entryOf } from "../shell/state";
 
-const NOT_HERE = "Not in the web build yet";
-
 /**
  * Kay's own corners for the greeting's actions, the app's 8px and not the site's 4px button:
  * one step up from --radius, so it follows the token.
  */
-export const ACTION = "h-8 rounded-xl px-3";
+const ACTION = "h-8 rounded-xl px-3";
 
 // A welcome section's heading: small, spaced capitals in soft ink.
 const LABEL = "text-[11px] font-medium tracking-[0.1em] text-soft-ink uppercase";
@@ -83,10 +81,7 @@ export function Projects() {
   );
 }
 
-/**
- * What a thread can open with: the browser, and a file and a terminal, which wait for the
- * desktop app.
- */
+/** Opens the running mocked app or its complete chat component preview. */
 export function Actions({ thread }: { thread: ThreadSummary }) {
   const shell = useShell();
   return (
@@ -95,22 +90,23 @@ export function Actions({ thread }: { thread: ThreadSummary }) {
         More actions
       </h2>
       <div className="flex flex-wrap gap-2">
-        <Button variant="outline" size="sm" className={ACTION} disabled title={NOT_HERE}>
-          <FileText />
-          Open file
+        <Button
+          variant="outline"
+          size="sm"
+          className={ACTION}
+          onClick={() => shell?.setMode(thread.id, "live")}
+        >
+          <MessageSquareText />
+          Live mode
         </Button>
         <Button
           variant="outline"
           size="sm"
           className={ACTION}
-          onClick={() => shell?.setPane(thread.id, "browser")}
+          onClick={() => shell?.setMode(thread.id, "component")}
         >
           <Globe />
-          Open browser
-        </Button>
-        <Button variant="outline" size="sm" className={ACTION} disabled title={NOT_HERE}>
-          <Terminal />
-          Open terminal
+          Component mode
         </Button>
       </div>
     </section>

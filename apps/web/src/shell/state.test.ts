@@ -19,6 +19,7 @@ import {
   parseShell,
   prune,
   resume,
+  setMode,
   setPane,
   setSplit,
   stepBrowser,
@@ -89,6 +90,25 @@ describe("firstRun", () => {
 });
 
 describe("parseShell", () => {
+  it("keeps the component mode separate from a saved canvas layout", () => {
+    const saved = {
+      ...OPEN,
+      views: {
+        [PROFIT]: { ...viewOf(OPEN, PROFIT), pane: "canvas", split: 67, mode: "component" },
+      },
+    };
+    expect(viewOf(parseShell(saved, WS), PROFIT)).toMatchObject({
+      mode: "component",
+      pane: "canvas",
+      split: 67,
+    });
+    const restored = setMode(parseShell(saved, WS), PROFIT, "live");
+    expect(viewOf(restored, PROFIT)).toMatchObject({ mode: "live", pane: "canvas", split: 67 });
+    expect(viewOf(setMode(restored, PROFIT, "component"), PROFIT)).toEqual(
+      viewOf(parseShell(saved, WS), PROFIT),
+    );
+  });
+
   it("falls back to firstRun when nothing was saved or the document is malformed", () => {
     expect(parseShell(null, WS)).toEqual(firstRun(WS));
     expect(parseShell({ version: 2, tabs: [] }, WS)).toEqual(firstRun(WS));
@@ -153,6 +173,11 @@ describe("visit", () => {
     const shown = visit(onBrowser, { main: PROFIT, focus: SATURDAY });
     expect(viewOf(shown, PROFIT).pane).toBe("canvas");
     expect(visit(shown, { main: PROFIT, focus: SATURDAY })).toBe(shown);
+    const preview = setMode(shown, PROFIT, "component");
+    expect(viewOf(visit(preview, { main: PROFIT, focus: SATURDAY }), PROFIT)).toMatchObject({
+      mode: "live",
+      pane: "canvas",
+    });
   });
   it("leaves a main's own pane alone", () => {
     const onBrowser = setPane(OPEN, PROFIT, "browser");

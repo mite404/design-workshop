@@ -9,12 +9,16 @@ import { viewOf, type PaneKind } from "./state";
 function shownPane(shell: Shell): { main: ThreadId; pane: PaneKind } | null {
   if (shell.active === null) return null;
   const { main } = shell.active;
-  return { main, pane: viewOf(shell.doc, main).pane };
+  const view = viewOf(shell.doc, main);
+  return {
+    main,
+    pane: view.mode === "component" ? "browser" : view.pane === "canvas" ? "canvas" : "thread",
+  };
 }
 
 /**
- * Thread, Canvas or Browser beside the active tab's thread; pressing the open Canvas or Browser
- * again closes it back to the thread. Nothing to switch with no tab. On a
+ * Live mode, its canvas layout, or Component mode. The browser glyph selects the component
+ * preview, not the legacy simulated browser pane. Nothing to switch with no tab. On a
  * phone it is the bar's second row, each view named in words, and it scrolls when they overflow
  * (ADR-116).
  */
@@ -26,10 +30,17 @@ export function LayoutSwitch({ shell }: { shell: Shell | null }) {
       spacing={0.5}
       value={shown === null ? [] : [shown.pane]}
       disabled={shown === null}
-      onValueChange={(values: unknown[]) => {
-        const next = paneAfterPress(values); // → PaneKind
-        if (shown !== null && next !== shown.pane) shell?.setPane(shown.main, next);
-      }}
+      onValueChange={
+        shown === null
+          ? undefined
+          : (values: unknown[]) => {
+              const next = paneAfterPress(values); // → PaneKind
+              if (next === "browser") shell?.setMode(shown.main, "component");
+              else if (next === "thread" && shown.pane === "browser")
+                shell?.setMode(shown.main, "live");
+              else shell?.setPane(shown.main, next);
+            }
+      }
       className="rounded-[var(--radius)] border border-hairline p-0.5 max-md:no-scrollbar max-md:col-span-full max-md:row-start-2 max-md:w-full max-md:justify-start max-md:gap-1 max-md:overflow-x-auto max-md:border-0 max-md:p-0"
     >
       {PANES.map((each) => {

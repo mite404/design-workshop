@@ -451,13 +451,7 @@ html[data-dragging="sidebar"] * {
     }
   }
 
-  /* A new thread's welcome (ADR-136): Kay's own greeting over one of Ethan's paintings, the
-     landscape or the abstract strokes by <html data-splash> (splash.ts), under the same paper
-     wash and the same clearing of plain paper behind the words, fading out in every direction,
-     so the two read as one treatment with a different picture. A third look, Vitruvian, draws
-     the empty canvas's sheet instead (below). The greeting names the morning in the light theme
-     and the evening in the dark one, both in the DOM, one shown. The scroll area drops its
-     gutters for it (thread.css, data-empty), and the welcome fills it to centre the words. */
+  /* The Vitruvian welcome fills the pane without a composer. */
   .welcome {
     --clearing: var(--paper);
     position: relative;
@@ -467,29 +461,9 @@ html[data-dragging="sidebar"] * {
     place-items: center;
     padding: 24px;
   }
-  .welcome-art {
-    position: absolute;
-    inset: 0;
-    z-index: -1;
-    background:
-      linear-gradient(var(--splash-wash), var(--splash-wash)),
-      url("/splash/landscape.webp") center / cover no-repeat;
-  }
-  html[data-splash="abstract"] .welcome-art {
-    background:
-      linear-gradient(var(--splash-wash), var(--splash-wash)),
-      url("/splash/abstract.webp") center / cover no-repeat;
-  }
   html[data-theme="dark"] .welcome [data-part="morning"],
   html:not([data-theme="dark"]) .welcome [data-part="evening"] {
     display: none;
-  }
-  .welcome-art::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background: radial-gradient(ellipse 50% 50% at center, var(--paper) 25%, transparent 75%) center
-      / max(100%, 40rem) max(100%, 28rem) no-repeat;
   }
   /* The Vitruvian look draws the empty canvas's sheet (the .splash pieces above) across the
      welcome's whole area on paper, as the canvas's raised surface is, square-cornered since the

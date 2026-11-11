@@ -218,7 +218,8 @@ function TabButton({
 // active one is the cream pill (ADR-110). A click on the active one's words opens the title as a
 // field, in place of the tab and inside the same box.
 function Tab({ thread, shell, hover, renaming, plus }: TabProps) {
-  const { Icon } = LAYOUTS[viewOf(shell.doc, thread.id).pane];
+  const view = viewOf(shell.doc, thread.id);
+  const { Icon } = LAYOUTS[view.mode === "component" ? "browser" : view.pane];
   const { leave } = hover;
   const editing = renaming.id === thread.id;
   const rename = useRenameThread(thread);

@@ -71,7 +71,7 @@ function Destination({ shell, target }: { shell: Shell; target: HomeTarget }) {
 
 /**
  * Home: the tab last on screen, else a first visit's page, the Live Playground's blank thread
- * with its welcome, whose composer goes to the live model. The rail's Home asks for that page
+ * with its welcome and mode choices. The rail's Home asks for that page
  * whatever is open. Only a source with no Live Playground and nothing open shows "Nothing open".
  */
 export default function Home() {

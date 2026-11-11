@@ -1,3 +1,5 @@
+import { ChatThreadPanel } from "@yaklabs/catalog";
+import { threads } from "@yaklabs/catalog/thread";
 import type { ThreadId, ThreadSummary } from "@yaklabs/runtime";
 import {
   ResizableHandle,
@@ -27,6 +29,9 @@ import { SPLIT, viewOf, type PaneKind, type View } from "./state";
 // needs no direct dependency on the panel library.
 type GroupRef = NonNullable<ComponentProps<typeof ResizablePanelGroup>["groupRef"]>;
 type GroupHandle = GroupRef extends Ref<infer Handle> ? NonNullable<Handle> : never;
+
+// The same card, bubbles, and question data used by the catalog's stories.
+const MOCK_CHAT = { ...threads.profit, awaiting: threads.awaiting.awaiting };
 
 // The panels' shares for a pane. The thread alone fills the width; on a wide screen the browser
 // or the canvas shares it with the thread, and on a phone it fills the width alone.
@@ -73,20 +78,9 @@ function Retain({
   );
 }
 
-// The main thread, on the pane itself: no window of its own, its text centred at the thread's
-// measure and its welcome reaching the pane's edges. Only a lane on the canvas is a window.
-// The layout it is in goes to the welcome, which offers its painting switch only when the thread
-// has the window to itself. Hidden on a phone while the browser or the canvas has the width, it stays mounted but inert,
-// like a retained pane.
-function MainPane({
-  thread,
-  pane,
-  hidden,
-}: {
-  thread: ThreadSummary;
-  pane: PaneKind;
-  hidden: boolean;
-}) {
+// The live thread has no frame of its own. Hidden on a phone while a side pane fills the
+// width, it stays mounted but inert so replies and drafts survive the layout change.
+function MainPane({ thread, hidden }: { thread: ThreadSummary; hidden: boolean }) {
   return (
     <div
       inert={hidden}
@@ -94,12 +88,7 @@ function MainPane({
       className="h-full min-w-0"
       style={{ ["--thread-height" as string]: "100%" }}
     >
-      <ThreadPane
-        key={thread.id}
-        thread={thread}
-        welcome={<Welcome thread={thread} pane={pane} />}
-        bare
-      />
+      <ThreadPane key={thread.id} thread={thread} bare />
     </div>
   );
 }
@@ -172,7 +161,7 @@ function Workspace(beside: Beside) {
         collapsedSize="0"
         collapsedThreshold={`${SPLIT.min}`}
       >
-        <MainPane thread={thread} pane={view.pane} hidden={narrow && view.pane !== "thread"} />
+        <MainPane thread={thread} hidden={narrow && view.pane !== "thread"} />
       </ResizablePanel>
       {/* Above the panes, so nothing positioned in them can cover its hit area. */}
       <ResizableHandle
@@ -195,6 +184,27 @@ function Workspace(beside: Beside) {
   );
 }
 
+// Product mode is separate from pane layout. Retaining both keeps mock edits and live drafts
+// intact when switching, without writing synthetic messages into the device's thread history.
+function DesignWorkspace(props: Beside) {
+  const { thread, view } = props;
+  if (view.mode === undefined && view.pane === "thread" && thread.turnCount === 0)
+    return <Welcome thread={thread} />;
+  const component = view.mode === "component";
+  return (
+    <div className="grid h-full min-h-0" style={{ ["--thread-height" as string]: "100%" }}>
+      <Retain shown={!component}>
+        <Workspace {...props} />
+      </Retain>
+      <Retain shown={component}>
+        <section aria-label="Component mode" className="h-full min-h-0">
+          <ChatThreadPanel thread={MOCK_CHAT} bare cardsCarry={false} />
+        </section>
+      </Retain>
+    </div>
+  );
+}
+
 /**
  * The open tabs, stacked in one grid cell: each is a tab panel named by its thread, mounted
  * the first time it is shown and kept until its tab closes, so replies, drafts and scroll
@@ -214,7 +224,7 @@ export function Deck() {
         role="tabpanel"
         aria-label={thread.title}
       >
-        <Workspace
+        <DesignWorkspace
           shell={shell}
           thread={thread}
           view={viewOf(shell.doc, thread.id)}
