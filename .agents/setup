@@ -1,10 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-readonly BUN_INSTALL_DIR="$HOME/.bun"
-readonly BUN_VERSION="$(<.bun-version)"
-readonly BASH_PROFILE="$HOME/.bash_profile"
-readonly BUN_PROFILE_MARKER="# interface-atlas Bun"
+readonly PNPM_VERSION="10.33.0"
 
 run_step() {
   local description="$1"
@@ -14,28 +11,10 @@ run_step() {
   time "$@"
 }
 
-if ! command -v bun >/dev/null 2>&1; then
-  printf '==> Installing Bun\n'
-  curl -fsSL https://bun.sh/install | bash -s "bun-v$BUN_VERSION"
-  export BUN_INSTALL="$BUN_INSTALL_DIR"
-  export PATH="$BUN_INSTALL/bin:$PATH"
+if [[ "$(pnpm --version 2>/dev/null)" != "$PNPM_VERSION" ]]; then
+  run_step "Installing pnpm $PNPM_VERSION" npm install --global "pnpm@$PNPM_VERSION"
 fi
 
-if [[ "$(bun --version)" != "$BUN_VERSION" ]]; then
-  printf '==> Installing Bun %s\n' "$BUN_VERSION"
-  curl -fsSL https://bun.sh/install | bash -s "bun-v$BUN_VERSION"
-  export BUN_INSTALL="$BUN_INSTALL_DIR"
-  export PATH="$BUN_INSTALL/bin:$PATH"
-fi
-
-if ! grep -Fqx "$BUN_PROFILE_MARKER" "$BASH_PROFILE" 2>/dev/null; then
-  cat >> "$BASH_PROFILE" <<'EOF'
-
-# interface-atlas Bun
-export BUN_INSTALL="$HOME/.bun"
-export PATH="$BUN_INSTALL/bin:$PATH"
-EOF
-fi
-
-run_step "Installing locked Bun dependencies" bun install --frozen-lockfile
-run_step "Installing the Playwright Chromium browser" bunx playwright install chromium
+run_step "Installing locked pnpm dependencies" pnpm install --frozen-lockfile
+run_step "Installing the Playwright Chromium browser" \
+  pnpm --filter storybook exec playwright install chromium

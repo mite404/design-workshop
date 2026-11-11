@@ -98,3 +98,21 @@ drift log. ETH-100 and ETH-101 both build on this.
 ## Drift log
 
 Record here anything built differently from this plan, and why.
+
+* **Branch.** The work sits on `feat/eth-99-bring-the-template-into-this-repo`, cut from
+  `design-workbench`, and its PR targets `design-workbench`. The orb's Linear plugin requires the
+  ticket's branch name for a new branch.
+* **Vite allowed hosts.** `apps/web/vite.config.ts` now sets `server.allowedHosts` to
+  `[".onamp.dev"]`. Vite's dev server answered the web portal with 403 "Blocked request. This host
+  is not allowed". yaklabs never hit this: its orb service served the built site through wrangler,
+  not the Vite dev server.
+* **`pnpm test` on a 2 GB orb.** This repo's orb has 1 CPU and 2 GB of RAM. Plain `pnpm test`
+  fails there. Turbo runs every package at once, so unit tests time out (one sqlite test took 62s
+  against 1.2s alone), and the kernel's OOM killer stops headless Chrome during the story tests.
+  No code changed for this. Every test passes when the machine is not overloaded. Each package's
+  `vitest run` passes on its own, and the storybook app's two Vitest projects pass when run one at
+  a time (`--project browser`, then `--project storybook`). A larger orb size for the project is
+  the fix.
+* **Services on a 2 GB orb.** `amp orb services ensure` starts both services, but together they use
+  about 1.2 GB and the OOM killer restarts them. They were checked one at a time. The same larger
+  orb size fixes this.

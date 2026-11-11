@@ -1,0 +1,5 @@
+/* The web app's cascade (apps/web/src/index.css, ADR-082): Tailwind's preflight below Kay's
+   stylesheet and the utilities above it, so a story of a shadcn component draws as the app does. */
+@layer theme, base, catalog, components, utilities;
+@import "@yaklabs/ui/globals.css";
+@import "@yaklabs/catalog/tokens.css" layer(catalog);
