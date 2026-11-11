@@ -34,12 +34,17 @@ const selects = async (locator) =>
     },
     await page.locator(".selector").textContent(),
   );
+// The handles and fields follow the selection on the next frame; a click before it lands on a
+// stale handle.
+const frameDone = () => page.evaluate(() => new Promise((done) => requestAnimationFrame(done)));
 const select = async (locator) => {
   for (let i = 0; i < 30 && !(await selects(locator)); i++) {
+    await frameDone();
     const at = await center(locator);
     await page.mouse.click(at.x, at.y);
     await page.waitForTimeout(35);
   }
+  await frameDone(); // the fields show the new selection
   assert.ok(await selects(locator), "clicks select the target");
 };
 const offset = () => heading.evaluate((el) => getComputedStyle(el).translate);

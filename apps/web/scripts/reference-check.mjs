@@ -266,7 +266,7 @@ await step("a sent unresolved reference is reselected into the draft", async () 
     await chips.locator(".chip-label").textContent(),
     "p · Leading with the longest-open cases, as…",
   );
-  assert.equal(await chips.getAttribute("data-unresolved"), "false");
+  await page.locator('.composer .chip[data-unresolved="false"]').waitFor();
   assert.equal(await draft.inputValue(), DRAFT);
   const sentChip = chat.locator(".chat-message .chip");
   assert.equal(
