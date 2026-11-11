@@ -36,9 +36,15 @@ async function value(field, want) {
 }
 
 async function edit(field, hex) {
+  const { cursor } = await history();
   await field.fill(hex);
   await field.press("Enter");
   await saved(hex);
+  // The file changes before the Workbench reads the response and records the undo step.
+  await page.waitForFunction(
+    (n) => JSON.parse(sessionStorage.getItem("workbench-history")).history.cursor > n,
+    cursor,
+  );
 }
 
 async function background(want) {
