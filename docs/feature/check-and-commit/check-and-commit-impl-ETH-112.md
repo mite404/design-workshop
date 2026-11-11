@@ -95,3 +95,52 @@ issue or PR under repo policy (ADR-007, ADR-017).
 ## Drift log
 
 Record here anything built differently from this plan, and why.
+
+- Rebased the implementation on `45c22d6`. ETH-104 through ETH-111 already landed.
+  The plugin now serves fonts, batched saves, discard, and HEAD-aware history as well as values.
+  It already runs Git to read HEAD and restore the override file for discard; this ticket adds
+  its first Git write.
+  Commit success broadcasts the existing values event and refreshes HEAD, which clears ETH-111's
+  undo and redo history in session storage. No second history-clearing mechanism was added.
+- ETH-108 already lets saved design values pass tests. The button runs the current root
+  `pnpm typecheck` and `pnpm test` commands, including their existing concurrency limit.
+- ETH-106 installs fonts and writes `fonts.css` and font assets, but did not add a commit route.
+  This ticket remains override-only. Staged font files are refused like any other staged file;
+  unstaged font files are left alone. Extending the commit allowlist needs a separate decision.
+- Review is a native dialog with an explicit **Run checks and commit** action. The value diff
+  and generated message appear before checks run. Preview, streamed run, and cancellation use
+  three same-origin POST endpoints rather than one endpoint.
+  Canvas keyboard shortcuts are suspended while the dialog is open so Escape belongs to the dialog.
+- The run keeps a write lock, rejects concurrent runs, and verifies HEAD, the override snapshot,
+  and the staged-file allowlist again after checks. Other Workbench writes are refused until the
+  run finishes. Cancellation kills the check's process group and waits for its exit. The browser
+  waits for the server's cancellation result instead of assuming an aborted request did not commit.
+- The ordinary browser lever never creates commits. It checks the real preview and HTTP refusals
+  and uses a synthetic failed-check response to verify output display. The explicit `--commit`
+  mode creates a disposable clone containing the current source, copied dependencies, and existing
+  Turbo cache, removes its origin remote, and starts its own server on a free port. Only that clone
+  can make the test commit. The clone is removed afterward; the working repository is never reset.
+  Cancellation uses a held typecheck in the clone. The success pass restores the real scripts and
+  waits up to 15 minutes for the terminal result, not transient check labels. Failure screenshots
+  have their own bounded try/catch so they cannot replace the original error.
+  The initial radius comes from the values endpoint instead of assuming a committed value of 12.
+  Temporary-repository integration tests exercise real Git and failed child processes.
+- The user confirmed that repository hooks must remain enabled, with post-commit verification
+  and a visible dialog warning. Hooks may amend the message or take other actions, including
+  pushing. Property-first message bullets survive `git interpret-trailers`
+  without being mistaken for trailers; hooks may still append deliberate co-author trailers.
+- The user confirmed that the Workbench commits locally and never pushes. Editing is independent
+  of the remote's state, like working on a local branch. Live edits belong to the local checkout
+  running in dev mode. This is a confirmed product decision, not an open assumption.
+- Git commit runs asynchronously with a two-minute timeout for signing and hooks. A timeout or
+  failure after Git starts tells the designer to inspect Git state rather than claiming cancel.
+  After hooks finish, HEAD must have the reviewed parent, exactly the override file changed, and
+  the reviewed override bytes. A mismatch is a loud error, even if a commit already exists.
+  It is not rolled back automatically, and hook side effects cannot be undone by verification.
+- Active process groups are killed on cancellation and catchable server exit. A regression test
+  terminates a server process and checks that its check process is no longer running.
+  POSIX group cleanup cannot contain descendants that start new sessions or survive an uncatchable
+  SIGKILL of the server. Stronger isolation would require a process supervisor or cgroup.
+- Cancellation's HTTP response acknowledges a request, not completion. The stream remains the
+  source of truth. Same-origin tabs intentionally share the server's one active run and can cancel
+  it; per-tab ownership was left out because this is a local development tool.

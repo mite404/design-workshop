@@ -197,6 +197,37 @@ const discard = element(
   { type: "button", className: "history-button", disabled: true },
   "Discard",
 );
+const checkCommit = element(
+  "button",
+  { type: "button", className: "check-commit", disabled: true },
+  "Check and commit",
+);
+const commitDiff = element("div", { className: "commit-diff" });
+const commitText = element("pre", { className: "commit-message" });
+const commitStatus = element("pre", { className: "commit-status", role: "status" });
+const commitRun = element(
+  "button",
+  { type: "button", className: "check-commit" },
+  "Run checks and commit",
+);
+const commitClose = element("button", { type: "button", className: "history-button" }, "Close");
+const commitDialog = element(
+  "dialog",
+  { className: "commit-dialog", ariaLabel: "Check and commit" },
+  element("h2", {}, "Review your look"),
+  element(
+    "p",
+    { className: "commit-note" },
+    "Workbench commits overrides.css without pushing. Repository hooks still run and may amend the message or perform other actions, including pushing.",
+  ),
+  commitDiff,
+  element("h3", {}, "Commit message"),
+  commitText,
+  commitStatus,
+  element("div", { className: "commit-actions" }, commitClose, commitRun),
+);
+let reviewed: { head: string; source: string } | null = null;
+let commitController: AbortController | null = null;
 const selectorText = element("code", { className: "selector" });
 const note = element(
   "p",
@@ -303,7 +334,124 @@ function historyStatus(values: unknown): void {
   if (nowHead !== head) history = { steps: [], cursor: 0 };
   head = nowHead;
   discard.disabled = prop(values, "dirty") !== true;
+  checkCommit.disabled = discard.disabled;
   storeHistory();
+}
+
+async function reviewCommit(): Promise<void> {
+  commitRun.hidden = true;
+  commitClose.textContent = "Close";
+  commitStatus.textContent = "Reading saved values…";
+  commitDiff.replaceChildren();
+  commitText.textContent = "";
+  reviewed = null;
+  commitDialog.showModal();
+  const response = await fetch("/__workbench/commit/preview", { method: "POST" });
+  const body: unknown = await response.json();
+  if (!response.ok) throw new Error(text(prop(body, "error")) ?? "Could not read the diff.");
+  const changes = readChanges(prop(body, "changes"));
+  const revision = text(prop(body, "head"));
+  const source = text(prop(body, "source"));
+  const generated = text(prop(body, "message"));
+  if (changes === null || revision === null || source === null || generated === null) {
+    commitStatus.textContent = "No design values changed.";
+    return;
+  }
+  reviewed = { head: revision, source };
+  commitDiff.replaceChildren(
+    ...changes.map((c) =>
+      element(
+        "div",
+        { className: "commit-value" },
+        element("code", {}, c.selector === ":root" ? "Design token" : c.selector),
+        element("strong", {}, c.name.replace(/^--/, "").replaceAll("-", " ")),
+        element("span", {}, `${c.before ?? "Added"} → ${c.after ?? "Removed"}`),
+      ),
+    ),
+  );
+  commitText.textContent = generated;
+  commitStatus.textContent = "Ready to run typecheck, then tests.";
+  commitRun.hidden = false;
+  commitRun.disabled = false;
+}
+
+function commitEvent(event: unknown): boolean {
+  const kind = prop(event, "kind");
+  switch (kind) {
+    case "checking":
+      commitStatus.textContent = `Running ${text(prop(event, "command")) ?? "checks"}…`;
+      return false;
+    case "committing":
+      commitStatus.textContent = "Checks passed. Committing overrides.css…";
+      commitClose.disabled = true;
+      return false;
+    case "success":
+      commitStatus.textContent = `Committed ${text(prop(event, "hash")) ?? ""}. Workbench did not push.`;
+      message.textContent = commitStatus.textContent;
+      return true;
+    case "error":
+      commitStatus.textContent = text(prop(event, "message")) ?? "Commit failed.";
+      return true;
+    case "cancelled":
+      commitStatus.textContent = "Cancelled. Nothing was committed.";
+      return true;
+    default:
+      throw new Error("Unrecognized commit progress.");
+  }
+}
+
+async function readCommitStream(body: NonNullable<Response["body"]>): Promise<void> {
+  let buffer = "";
+  let finished = false;
+  for await (const chunk of body.pipeThrough(new TextDecoderStream())) {
+    buffer += chunk;
+    const lines = buffer.split("\n");
+    buffer = lines.pop() ?? "";
+    for (const line of lines) {
+      const event: unknown = JSON.parse(line);
+      finished = commitEvent(event) || finished;
+    }
+  }
+  if (!finished) throw new Error("Connection lost before the commit result arrived.");
+}
+
+async function runCommit(): Promise<void> {
+  if (reviewed === null) return;
+  const controller = new AbortController();
+  commitController = controller;
+  commitRun.disabled = true;
+  commitClose.textContent = "Cancel checks";
+  try {
+    const response = await fetch("/__workbench/commit", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(reviewed),
+      signal: controller.signal,
+    });
+    if (!response.ok || response.body === null) {
+      const body: unknown = await response.json();
+      throw new Error(text(prop(body, "error")) ?? "Could not start checks.");
+    }
+    await readCommitStream(response.body);
+  } catch (error) {
+    commitStatus.textContent = `Connection lost. Refresh to check the commit outcome. ${String(error)}`;
+  } finally {
+    commitController = null;
+    commitRun.hidden = true;
+    commitClose.textContent = "Close";
+    commitClose.disabled = false;
+    await refreshStatus();
+  }
+}
+
+async function cancelCommit(): Promise<void> {
+  if (commitClose.disabled) return;
+  try {
+    const response = await fetch("/__workbench/commit/cancel", { method: "POST" });
+    if (!response.ok) throw new Error("Cancellation was refused.");
+  } catch (error) {
+    commitStatus.textContent = `Could not cancel checks. ${String(error)}`;
+  }
 }
 
 async function refreshStatus(): Promise<void> {
@@ -801,6 +949,7 @@ function onKey(event: KeyboardEvent): void {
 
 // A key goes to the chat first, then to the page's own handling.
 const keyDown = (event: KeyboardEvent): void => {
+  if (commitDialog.open) return;
   if (!historyKey(event) && !chatKey(event)) onKey(event);
 };
 
@@ -2556,6 +2705,7 @@ document.body.append(
         redo,
         discard,
       ),
+      checkCommit,
       message,
       element("h2", {}, "Window"),
       element("div", { className: "row" }, label, field, reset),
@@ -2566,7 +2716,7 @@ document.body.append(
     ),
   ),
 );
-document.body.append(stepList, fontPicker, basics);
+document.body.append(stepList, fontPicker, basics, commitDialog);
 paddingLayer.append(...paddingBars.flatMap((b) => [b.el, b.space]));
 unmatchedPanel.hidden = true;
 
@@ -2627,6 +2777,26 @@ reset.addEventListener("click", () => {
 });
 undo.addEventListener("click", () => replay(-1));
 redo.addEventListener("click", () => replay(1));
+checkCommit.addEventListener("click", () =>
+  enqueue(async () => {
+    try {
+      await reviewCommit();
+    } catch (error) {
+      commitStatus.textContent = String(error);
+    }
+  }),
+);
+commitRun.addEventListener("click", () => enqueue(runCommit));
+commitClose.addEventListener("click", () => {
+  if (commitController !== null) void cancelCommit();
+  else commitDialog.close();
+});
+commitDialog.addEventListener("cancel", (event) => {
+  if (commitController !== null) {
+    event.preventDefault();
+    void cancelCommit();
+  }
+});
 discard.addEventListener("click", () => {
   if (!confirm("Discard all saved values since the last commit? This cannot be undone.")) return;
   enqueue(async () => {
