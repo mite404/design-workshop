@@ -39,8 +39,7 @@ Measured on the Template at PR #4:
   larger ones.
 - No named sizes at all, so there is nothing for a dial to turn. That is what the preparation
   ticket fixes.
-- In the three folders the preparation ticket covers, leaving out the drift tool's own
-  stylesheet: 107 declarations in 16 values.
+- In the three folders the preparation ticket covers: 107 declarations in 16 values.
 
 ## Acceptance criteria
 
@@ -53,8 +52,8 @@ Preparation (ETH-104):
    `--text-4xl` (ADR-019).
 3. A size worked out from another value stays as it is, and the ticket lists it. There is one:
    a guide title sized from the spacing unit. (Corrected Nov 11 2026: the three `clamp()`
-   headlines and the 96px numeral first listed here are in the drift tool's stylesheet, which
-   is out of this story anyway.)
+   headlines and the 96px numeral first listed here were in the drift tool's stylesheet, which
+   is deleted, ADR-020.)
 4. Ethan can compare before and after screenshots of the shell and judge the rounding.
 
 The dial (ticket to follow, once this story is confirmed):
@@ -74,12 +73,11 @@ The dial (ticket to follow, once this story is confirmed):
 
 ## Not in this story
 
-- Changing the size of one element on its own. That means moving it to another step, which is a
-  change to the mockup's source. An agent does it.
-- Font family, weight, letter spacing and colour.
+- The type of one element: its size, font, weight, line height and letter spacing. That is the
+  [type inspector story](../type-inspector/type-inspector-story.md).
+- Colour.
 - A different ratio for headings than for body text. One ratio first; add a second if large
   sizes look wrong live.
-- The drift tool's own styles (`tools/verify-ui-drift`, `verify-ui-tooling.css`).
 
 ## Effect on other tickets
 

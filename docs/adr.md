@@ -158,3 +158,15 @@ this since the app will be constantly changing a component or view's look. lets 
 drift-ui cli script and skill for now".) `tools/verify-ui-drift`, its baselines, its page at
 `/verify-ui-tooling` and the welcome's seal that led there are removed. The Workbench exists to
 change the look, so a check that the look has not changed works against it.
+
+## ADR-021 - Chosen Google fonts live in the repo
+
+2026-11-11 - Accepted, with the type inspector story. Amends ADR-002.
+A Google font picked in the Workbench is copied into the repo: its files and licence under
+`packages/catalog/src/fonts/`, and its `@font-face` rules in `packages/catalog/src/fonts.css`, a
+second file the Workbench writes. Every value still lives in the override file; `fonts.css` only
+declares fonts, which do not fit that file's one value per line. The mockup is the running app,
+so it carries its own fonts (ADR-014). A font installed on the computer is saved by name only and
+shows only where it is installed (Ethan: "this tradeoff is acceptable for now"). Rejected:
+loading fonts from a font server at run time, which breaks offline and depends on someone else's
+server, and uploading font files.

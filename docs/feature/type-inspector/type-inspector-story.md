@@ -1,7 +1,7 @@
 # Story: set the type of one element, as in Figma
 
-Status: draft, Nov 11 2026, not yet confirmed by Ethan. Tickets: none yet. Three are planned,
-listed at the end.
+Status: confirmed by Ethan, Nov 11 2026 ("confirmed good"). Tickets: ETH-105, ETH-106 and
+ETH-107, listed at the end.
 
 **As** a designer tuning a mockup an agent has already built,
 **I want** to pick the font and set the type of a piece of text in a panel that works like
@@ -29,9 +29,9 @@ What the Workbench uses for the same two jobs:
   Nov 11 2026 it listed 1984 families, 573 of them variable (one file covers every weight).
 - Installed fonts come from the browser's own
   [`queryLocalFonts()`](https://developer.mozilla.org/en-US/docs/Web/API/Window/queryLocalFonts),
-  so no helper program is needed. The browser asks for permission once. MDN marks it "limited
-  availability": to my knowledge that means Chrome and Edge on a computer, not Safari or
-  Firefox. In those two the list shows Google fonts only.
+  so no helper program is needed. The browser asks for permission once. It works in Chrome and
+  Edge 103 and later on a computer, and not in Safari or Firefox. In those two the list shows
+  Google fonts only.
 
 Five places where this story differs from Figma, all on purpose:
 
@@ -113,24 +113,26 @@ Five places where this story differs from Figma, all on purpose:
 - Several elements selected at once, and different type on part of one element's text.
 - Editing the text itself, which includes Markdown-style typing.
 
-## Decisions that are mine, for Ethan to confirm
+## Decisions made while drafting, confirmed with the story
 
 - Size picks a step first (criterion 4). The type scale story said resizing one element was an
   agent's job; this replaces that line.
 - Google fonts are downloaded into the repo, with a second Workbench-written stylesheet that
-  declares them (criterion 11). This widens ADR-002, which says the override file is the only
-  file the Workbench writes. Rejected: loading fonts from a font server at run time, because the
-  mockup would then break offline and depend on someone else's server.
+  declares them (criterion 11, ADR-021). This widens ADR-002, which says the override file is
+  the only file the Workbench writes. Rejected: loading fonts from a font server at run time,
+  because the mockup would then break offline and depend on someone else's server.
 - Installed fonts need Chrome or Edge. Rejected for now: a helper that reads the computer's font
   folders, which is what FigmaAgent is. Add it if Ethan designs in Safari or Firefox.
 - Criterion 13, the two Template-wide fonts, is not in Figma's panel. It is here because every
   font in the Template comes from those two values, so it is the one-step way to try a font
   pairing (PRD R16).
 
-## Planned tickets
+## Tickets
 
-1. Typography section: style, size, line height, letter spacing and the two alignments
-   (criteria 1 to 7). Needs ETH-102 for selection and ETH-104 for the steps.
-2. Font picker (criteria 8 to 13). Needs ticket 1 and ETH-100. Criterion 13 also needs the dial
-   ticket's Type panel.
-3. Basics popover (criteria 14 and 15). Needs ticket 1.
+1. [ETH-105](type-inspector-impl-ETH-105.md) - Typography section: style, size, line height,
+   letter spacing and the two alignments (criteria 1 to 7). Needs ETH-102 for selection and
+   ETH-104 for the steps.
+2. [ETH-106](type-inspector-impl-ETH-106.md) - Font picker (criteria 8 to 13). Needs ETH-105
+   and ETH-100. Criterion 13 also needs the dial ticket's Type panel.
+3. [ETH-107](type-inspector-impl-ETH-107.md) - Basics popover (criteria 14 and 15). Needs
+   ETH-105.
