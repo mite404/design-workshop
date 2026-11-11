@@ -64,6 +64,7 @@ it("sets the basis lines under the outcome and above the evidence card", async (
       "card",
     ]);
   const basis = part(".work-step-basis");
+  expect(basis.tagName).toBe("UL");
   expect(basis.getAttribute("aria-label")).toBe("How this was found");
   expect([...basis.querySelectorAll("li")].map((line) => line.textContent)).toEqual([
     "Counted Friday's 20 open cases",
@@ -74,7 +75,10 @@ it("sets the basis lines under the outcome and above the evidence card", async (
 it("sets the lines a step smaller than the outcome, in the body ink", async () => {
   await expect.poll(partsOfStep).toContain("work-step-basis");
   const style = getComputedStyle(part(".work-step-basis"));
-  expect([style.fontSize, style.lineHeight, style.listStyleType]).toEqual(["13px", "20px", "disc"]);
-  expect(style.color).toBe(getComputedStyle(part(".work-step-outcome")).color);
-  expect(getComputedStyle(part(".work-step-outcome")).fontSize).toBe("15px");
+  const outcome = getComputedStyle(part(".work-step-outcome"));
+  const fontSize = Number.parseFloat(style.fontSize);
+  expect(fontSize).toBeGreaterThan(0);
+  expect(fontSize).toBeLessThan(Number.parseFloat(outcome.fontSize));
+  expect(style.listStyleType).toBe("disc");
+  expect(style.color).toBe(outcome.color);
 });

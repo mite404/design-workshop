@@ -1,10 +1,9 @@
-import { readFileSync } from "node:fs";
 import { describe, expect, test } from "vitest";
 import { parseOverrides, setOverride } from "./overrides";
 
 const SECTION = "main > section:nth-child(2) > div";
-const EMPTY = readFileSync(new URL("../../catalog/src/overrides.css", import.meta.url), "utf8");
 const HEADER = "/* Written by the Workbench. One design value per line. Do not edit by hand. */\n";
+const EMPTY = `${HEADER}:root {\n}\n`;
 const FULL = `${HEADER}:root {
   --window-radius: 20px;
   --space: 24px;

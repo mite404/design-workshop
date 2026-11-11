@@ -69,4 +69,10 @@ No GitHub issue or pull request is needed under this project's workflow.
 
 ## Drift log
 
-Record what differed from this plan and why.
+* The button test's stylesheet scan also read `overrides.css` indirectly. Excluded it so both
+  test readers leave the designer's working file alone. Stories still load saved overrides.
+* Added an explicit `UL` assertion alongside the existing list items and disc marker checks,
+  so dropping list semantics fails even if the text and styling stay unchanged.
+* The first full-suite run timed out connecting to Chromium before any Storybook tests ran.
+  Stopped the dev servers and finished competing checks, then reran the unchanged suite
+  successfully with the saved override still present. No timeout or infrastructure changes.
