@@ -7,7 +7,7 @@
     "dev:web": "turbo run dev --filter=web",
     "build": "turbo run build",
     "typecheck": "turbo run typecheck",
-    "test": "turbo run test",
+    "test": "turbo run test --concurrency=50%",
     "test:unit": "turbo run test:unit",
     "test:stories": "turbo run test:stories",
     "storybook": "pnpm --filter storybook storybook",
