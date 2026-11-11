@@ -116,3 +116,8 @@ Record here anything built differently from this plan, and why.
 * **Services on a 2 GB orb.** `amp orb services ensure` starts both services, but together they use
   about 1.2 GB and the OOM killer restarts them. They were checked one at a time. The same larger
   orb size fixes this.
+* **Not a whole copy.** Ethan removed two yaklabs files from the copy. `docs/adr/adr.md` is gone
+  because this repo keeps its own decision log at `docs/adr.md`. The root `AGENTS.md` is gone
+  because yaklabs' agent rules should not apply here. No code or test reads either file. ADR
+  numbers in code comments now cite the yaklabs log, at `docs/adr/adr.md` in
+  `github.com/mite404/yaklabs`.
