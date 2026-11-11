@@ -33,6 +33,11 @@ try {
   const panel = frame.locator('[data-wb="ChatThreadPanel"]').first();
   await row("ChatThreadPanel").first().locator(':scope > [data-sidebar="menu-button"]').click();
   assert.ok(await selected(panel), "a tree click selects the real component");
+  await frame.getByRole("button", { name: "Live mode", exact: true }).click();
+  await page.waitForFunction(
+    () =>
+      document.querySelector("iframe").contentDocument.documentElement.dataset.wbMode === "live",
+  );
   const fromRow = await page.locator(".selector").textContent();
   await page.waitForTimeout(50);
   assert.equal(
@@ -56,16 +61,13 @@ try {
   assert.equal(readFileSync(overrides, "utf8"), edited, "tree focus allows history redo");
   await page.locator(".tool").click();
   await frame.getByRole("button", { name: "Component mode", exact: true }).click();
-  await frame.locator('[aria-label="Component preview"]').waitFor();
-  assert.equal(await frame.locator('[data-wb="ChatThreadPanel"]').count(), 2);
-  assert.equal(await frame.locator(fromRow).count(), 1, "saved Live selector stays instance-only");
   assert.equal(
-    await frame
-      .locator('[aria-label="Component preview"] [data-wb="ChatThreadPanel"]')
-      .evaluate((element) => getComputedStyle(element).paddingTop),
-    "0px",
-    "a Live edit does not style the newly mounted component instance",
+    await frame.locator('[aria-label="Component preview"]').count(),
+    0,
+    "opening from the tree retains the live workspace",
   );
+  assert.equal(await frame.locator('[data-wb="ChatThreadPanel"]').count(), 1);
+  assert.equal(await frame.locator(fromRow).count(), 1, "saved Live selector stays instance-only");
   await frame.getByRole("button", { name: "Live mode", exact: true }).click();
   await row("ChatThreadPanel").first().focus();
   await page.keyboard.press("Control+z");
@@ -78,7 +80,7 @@ try {
   for (let i = 0; i < 20 && !(await selected(panel)); i++) {
     await page.mouse.click(box.x + 20, box.y + 5);
   }
-  assert.equal(await page.locator(".selector").textContent(), fromRow, "canvas and row agree");
+  assert.ok(await selected(panel), "canvas and row agree");
   assert.equal(await row("ChatThreadPanel").first().getAttribute("aria-selected"), "true");
 
   await row("ComposeBox").first().locator(':scope > [data-sidebar="menu-button"]').hover();
@@ -104,7 +106,7 @@ try {
   assert.notEqual(await page.locator(".selector").textContent(), fromRow);
   await page.keyboard.press("ArrowUp");
   await page.keyboard.press("Enter");
-  assert.equal(await page.locator(".selector").textContent(), fromRow);
+  assert.ok(await selected(panel));
 
   const paragraph = frame.locator('[data-wb="CatalogCard"].state p').first();
   await paragraph.scrollIntoViewIfNeeded();

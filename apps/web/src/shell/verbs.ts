@@ -42,7 +42,7 @@ export type ShellVerbs = ThreadVerbs &
     newProject(): void;
     /** Shows a pane beside a main; leaving the canvas on a child's address goes to its main's. */
     setPane(main: ThreadId, pane: PaneKind): void;
-    /** Switches the main thread's design mode, preserving its live layout. */
+    /** Switches design mode without changing the live layout or focused child. */
     setMode(main: ThreadId, mode: Mode): void;
     setSplit(main: ThreadId, split: number): void;
     browse(main: ThreadId, step: BrowserStep): void;
@@ -206,7 +206,6 @@ export function verbs(deps: Deps, doc: ShellState): ShellVerbs {
         return;
       }
       change((current) => setMode(current, main, mode));
-      if (active?.focus !== null && active?.main === main) go(main);
     },
     setSplit: (main, split) => {
       change((current) => setSplit(current, main, split));

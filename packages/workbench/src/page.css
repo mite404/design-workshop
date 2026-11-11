@@ -561,7 +561,8 @@ body {
   cursor: default;
 }
 
-.message {
+.message,
+.component-notice {
   margin: 12px 0 0;
   color: #b8432c;
 }

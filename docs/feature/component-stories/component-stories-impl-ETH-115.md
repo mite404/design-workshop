@@ -128,4 +128,20 @@ issue or PR under repo policy (ADR-007, ADR-017).
 
 ## Drift log
 
-Record here anything built differently from this plan, and why.
+* The Workbench URL stores `component`, its route in `path`, and `component-view` to
+  distinguish the actual thread, Live mock, and default Component preview. Keeping that
+  distinction preserves the same mounted workspace through mode switches and reloads.
+* Catalog CSS now enters through `tokens.css`, inside the app's existing `catalog` layer.
+  Component-local imports previously left rules such as `.card[data-context="thread"].state`
+  unlayered and more specific than a shared component override. Storybook uses the same
+  layered catalog cascade, with saved overrides outside it. The scroll browser test imports
+  `tokens.css` explicitly now that its component no longer imports a stylesheet itself.
+* The fade keeps both the drawer and title bar opaque. The title bar must remain usable
+  to switch back to Live mode while the selection tool is on.
+* Switching design modes keeps the focused child route. Revisiting an already open canvas
+  also keeps its mode, rather than forcing Live mode on every render of a child thread.
+  Entering Component mode clears any Live selection outside the open component.
+* Ethan will check Safari manually. Safari is not part of CI and does not block this ticket.
+  Do not start a Mac satellite without Ethan's explicit approval. Automated browser checks
+  run in Chromium in the Linux orb.
+* Delivery remains local until the earlier no-push instruction is lifted. Linear is unchanged.

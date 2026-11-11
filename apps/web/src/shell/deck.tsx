@@ -5,11 +5,13 @@ import {
   ResizablePanelGroup,
 } from "@yaklabs/ui/components/resizable";
 import { useIsMobile } from "@yaklabs/ui/hooks/use-mobile";
+import { componentView, watchComponentView } from "@yaklabs/workbench/tree";
 import {
   useCallback,
   useEffect,
   useRef,
   useState,
+  useSyncExternalStore,
   type ComponentProps,
   type HTMLAttributes,
   type ReactNode,
@@ -85,7 +87,7 @@ function MainPane({
   hidden: boolean;
   view: View;
 }) {
-  const preview = view.mode === "live" && view.pane === "thread";
+  const preview = view.mode !== undefined && view.pane === "thread";
   return (
     <div
       inert={hidden}
@@ -96,7 +98,7 @@ function MainPane({
       <Retain shown={preview}>
         <MockThread />
       </Retain>
-      <Retain shown={!preview}>
+      <Retain shown={!preview} data-wb-live-thread={import.meta.env.DEV ? "" : undefined}>
         <ThreadPane key={thread.id} thread={thread} bare />
       </Retain>
     </div>
@@ -196,17 +198,37 @@ function Workspace(beside: Beside) {
 
 // Product mode is separate from pane layout. Retaining both keeps mock edits and live drafts
 // intact when switching, without writing synthetic messages into the device's thread history.
+const noComponentView = () => "none" as const;
+const subscribeComponent = import.meta.env.DEV ? watchComponentView : () => () => {};
+const readComponent = import.meta.env.DEV ? componentView : noComponentView;
+
+function useComponentView(props: Beside) {
+  const { thread, view } = props;
+  const opened = useSyncExternalStore(subscribeComponent, readComponent, noComponentView);
+  const active = props.shell.active?.main;
+  useEffect(() => {
+    if (import.meta.env.DEV && active === thread.id)
+      document.documentElement.dataset.wbMode = view.mode ?? "live";
+  }, [active, thread.id, view.mode]);
+  return {
+    component: { none: view.mode === "component", preview: true, live: false, thread: false }[
+      opened
+    ],
+    view: opened === "thread" ? { ...view, mode: undefined } : view,
+  };
+}
+
 function DesignWorkspace(props: Beside) {
   const { thread, view } = props;
+  const opened = useComponentView(props);
   if (view.mode === undefined && view.pane === "thread" && thread.turnCount === 0)
     return <Welcome thread={thread} />;
-  const component = view.mode === "component";
   return (
     <div className="grid h-full min-h-0" style={{ ["--thread-height" as string]: "100%" }}>
-      <Retain shown={!component}>
-        <Workspace {...props} />
+      <Retain shown={!opened.component}>
+        <Workspace {...props} view={opened.view} />
       </Retain>
-      <Retain shown={component}>
+      <Retain shown={opened.component}>
         <section aria-label="Component mode" className="h-full min-h-0">
           <MockThread component />
         </section>

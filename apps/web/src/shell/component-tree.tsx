@@ -8,6 +8,7 @@ import {
 import { FoldChevron, SidebarSection } from "@yaklabs/ui/components/sidebar-section";
 import { componentTree, DRAWER, TREE_EVENT, type ComponentNode } from "@yaklabs/workbench/tree";
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useShell } from "./model";
 
 const NAMED = "[data-wb]";
 const ids = new WeakMap<Element, number>();
@@ -37,6 +38,7 @@ function hasRow(nodes: ComponentNode[], element: Element | null): boolean {
 
 /** The development-only drawer tree, read from the canvas document rather than React internals. */
 export default function ComponentTree() {
+  const shell = useShell();
   const [nodes, setNodes] = useState(() =>
     componentTree(document.body, document.querySelector(DRAWER)),
   );
@@ -111,6 +113,11 @@ export default function ComponentTree() {
     });
   }
 
+  function choose(element: Element): void {
+    announce(TREE_EVENT.select, element);
+    if (shell?.active) shell.setMode(shell.active.main, "component");
+  }
+
   function branchKey(key: string, node: ComponentNode, row: HTMLLIElement) {
     const closed = folded.has(node.element);
     if (key === "ArrowRight") {
@@ -144,7 +151,7 @@ export default function ComponentTree() {
     if (["ArrowRight", "ArrowLeft"].includes(event.key)) {
       branchKey(event.key, node, row);
     } else {
-      announce(TREE_EVENT.select, node.element);
+      choose(node.element);
     }
   }
 
@@ -179,7 +186,7 @@ export default function ComponentTree() {
             style={{ paddingLeft: 8 + depth * 16, minWidth: 168 + depth * 16 }}
             onClick={() => {
               focusRow(rows.current.get(node.element));
-              announce(TREE_EVENT.select, node.element);
+              choose(node.element);
             }}
             onPointerEnter={() => announce(TREE_EVENT.hover, node.element)}
             onPointerLeave={() => announce(TREE_EVENT.hover, null)}

@@ -175,7 +175,7 @@ describe("visit", () => {
     expect(visit(shown, { main: PROFIT, focus: SATURDAY })).toBe(shown);
     const preview = setMode(shown, PROFIT, "component");
     expect(viewOf(visit(preview, { main: PROFIT, focus: SATURDAY }), PROFIT)).toMatchObject({
-      mode: "live",
+      mode: "component",
       pane: "canvas",
     });
   });

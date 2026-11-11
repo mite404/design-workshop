@@ -58,7 +58,7 @@ import {
   previewFiles,
   type GoogleFont,
 } from "./fonts";
-import { pick } from "./selector";
+import { isSelector, pick } from "./selector";
 import {
   boundedOffset,
   dragSpace,
@@ -127,6 +127,7 @@ type Drag = { control: HTMLElement; from: number; x: number; y: number };
 type Selection = {
   node: Styled;
   selector: string;
+  reach: string;
   locked: Set<Spacing | TypeName>;
   nudgeLocked: boolean;
 };
@@ -161,6 +162,17 @@ const frame = element("iframe", {
 const outline = element("div", { className: "outline" });
 const treeOutline = element("div", { className: "tree-outline", hidden: true });
 let treeHover: Element | null = null;
+let component: Styled | null = null;
+let componentMode = false;
+const requestedComponent = new URL(location.href).searchParams.get("component");
+let componentKey =
+  requestedComponent !== null && isSelector(requestedComponent) ? requestedComponent : null;
+const reachNote = element("p", { className: "mode-note" });
+const componentNotice = element("p", {
+  className: "component-notice",
+  role: "status",
+  hidden: true,
+});
 const handles = CORNERS.map(() =>
   element("div", { className: "handle", tabIndex: 0, ariaLabel: "Corner radius" }),
 );
@@ -910,27 +922,51 @@ const paddingBars = SIDES.map((side) =>
 );
 const gapBars: Bar[] = [];
 
+function componentAvailable(): boolean {
+  return component !== null && component.closest("[inert], [hidden]") === null;
+}
+
+function selectable(node: Styled): boolean {
+  if (!componentMode || componentKey === null) return true;
+  return componentAvailable() && component?.contains(node) === true;
+}
+
+function componentRoot(node: Styled): boolean {
+  return componentMode && node === component;
+}
+
+function selectionOf(node: Styled): Selection {
+  const componentName = node.closest("[data-wb]")?.getAttribute("data-wb");
+  return {
+    node,
+    selector: selectorOf(node, componentMode ? "component" : "live"),
+    reach:
+      componentMode && componentName ? `Every instance of ${componentName}` : "This one element",
+    locked: new Set(
+      [...SPACING, ...TYPE].filter(
+        (name) =>
+          node.style.getPropertyValue(name) !== "" ||
+          (componentRoot(node) && name === "margin-bottom"),
+      ),
+    ),
+    nudgeLocked: hasNativeTransform(node) || componentRoot(node),
+  };
+}
+
 function select(node: Styled | null): void {
+  if (node !== null && !selectable(node)) return;
   endOffset();
   commit();
-  for (const name of TYPE) commitType(name);
+  TYPE.forEach(commitType);
   if (stepList.matches(":popover-open")) stepList.hidePopover();
   endFonts();
-  if (fontPicker.matches(":popover-open")) fontPicker.hidePopover();
-  if (basics.matches(":popover-open")) basics.hidePopover();
+  [fontPicker, basics].forEach((popover) => {
+    if (popover.matches(":popover-open")) popover.hidePopover();
+  });
   closeInplace(false);
-  selection =
-    node === null
-      ? null
-      : {
-          node,
-          selector: selectorOf(node),
-          locked: new Set(
-            [...SPACING, ...TYPE].filter((n) => node.style.getPropertyValue(n) !== ""),
-          ),
-          nudgeLocked: hasNativeTransform(node),
-        };
+  selection = node === null ? null : selectionOf(node);
   selectorText.textContent = selection?.selector ?? "";
+  reachNote.textContent = selection?.reach ?? "";
   doc()?.dispatchEvent(new CustomEvent(TREE_EVENT.selected, { detail: node }));
 }
 
@@ -987,7 +1023,7 @@ function drawerEvent(event: Event): boolean {
   return (
     target instanceof (doc()?.defaultView ?? window).Element &&
     target.closest(
-      `${DRAWER}, [data-slot="sidebar-trigger"], [data-slot="sidebar-push-scrim"], [data-slot="sidebar-hot-zone"]`,
+      `${DRAWER}, [data-slot="title-bar"], [data-slot="sidebar-trigger"], [data-slot="sidebar-push-scrim"], [data-slot="sidebar-hot-zone"]`,
     ) !== null
   );
 }
@@ -1009,6 +1045,39 @@ function pressSelection(event: PointerEvent, under: Element | null): boolean {
   return true;
 }
 
+function openComponent(node: Styled): void {
+  const root = node.closest("[data-wb]");
+  if (root === null || !styled(root)) {
+    select(node);
+    return;
+  }
+  const url = new URL(location.href);
+  componentKey = selectorOf(root);
+  url.searchParams.set("component", componentKey);
+  const path = frame.contentWindow?.location;
+  if (path !== undefined) url.searchParams.set("path", path.pathname + path.search);
+  const view =
+    root.closest('[aria-label="Component mode"]') !== null
+      ? "preview"
+      : root.closest("[data-wb-live-thread]") !== null
+        ? "thread"
+        : "live";
+  url.searchParams.set("component-view", view);
+  window.history.replaceState(null, "", url);
+  component = root;
+  componentMode = true;
+  doc()?.dispatchEvent(new Event(TREE_EVENT.focus));
+  root.scrollIntoView({ block: "center", inline: "nearest", behavior: "instant" });
+  select(root);
+}
+
+function componentChain(node: Element | null): Styled[] {
+  const nodes = chain(node);
+  if (!componentMode || componentKey === null) return nodes;
+  const at = component === null ? -1 : nodes.indexOf(component);
+  return at < 0 ? [] : nodes.slice(at);
+}
+
 // Follows the frame's document across reloads: selection by click, and keys while it has focus.
 function watchFrame(): void {
   const view = frame.contentWindow;
@@ -1023,7 +1092,7 @@ function watchFrame(): void {
       node.isConnected &&
       styled(node)
     ) {
-      select(node);
+      openComponent(node);
     }
   });
   view.document.addEventListener(TREE_EVENT.hover, (event) => {
@@ -1040,7 +1109,7 @@ function watchFrame(): void {
       view.focus();
       const under = view.document.elementFromPoint(event.clientX, event.clientY);
       if (pressSelection(event, under)) return;
-      select(pick(chain(under), chain(selection?.node ?? null)));
+      select(pick(componentChain(under), componentChain(selection?.node ?? null)));
     },
     true,
   );
@@ -1067,7 +1136,7 @@ function watchFrame(): void {
       if (bodyPress === null || event.pointerId !== bodyPress.id) return;
       const { moved, under } = bodyPress;
       endOffset();
-      if (!moved) select(pick(chain(under), chain(selection?.node ?? null)));
+      if (!moved) select(pick(componentChain(under), componentChain(selection?.node ?? null)));
     },
     true,
   );
@@ -1195,6 +1264,70 @@ function trackSelection(): void {
   outline.style.borderRadius = s.borderTopLeftRadius;
   overlay.dataset.hover = String(inside(pointer, rect));
   trackGaps(node, trackPadding(node, rect, s));
+}
+
+// Fade in the frame's own coordinates, leaving the drawer as an independent opaque layer.
+// No animation: reduced-motion users get the same immediate, interruptible view.
+const fade = (axis: string, start: number, end: number): string =>
+  `linear-gradient(to ${axis}, transparent ${start - 48}px, black ${start}px, black ${end}px, transparent ${end + 48}px)`;
+
+function maskComponent(d: Document, root: Styled): void {
+  const r = root.getBoundingClientRect();
+  const chrome = [d.querySelector("#sidebar"), d.querySelector('[data-slot="title-bar"]')].map(
+    (node) => node?.getBoundingClientRect() ?? new DOMRect(),
+  );
+  frame.style.maskImage = `linear-gradient(black, black), linear-gradient(black, black), ${fade("right", r.left, r.right)}, ${fade("bottom", r.top, r.bottom)}`;
+  frame.style.maskSize = [
+    ...chrome.map((rect) => `${rect.width}px ${rect.height}px`),
+    "100% 100%",
+    "100% 100%",
+  ].join(", ");
+  frame.style.maskPosition = [
+    ...chrome.map((rect) => `${rect.left}px ${rect.top}px`),
+    "0 0",
+    "0 0",
+  ].join(", ");
+  frame.style.maskRepeat = "no-repeat";
+  frame.style.maskComposite = "add, add, intersect";
+}
+
+function restoreComponent(d: Document): void {
+  if (component?.isConnected || componentKey === null) return;
+  if (new URL(location.href).searchParams.get("path") !== d.location.pathname + d.location.search)
+    return;
+  const found = d.querySelector(componentKey);
+  component = found !== null && styled(found) ? found : null;
+  if (component !== null && componentMode) {
+    component.scrollIntoView({ block: "center", inline: "nearest", behavior: "instant" });
+    select(component);
+  }
+}
+
+function showComponent(d: Document): void {
+  const focused = componentMode && componentKey !== null;
+  const unavailable = focused && !componentAvailable();
+  if (unavailable && selection !== null) select(null);
+  componentNotice.hidden = !unavailable;
+  componentNotice.textContent =
+    "The open component is no longer on this page. Open another from the drawer.";
+  handles.forEach((handle) => {
+    handle.style.display = focused ? "none" : "";
+  });
+  frame.style.maskImage = "";
+  if (focused && componentAvailable() && component !== null) maskComponent(d, component);
+}
+
+function trackComponent(): void {
+  const d = doc();
+  if (d === null) return;
+  const mode = d.documentElement.dataset.wbMode === "component";
+  if (componentMode !== mode) {
+    componentMode = mode;
+    const node = selection?.node ?? null;
+    select(node !== null && !selectable(node) ? null : node);
+  }
+  restoreComponent(d);
+  showComponent(d);
 }
 
 const rows = SPACING.map((name) => {
@@ -2683,6 +2816,7 @@ const selectionPanel = element(
   { ariaLabel: "Selection" },
   element("h2", {}, "Selection"),
   selectorText,
+  reachNote,
   ...rows.map((r) => r.row),
   note,
   ...offsetRows.map((r) => r.row),
@@ -2707,7 +2841,7 @@ function trackFields(): void {
     input.disabled = name === "gap" && !laidOut;
     clear.disabled = was(selector, name) === null;
   }
-  note.hidden = locked.size === 0;
+  note.hidden = !SPACING.some((name) => locked.has(name));
   const offset = offsetOf(node);
   for (const { axis, input, clear } of offsetRows) {
     if (document.activeElement !== input) input.value = String(offset[axis]);
@@ -2715,6 +2849,9 @@ function trackFields(): void {
     clear.disabled = selection.nudgeLocked || offset[axis] === 0;
   }
   offsetNote.hidden = !selection.nudgeLocked;
+  offsetNote.textContent = componentRoot(node)
+    ? "Placement belongs to Live mode. Edit inside this component's border."
+    : "Offset is read-only because the element already has a native transform or translate.";
 }
 
 // Lists saved values whose selector matches nothing in the frame's page, each with a delete.
@@ -2937,6 +3074,7 @@ function trackColours(): void {
   const theme = root.dataset.theme === "dark" ? "dark" : "light";
   const selector = COLOUR_ROOT[theme];
   const computed = style(root);
+  frame.parentElement?.style.setProperty("background-color", computed.getPropertyValue("--paper"));
   const values = new Map(
     colourRows.map(({ name }) => [name, computed.getPropertyValue(name).trim()]),
   );
@@ -2951,6 +3089,7 @@ function trackColours(): void {
 }
 
 function track(): void {
+  trackComponent();
   trackColours();
   trackRadius();
   trackSelection();
@@ -2988,6 +3127,7 @@ document.body.append(
       ),
       checkCommit,
       message,
+      componentNotice,
       element("h2", {}, "Window · Both modes"),
       element("div", { className: "row" }, label, field, reset),
       colourPanel,

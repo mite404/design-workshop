@@ -177,8 +177,8 @@ function unique(node: Element, attr: string): string | null {
     : null;
 }
 
-/** `node`'s instance selector. Component names are reserved for shared edits (ADR-023). */
-export function selectorOf(node: Element): string {
+/** Instance path in Live mode; nearest named root and inner path in Component mode (ADR-023). */
+export function selectorOf(node: Element, reach: "live" | "component" = "live"): string {
   const steps: Step[] = [];
   for (
     let e: Element | null = node;
@@ -188,8 +188,8 @@ export function selectorOf(node: Element): string {
     steps.push({
       tag: e.localName,
       index: [...(e.parentElement?.children ?? [])].indexOf(e) + 1,
-      wb: null,
-      id: unique(e, "id"),
+      wb: reach === "component" ? e.getAttribute("data-wb") : null,
+      id: reach === "component" ? null : unique(e, "id"),
     });
   }
   return selectorFor(steps);

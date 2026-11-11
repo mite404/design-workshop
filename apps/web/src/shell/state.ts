@@ -122,15 +122,16 @@ export function parseShell(saved: unknown, ws: Workspace): ShellState {
 
 /**
  * Opening a thread: its main gets a tab at the end if it has none, and a child forces its main
- * onto the canvas, the only place a child shows. The same object when nothing changes, so
- * render can derive it and an effect can save it, as often as either runs.
+ * onto the canvas, the only place a child shows. An open canvas keeps its design mode.
+ * The same object when nothing changes, so render can derive it and an effect can save it,
+ * as often as either runs.
  */
 export function visit(state: ShellState, at: Located): ShellState {
   const tabbed = state.tabs.includes(at.main)
     ? state
     : { ...state, tabs: [...state.tabs, at.main] };
   const view = viewOf(tabbed, at.main);
-  if (at.focus === null || (view.pane === "canvas" && view.mode === "live")) return tabbed;
+  if (at.focus === null || view.pane === "canvas") return tabbed;
   return withView(tabbed, at.main, { ...view, pane: "canvas", mode: "live" });
 }
 
