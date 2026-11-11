@@ -22,9 +22,9 @@ function Section({ startOpen }: { startOpen: boolean }) {
         onToggle={() => {
           setOpen(!open);
         }}
-        summary={<strong style={{ fontSize: 13 }}>How I got this</strong>}
+        summary={<strong style={{ fontSize: "var(--text-xs)" }}>How I got this</strong>}
       >
-        <p style={{ margin: "12px 16px 0", fontSize: 13 }}>
+        <p style={{ margin: "12px 16px 0", fontSize: "var(--text-xs)" }}>
           Read last week&apos;s orders, grouped them by day, and subtracted refunds.
         </p>
       </Disclosure>

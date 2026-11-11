@@ -34,10 +34,10 @@ function Stage() {
           }}
         >
           <div style={{ width: 360, padding: 18 }}>
-            <h3 id="demo-title" style={{ margin: "0 0 8px", fontSize: 15 }}>
+            <h3 id="demo-title" style={{ margin: "0 0 8px", fontSize: "var(--text-sm)" }}>
               Pause the thread?
             </h3>
-            <p style={{ margin: "0 0 16px", fontSize: 13 }}>
+            <p style={{ margin: "0 0 16px", fontSize: "var(--text-xs)" }}>
               Tab stays inside, Escape closes, and focus returns to the button.
             </p>
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>

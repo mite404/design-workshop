@@ -16,7 +16,7 @@
   align-items: center;
   gap: 8px;
   margin: 0;
-  font-size: 15px;
+  font-size: var(--text-sm);
   font-weight: 600;
 }
 .dictation-time {
@@ -40,7 +40,7 @@
   gap: 8px;
 }
 .device-label {
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--soft-ink);
   white-space: nowrap;
 }
@@ -50,7 +50,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   padding: 6px 10px;
-  font-size: 12px;
+  font-size: var(--text-xs);
   border-radius: 8px;
 }
 .device-picker .device-list {
@@ -76,7 +76,7 @@
   border-radius: 8px;
   background: transparent;
   text-align: left;
-  font-size: 13px;
+  font-size: var(--text-xs);
 }
 /* With a live microphone each input says under its name what it does, since only the
    system's default turns speech into text (Ethan). Secondary words in 12px
@@ -93,7 +93,7 @@
   gap: 2px;
 }
 .device-hint {
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--soft-ink);
 }
 .device-picker .device-option:hover,
@@ -126,7 +126,7 @@
   height: 4.65em;
   margin: 0;
   overflow-y: auto;
-  font-size: 15px;
+  font-size: var(--text-sm);
   line-height: 1.55;
 }
 .dictation-notice {
@@ -135,7 +135,7 @@
   border-radius: 8px;
   background: var(--warn-bg);
   color: var(--warn-ink);
-  font-size: 12px;
+  font-size: var(--text-xs);
 }
 
 /* Resets the lab's global footer rule (divider and padding): no divider here either. */
@@ -146,7 +146,7 @@
   margin-top: 12px;
   padding: 0;
   border-top: none;
-  font-size: 12px;
+  font-size: var(--text-xs);
   line-height: 1.4;
 }
 .dictation-footer div {
@@ -160,7 +160,7 @@
   gap: 8px;
   padding: 8px 14px;
   border-radius: var(--btn-radius);
-  font-size: 13px;
+  font-size: var(--text-xs);
 }
 .dictation-done,
 .dictation-done:hover {

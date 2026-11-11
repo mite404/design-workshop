@@ -36,7 +36,7 @@ function OpenSpace({
       className={`open-space lane-shift @container relative isolate flex h-full ${splash ? "min-w-[320px] flex-1" : "w-(--lane-default-width) shrink-0"} flex-col items-center justify-center gap-4 rounded-[var(--radius-card)] border border-dashed border-hairline p-6 text-center`}
     >
       {splash && <SplashDrawing />}
-      <p className="font-serif text-xl text-balance text-ink">
+      <p className="font-serif text-lg leading-7 text-balance text-ink">
         Drag a text selection or UI card here
       </p>
       <button type="button" className="btn btn-sm" data-blank="" onClick={onBlank}>

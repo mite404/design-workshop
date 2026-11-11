@@ -174,3 +174,24 @@ test in the drift log for the test suite rewrite.
 ## Drift log
 
 Record here anything built differently from this plan, and why.
+
+* Before captures were taken at `2d114c1` and reused on `eef8a91`, since ETH-108 changed only
+  tests and docs. The demo thread opens already played, so there was nothing to wait for. The
+  stories: Chat Thread Panel `work-details-open`, `structured`, `dictation`,
+  `interactive-profit`, Approved Answers `component-gallery` and Public Share Page
+  `shared-thread`.
+* Chart ticks take their size from `.chart .recharts-cartesian-axis-tick-value`, not from the
+  chart container, so the Recharts hover tooltip keeps the card's text size.
+* Every class-renamed element keeps its pre-change computed line height, with an existing
+  `leading-*` utility or an exact arbitrary value. `text-[13px]` sites (menu items, dialog, share
+  controls) inherited 19.5px and get `leading-[19.5px]`, so a menu item stays 33.5px tall. The
+  welcome labels (`text-[11px]`) keep 16.5px. The scale renames keep Tailwind's old pairs:
+  `leading-7` (28px) for old `text-lg` and `text-xl`, `leading-8` (32px) for old `text-2xl`, and
+  `leading-9` (36px) for old `text-3xl`. Measured at all 12 sites on `eef8a91` and after: every
+  line height is unchanged; only sizes moved.
+* WorkDetails test untouched: ETH-108 made it compare the two sizes.
+* `ComposeBox.browser.test.tsx` pinned the six-line cap at 130px, which is six lines of 15px text.
+  The cap is `6lh` and still holds at 14px (122px), so nothing overflows. The test now compares
+  three and six of the field's own line heights.
+* The new test is in `tokens.test.ts`. It requires the nine names to hold pixel values without
+  pinning the values, so a later dial can change them, and it also rejects `rem` and `em` sizes.

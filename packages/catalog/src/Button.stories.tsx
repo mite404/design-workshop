@@ -11,7 +11,7 @@ function ButtonStates({ label, size }: { label: string; size: "default" | "small
         ["Focus (held)", "focus"],
       ].map(([name, preview]) => (
         <div key={name} style={{ display: "flex", alignItems: "center", gap: 24 }}>
-          <span className="muted" style={{ width: 110, fontSize: 12 }}>
+          <span className="muted" style={{ width: 110, fontSize: "var(--text-xs)" }}>
             {name}
           </span>
           <button className={className} data-preview={preview}>
@@ -20,7 +20,7 @@ function ButtonStates({ label, size }: { label: string; size: "default" | "small
         </div>
       ))}
       <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
-        <span className="muted" style={{ width: 110, fontSize: 12 }}>
+        <span className="muted" style={{ width: 110, fontSize: "var(--text-xs)" }}>
           Disabled
         </span>
         <button className={className} disabled>

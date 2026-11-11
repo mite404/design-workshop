@@ -139,7 +139,7 @@ function CarryTarget() {
         border: "1px dashed var(--soft-ink)",
         background: "var(--paper)",
         color: "var(--ink)",
-        fontSize: 12,
+        fontSize: "var(--text-xs)",
       }}
     >
       <p style={{ margin: 0 }}>Drop a card or a highlight here</p>

@@ -27,7 +27,7 @@ function FieldStates({
     >
       {STATES.map(([name, preview, value]) => (
         <div key={name} style={{ display: "flex", alignItems: "center", gap: 24 }}>
-          <span className="muted" style={{ width: 110, fontSize: 12 }}>
+          <span className="muted" style={{ width: 110, fontSize: "var(--text-xs)" }}>
             {name}
           </span>
           <input
@@ -41,7 +41,7 @@ function FieldStates({
         </div>
       ))}
       <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
-        <span className="muted" style={{ width: 110, fontSize: 12 }}>
+        <span className="muted" style={{ width: 110, fontSize: "var(--text-xs)" }}>
           Disabled
         </span>
         <input

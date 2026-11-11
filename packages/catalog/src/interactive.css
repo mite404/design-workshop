@@ -8,7 +8,7 @@
 .live-sentence {
   margin: 0;
   padding: 0 16px;
-  font-size: 14px;
+  font-size: var(--text-sm);
   line-height: 1.55;
 }
 .live-value {
@@ -29,7 +29,7 @@
 }
 .stepped label {
   display: block;
-  font-size: 11px;
+  font-size: var(--text-2xs);
   color: var(--soft-ink);
   margin-bottom: 6px;
 }
@@ -78,7 +78,7 @@
   border-radius: 6px;
   background: transparent;
   color: var(--soft-ink);
-  font-size: 12px;
+  font-size: var(--text-xs);
   white-space: nowrap;
 }
 .stops button[data-edge="start"] {
@@ -99,7 +99,7 @@
 }
 .stop-description {
   margin: 2px 0 0;
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--soft-ink);
 }
 
@@ -109,7 +109,7 @@
   padding: 10px 12px 10px 30px;
   border-radius: 10px;
   background: var(--paper-deep);
-  font-size: 12px;
+  font-size: var(--text-xs);
   /* Whole pixels (not 1.7, 20.4px), so the list's height is whole and the reveal scroll, which
      moves in whole pixels, lands the footer on the same pixel it started on (ADR-073). */
   line-height: 20px;
@@ -122,6 +122,6 @@
 }
 @container thread (max-width: 480px) {
   .stops button {
-    font-size: 11px;
+    font-size: var(--text-2xs);
   }
 }

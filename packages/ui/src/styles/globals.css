@@ -44,6 +44,8 @@
 @theme inline {
   --font-sans: var(--font-text);
   --font-serif: var(--font-display);
+  /* Makes a text-2xs class; its size lives in the catalog's tokens.css with the other steps. */
+  --text-2xs: var(--text-2xs);
   /* Kay's palette as Tailwind colours, so utilities stay on-brand: bg-paper, text-ink, ... */
   --color-paper: var(--paper);
   --color-paper-deep: var(--paper-deep);

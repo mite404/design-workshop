@@ -253,6 +253,27 @@ describe("the button radius", () => {
   });
 });
 
+// The Template's stylesheets (ETH-104): the app's, the catalog's and the shared components'.
+const TEMPLATE_CSS = ["../../../apps/web/src/", "./", "../../ui/src/"].flatMap((folder) => {
+  const dir = new URL(folder, import.meta.url);
+  return readdirSync(dir, { recursive: true, encoding: "utf8" })
+    .filter((file) => file.endsWith(".css") && !file.endsWith("overrides.css"))
+    .map((file) => ({ file: folder + file, css: readFileSync(new URL(file, dir), "utf8") }));
+});
+
+describe("the type scale", () => {
+  it("is nine named steps, and every font size in the Template is one of them", () => {
+    const steps = ["2xs", "xs", "sm", "base", "lg", "xl", "2xl", "3xl", "4xl"];
+    const typed = TEMPLATE_CSS.flatMap(({ file, css }) =>
+      [...css.matchAll(/font-size:\s*[\d.]+(px|r?em)\b/g)].map((match) => `${file}: ${match[0]}`),
+    );
+    const named = steps.filter((step) => /^\d+px$/.test(String(ROOT.get(`--text-${step}`))));
+    expect(named).toEqual(steps);
+    expect(TEMPLATE_CSS.map(({ file }) => file)).toContain("../../ui/src/styles/globals.css");
+    expect(typed).toEqual([]);
+  });
+});
+
 describe("the edge shadow", () => {
   it("drops below the box, more than it reaches right, and leaves the top and left clear", () => {
     const reach = Object.values(THEMES).map((theme) => {

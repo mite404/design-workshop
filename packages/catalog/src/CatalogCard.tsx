@@ -52,18 +52,8 @@ function Chart({ selection }: { selection: Selection }) {
   const axes = (
     <>
       <CartesianGrid vertical={false} stroke="var(--hairline)" />
-      <XAxis
-        dataKey="label"
-        tickLine={false}
-        axisLine={false}
-        tick={{ fill: "var(--soft-ink)", fontSize: 12 }}
-      />
-      <YAxis
-        tickLine={false}
-        axisLine={false}
-        width={48}
-        tick={{ fill: "var(--soft-ink)", fontSize: 12 }}
-      />
+      <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fill: "var(--soft-ink)" }} />
+      <YAxis tickLine={false} axisLine={false} width={48} tick={{ fill: "var(--soft-ink)" }} />
       <Tooltip />
     </>
   );

@@ -6,7 +6,7 @@ import { isWorking } from "../shell/working";
 // The pill wears the user bubble's sage (design pillars, rule 15; ADR-142's "same green fill as
 // the user conversation bubble"), so it reads as the reader's own work going on elsewhere.
 const PILL =
-  "inline-flex items-center gap-1.5 rounded-full border border-[var(--bubble-line)] bg-[var(--bubble-tint-strong)] px-2 py-0.5 text-[11px] leading-4 font-medium text-ink";
+  "inline-flex items-center gap-1.5 rounded-full border border-[var(--bubble-line)] bg-[var(--bubble-tint-strong)] px-2 py-0.5 text-2xs leading-4 font-medium text-ink";
 
 /**
  * Whose a child thread is, by its parent's title (Ethan): "Belongs to Weekly brief". It says

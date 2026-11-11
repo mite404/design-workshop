@@ -40,7 +40,7 @@ export function StopChart({ stop, max, animate }: { stop: Stop; max: number; ani
             dataKey="label"
             tickLine={false}
             axisLine={false}
-            tick={{ fill: "var(--soft-ink)", fontSize: 12 }}
+            tick={{ fill: "var(--soft-ink)" }}
           />
           <YAxis
             domain={[0, max]}
@@ -48,7 +48,7 @@ export function StopChart({ stop, max, animate }: { stop: Stop; max: number; ani
             tickLine={false}
             axisLine={false}
             width={52}
-            tick={{ fill: "var(--soft-ink)", fontSize: 12 }}
+            tick={{ fill: "var(--soft-ink)" }}
           />
           <Tooltip
             formatter={(value) => [formatUsd(Number(value)), stop.label]}

@@ -6,7 +6,7 @@ import { useRestart, useRuntimeState } from "../runtime";
 export function Notice({ title, children }: { title: string; children?: ReactNode }) {
   return (
     <div className="flex h-full flex-col items-center justify-center gap-3 p-8 text-center">
-      <p className="font-serif text-2xl text-ink">{title}</p>
+      <p className="font-serif text-xl leading-8 text-ink">{title}</p>
       {children}
     </div>
   );

@@ -29,7 +29,7 @@ function PageLink({ to, go, children }: { to: PageAddress; go: Go; children: Rea
 function StartPage({ go }: { go: Go }) {
   return (
     <article className="flex flex-col gap-4">
-      <h1 className="font-serif text-3xl text-ink">Start</h1>
+      <h1 className="font-serif text-2xl leading-9 text-ink">Start</h1>
       <p className="text-soft-ink">
         A simulated browser: every page here is drawn by the app, and nothing reaches the network.
       </p>
@@ -64,7 +64,7 @@ const FORECAST = [
 function RadarPage() {
   return (
     <article className="flex flex-col gap-4">
-      <h1 className="font-serif text-3xl text-ink">Radar</h1>
+      <h1 className="font-serif text-2xl leading-9 text-ink">Radar</h1>
       <figure className="flex max-w-72 flex-col gap-2">
         <svg viewBox="0 0 240 240" aria-hidden="true" className="w-full text-ink">
           <rect width="240" height="240" rx="8" fill="var(--paper-deep)" />
@@ -114,12 +114,12 @@ function RadarPage() {
 function DocsPage() {
   return (
     <article className="flex max-w-prose flex-col gap-4">
-      <h1 className="font-serif text-3xl text-ink">Kay docs</h1>
+      <h1 className="font-serif text-2xl leading-9 text-ink">Kay docs</h1>
       <p className="text-ink">
         A project holds main threads. Each main thread has a canvas beside it, and a thread started
         there is its child, listed under it in the sidebar.
       </p>
-      <h2 className="font-serif text-xl text-ink">Carrying something to the canvas</h2>
+      <h2 className="font-serif text-lg leading-7 text-ink">Carrying something to the canvas</h2>
       <p className="text-ink">
         Pick up a highlight or a card by its header and let go between two lanes. A highlight starts
         a thread with the quote waiting in its compose box; a card opens large.
@@ -131,7 +131,7 @@ function DocsPage() {
 function SimulatedPage({ page, go }: { page: Page; go: Go }) {
   return (
     <article className="flex flex-col gap-4">
-      <h1 className="font-serif text-3xl text-ink">This page is simulated</h1>
+      <h1 className="font-serif text-2xl leading-9 text-ink">This page is simulated</h1>
       <p className="text-soft-ink">
         Nothing here reaches the network, so{" "}
         <span className="text-ink wrap-anywhere">{page.address}</span> has no page of its own.

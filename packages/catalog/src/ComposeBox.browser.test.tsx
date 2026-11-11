@@ -47,10 +47,10 @@ it("grows upward on typing and paste, caps at six lines, and shrinks on deletion
   });
   const message = field();
   const bottom = message.parentElement?.getBoundingClientRect().bottom;
+  const line = Number(getComputedStyle(message).lineHeight.replace("px", ""));
   expect(message.clientHeight).toBe(44);
   await userEvent.type(message, "one{Shift>}{Enter}{/Shift}two{Shift>}{Enter}{/Shift}three");
-  expect(message.clientHeight).toBeGreaterThan(60);
-  expect(message.clientHeight).toBeLessThan(70);
+  expect(Math.abs(message.clientHeight - 3 * line)).toBeLessThanOrEqual(1);
   expect(message.scrollHeight).toBe(message.clientHeight);
   expect(message.parentElement?.getBoundingClientRect().bottom).toBe(bottom);
 
@@ -62,8 +62,7 @@ it("grows upward on typing and paste, caps at six lines, and shrinks on deletion
   await userEvent.click(message);
   await userEvent.paste();
   expect(message.value).toBe("one\ntwo\nthree\nfour\nfive\nsix\nseven\neight");
-  expect(message.clientHeight).toBeGreaterThanOrEqual(130);
-  expect(message.clientHeight).toBeLessThanOrEqual(131);
+  expect(Math.abs(message.clientHeight - 6 * line)).toBeLessThanOrEqual(1);
   expect(message.scrollHeight).toBeGreaterThan(message.clientHeight);
   expect(message.parentElement?.getBoundingClientRect().bottom).toBe(bottom);
 

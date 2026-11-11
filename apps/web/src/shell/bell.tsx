@@ -55,7 +55,7 @@ function BellTrigger({ unread, disabled }: { unread: number; disabled: boolean }
       {badge !== null && (
         <span
           aria-hidden="true"
-          className="absolute top-0.5 right-0 flex h-4 min-w-4 items-center justify-center rounded-full bg-ink px-1 text-[10px] leading-none font-medium text-[var(--on-ink)] tabular-nums"
+          className="absolute top-0.5 right-0 flex h-4 min-w-4 items-center justify-center rounded-full bg-ink px-1 text-2xs leading-none font-medium text-[var(--on-ink)] tabular-nums"
         >
           {badge}
         </span>

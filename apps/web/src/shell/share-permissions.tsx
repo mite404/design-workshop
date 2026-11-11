@@ -49,7 +49,7 @@ function AddressField({
         onFocus={(event) => {
           event.currentTarget.select();
         }}
-        className="h-8 rounded-lg border-0 bg-transparent px-2.5 text-[13px] text-ink focus-visible:ring-0 dark:bg-transparent"
+        className="h-8 rounded-lg border-0 bg-transparent px-2.5 text-xs leading-[19.5px] text-ink focus-visible:ring-0 dark:bg-transparent"
       />
       {children}
     </div>
@@ -111,7 +111,7 @@ function PermissionsSection(props: AccessProps) {
             size="sm"
             disabled
             title={NOT_HERE}
-            className="h-8 px-3 text-[13px] disabled:pointer-events-auto"
+            className="h-8 px-3 text-xs leading-[19.5px] disabled:pointer-events-auto"
           >
             Create Workspace
           </Button>
