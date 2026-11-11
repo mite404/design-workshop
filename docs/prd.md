@@ -179,8 +179,7 @@ git HEAD ──read baseline + override──> inspector and canvas
   message written from the change list. It shows no value diff, no message and no list of
   changes: the press accepts everything on the canvas. No screenshots: the canvas already shows
   the state.
-- Not built yet: the single press. The build still shows the diff and waits for a second press.
-  See [the story](feature/check-and-commit/check-and-commit-story.md).
+  See [the story](done/check-and-commit/check-and-commit-story.md).
 
 ## 9. Requirements
 
@@ -205,7 +204,7 @@ Each requirement ends with its status on Nov 11 2026, read from Linear and the s
 - R6. Live preview while dragging; save on release; app and stories hot reload. *Built (ETH-101).*
 - R7. Light and dark values are edited separately and clearly labelled. *Built (ETH-113).*
 - R8. Undo, redo, discard. *Built (ETH-111).*
-- R9. Check and commit. *Built with two presses (ETH-112). The single press is ETH-117.*
+- R9. Check and commit in one press. *Built (ETH-112, ETH-117).*
 - R10. The Workbench refuses to write any file but the override file, and says why. Its write
   endpoint exists in development only. *Built (ETH-100).*
 - R11. Keyboard parity for every handle, as in today's Live mode. *Built, in each handle's ticket.*
