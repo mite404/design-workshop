@@ -95,6 +95,7 @@ export function Waveform({ read }: { read: () => number }) {
 
   return (
     <canvas
+      data-wb="Waveform"
       ref={canvas}
       className="waveform"
       // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- a live canvas cannot be an <img>; role="img" names its drawing

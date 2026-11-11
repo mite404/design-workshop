@@ -11,6 +11,7 @@ export const IconButton = forwardRef<
 >(function IconButton({ label, children, className, ...rest }, ref) {
   return (
     <button
+      data-wb="IconButton"
       ref={ref}
       type="button"
       aria-label={label}

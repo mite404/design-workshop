@@ -52,6 +52,7 @@ export function AgentWorking({
   // <output> is a live status region, so the label is announced once when it appears.
   return (
     <output
+      data-wb="AgentWorking"
       className="agent-working"
       aria-label={label}
       data-pattern={pattern}

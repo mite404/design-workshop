@@ -117,7 +117,13 @@ function BubbleText({ text }: { text: string }) {
  */
 export function UserTurn({ message, ref }: { message: UserMessage; ref?: Ref<HTMLElement> }) {
   return (
-    <article ref={ref} className="turn turn-user" data-turn-id={message.id} aria-label="You">
+    <article
+      data-wb="UserTurn"
+      ref={ref}
+      className="turn turn-user"
+      data-turn-id={message.id}
+      aria-label="You"
+    >
       <BubbleText text={message.text} />
       {message.attachments !== undefined && message.attachments.length > 0 && (
         <ul className="sent-context" aria-label="Sent with this message">
@@ -155,7 +161,12 @@ export function AnsweredTurns({
   ref?: Ref<HTMLElement>;
 }) {
   return (
-    <article ref={ref} className="turn turn-answered" aria-label="Your answers">
+    <article
+      data-wb="AnsweredTurns"
+      ref={ref}
+      className="turn turn-answered"
+      aria-label="Your answers"
+    >
       <dl>
         {messages.map((message) => (
           <div key={message.id} className="answered-pair" data-turn-id={message.id}>
@@ -337,6 +348,7 @@ export function AgentTurn({
   const reasoning = <Thinking thinking={message.thinking} live={thinkingLive} />;
   return (
     <article
+      data-wb="AgentTurn"
       ref={ref}
       className="turn turn-agent"
       data-turn-id={message.id}

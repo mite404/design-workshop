@@ -75,7 +75,7 @@ export function Modal({
   // A <dialog> shown in place with `open`, not in the top layer with showModal(), which would
   // cover the whole page; aria-modal still tells assistive technology the rest is paused.
   return (
-    <div className="modal-backdrop">
+    <div data-wb="Modal" className="modal-backdrop">
       <dialog
         ref={dialog}
         open

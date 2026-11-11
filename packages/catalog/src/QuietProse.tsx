@@ -190,7 +190,7 @@ export function Prose({
   stepOf?: (payload: unknown) => string | undefined;
 }) {
   return (
-    <div className="quiet-prose">
+    <div data-wb="Prose" className="quiet-prose">
       {blocks.map((block, i) => (
         <BlockView
           key={blockKey(block, i)}

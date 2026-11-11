@@ -24,7 +24,7 @@ export function Disclosure({
 }) {
   const body = useId();
   return (
-    <div className="disclosure" data-open={open || undefined}>
+    <div data-wb="Disclosure" className="disclosure" data-open={open || undefined}>
       <button
         className="disclosure-header"
         aria-expanded={open}

@@ -20,7 +20,7 @@ export function AgentTree({ duration = 2000, label = "Agent working" }: AgentTre
   const style: StyleWithVars = { "--working-duration": `${duration}ms` }; // number → "2000ms"
   // <output> is a live status region, so the label is announced once when it appears.
   return (
-    <output className="agent-tree" aria-label={label} style={style}>
+    <output data-wb="AgentTree" className="agent-tree" aria-label={label} style={style}>
       <span className="agent-tree-pill" />
       <span className="agent-tree-pill" />
       <span className="agent-tree-pill" />

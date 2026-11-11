@@ -63,6 +63,7 @@ export function CardHeader({
 }) {
   return (
     <header
+      data-wb="CardHeader"
       className="card-heading"
       data-carry={drag === undefined ? undefined : ""}
       onPointerDown={

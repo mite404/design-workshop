@@ -31,7 +31,11 @@ export default defineConfig({
         extends: true,
         test: {
           name: "browser",
-          include: ["../../packages/catalog/src/**/*.browser.test.{ts,tsx}"],
+          include: [
+            "../../packages/catalog/src/**/*.browser.test.{ts,tsx}",
+            "../../packages/workbench/src/**/*.browser.test.ts",
+            "../web/src/**/*.browser.test.tsx",
+          ],
           browser: browser(),
         },
       },

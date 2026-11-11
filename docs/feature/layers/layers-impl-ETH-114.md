@@ -126,3 +126,14 @@ issue or PR under repo policy (ADR-007, ADR-017).
 ## Drift log
 
 Record here anything built differently from this plan, and why.
+
+* Named the existing DOM roots without adding wrappers. `DictationModal` delegates its root to
+  `Modal`, so that root keeps `Modal`. `SharedThreadView` renders a fragment in its loaded state
+  and stays unnamed. `InteractiveCard` names its approved root; its rejected state is a
+  `CatalogCard` and keeps that name. Fragments and portals below a single root do not prevent
+  that root from carrying its component's name.
+* Live selectors keep their ID or structural anchors rather than component names (ADR-023).
+  A name unique now can match another instance after navigation or a mode change, so only
+  Component mode may use a name for a shared edit. Existing saved selectors remain valid.
+* The override file now supports Light and Dark colour blocks from ETH-113. This ticket does
+  not rewrite saved values or change either theme's cascade.

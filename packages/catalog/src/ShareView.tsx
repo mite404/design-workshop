@@ -58,7 +58,7 @@ export function ShareView({ hash, loadThread }: { hash?: string; loadThread?: Lo
   const fragment = hash ?? live;
   const thread = readThreadLink(fragment); // → { id, key } | undefined
   return (
-    <main className="share-page">
+    <main data-wb="ShareView" className="share-page">
       <div className="share-frame" data-context="thread">
         {thread === undefined ? (
           <SharedCardView hash={fragment} />

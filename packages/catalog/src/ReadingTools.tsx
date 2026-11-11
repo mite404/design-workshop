@@ -227,6 +227,7 @@ export function ReadingTools({
 
   return (
     <fieldset
+      data-wb="ReadingTools"
       ref={bar}
       className="reading-tools"
       aria-label="Reading tools"

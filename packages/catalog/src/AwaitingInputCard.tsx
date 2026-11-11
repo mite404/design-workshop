@@ -121,6 +121,7 @@ export function AwaitingInputCard({
   return (
     // oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- keys bubble here from the card's buttons and field; jsx-a11y's docs say to disable for bubbled events
     <section
+      data-wb="AwaitingInputCard"
       className="awaiting attention-surface"
       aria-label={label}
       data-open={open || undefined}

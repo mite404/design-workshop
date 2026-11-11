@@ -21,6 +21,7 @@ it("keeps exact decimal values and escapes text in the audit table", () => {
       }}
     />,
   );
+  expect(html).toMatch(/^<section data-wb="CatalogCard"/);
   expect(html).toContain("0.123456789");
   expect(html).toContain("Not recorded");
   expect(html).not.toContain("<img");

@@ -177,7 +177,7 @@ function unique(node: Element, attr: string): string | null {
     : null;
 }
 
-/** `node`'s selector in the override file (ADR-012). */
+/** `node`'s instance selector. Component names are reserved for shared edits (ADR-023). */
 export function selectorOf(node: Element): string {
   const steps: Step[] = [];
   for (
@@ -188,7 +188,7 @@ export function selectorOf(node: Element): string {
     steps.push({
       tag: e.localName,
       index: [...(e.parentElement?.children ?? [])].indexOf(e) + 1,
-      wb: unique(e, "data-wb"),
+      wb: null,
       id: unique(e, "id"),
     });
   }

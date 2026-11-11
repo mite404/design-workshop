@@ -146,7 +146,7 @@ export function Menu({
   }
 
   return (
-    <span className="menu-anchor" ref={root}>
+    <span data-wb="Menu" className="menu-anchor" ref={root}>
       {trigger({
         ref: button,
         "aria-haspopup": "menu",

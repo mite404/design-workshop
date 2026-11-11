@@ -37,13 +37,13 @@ export function Recap({
 }) {
   if (collapsed)
     return (
-      <button className="recap-chip attention-surface" onClick={onExpand}>
+      <button data-wb="Recap" className="recap-chip attention-surface" onClick={onExpand}>
         Recap
       </button>
     );
 
   return (
-    <section className="recap attention-surface" aria-label="Recap">
+    <section data-wb="Recap" className="recap attention-surface" aria-label="Recap">
       <header className="recap-header">
         <RecapHeadline idleMs={idleMs} />
         <button className="recap-close" onClick={onDismiss} aria-label="Dismiss recap">

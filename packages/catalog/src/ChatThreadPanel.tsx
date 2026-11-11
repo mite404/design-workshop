@@ -1099,6 +1099,7 @@ export function ChatThreadPanel({
 
   return (
     <section
+      data-wb="ChatThreadPanel"
       className="thread-panel"
       style={{ width }}
       aria-label={thread.title}

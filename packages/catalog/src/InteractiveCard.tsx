@@ -107,7 +107,7 @@ function ApprovedCard({
   }
 
   return (
-    <section className="card interactive-card" data-context="thread">
+    <section data-wb="InteractiveCard" className="card interactive-card" data-context="thread">
       <InteractiveHeader {...card} title={props.title} />
       <LiveSentence parts={fillSentence(props.sentence, summarize(stops[index], props.period))} />
       <StopChart

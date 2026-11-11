@@ -169,7 +169,7 @@ export function ComposeBox({
 
   return (
     // oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- catches ⌘U bubbling from the box's own controls; jsx-a11y's docs say to disable for bubbled events
-    <form className="compose-box" onSubmit={submit} onKeyDown={shortcut}>
+    <form data-wb="ComposeBox" className="compose-box" onSubmit={submit} onKeyDown={shortcut}>
       <textarea
         ref={(field) => {
           // oxlint-disable-next-line unicorn/no-useless-undefined -- consistent-return requires a value when the other path returns React's ref cleanup

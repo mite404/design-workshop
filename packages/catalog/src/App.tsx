@@ -190,7 +190,7 @@ export function App({ home = "/" }: { home?: string }) {
   const Page = selected === "Public Share Page" ? "div" : "main";
 
   return (
-    <div className="app lab-gallery">
+    <div data-wb="App" className="app lab-gallery">
       <aside>
         <a className="brand" href={home}>
           Component Lab

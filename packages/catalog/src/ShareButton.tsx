@@ -32,7 +32,7 @@ export function ShareButton({ card }: { card: SharedCard }) {
   }
 
   return (
-    <span className="share">
+    <span data-wb="ShareButton" className="share">
       <output className="share-status">{copied ? "Link copied" : ""}</output>
       <Menu
         label="Share this card"

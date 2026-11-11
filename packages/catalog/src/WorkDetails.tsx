@@ -160,7 +160,12 @@ export function WorkDetails({
     return () => el?.removeEventListener(REVEAL_STEP, reveal);
   }, []);
   return (
-    <div ref={root} className="work-details" data-live={label.live || undefined}>
+    <div
+      data-wb="WorkDetails"
+      ref={root}
+      className="work-details"
+      data-live={label.live || undefined}
+    >
       <Disclosure
         summary={
           label.live ? (

@@ -145,7 +145,7 @@ export function CatalogCard({
   const [showTable, setShowTable] = useState(false);
   if (result.kind === "rejected")
     return (
-      <section className="card state" data-context={context}>
+      <section data-wb="CatalogCard" className="card state" data-context={context}>
         <HostEnds leading={leading} trailing={trailing} />
         <span className="state-symbol">↗</span>
         <p className="eyebrow">CATALOG LIMIT</p>
@@ -159,7 +159,7 @@ export function CatalogCard({
     );
   if (result.kind === "empty")
     return (
-      <section className="card state" data-context={context}>
+      <section data-wb="CatalogCard" className="card state" data-context={context}>
         <HostEnds leading={leading} trailing={trailing} />
         <span className="state-symbol">∅</span>
         <p className="eyebrow">NO DATA</p>
@@ -170,7 +170,7 @@ export function CatalogCard({
   const { selection } = result;
   const { props } = selection;
   return (
-    <section className="card" data-context={context}>
+    <section data-wb="CatalogCard" className="card" data-context={context}>
       <CardHeader
         eyebrow={`${selection.component} / ${props.variant}`}
         title={props.title}
