@@ -170,3 +170,14 @@ so it carries its own fonts (ADR-014). A font installed on the computer is saved
 shows only where it is installed (Ethan: "this tradeoff is acceptable for now"). Rejected:
 loading fonts from a font server at run time, which breaks offline and depends on someone else's
 server, and uploading font files.
+
+## ADR-022 - CI runs every check on each push to main
+
+2026-11-11 - Accepted.
+With no pull requests (ADR-017), GitHub Actions is the review that does not depend on an agent's
+word. `.github/workflows/ci.yml` runs on every push to `main`: a frozen install, Playwright's
+Chromium, then typecheck, lint, format check, Fallow, tests, the app build and the Storybook
+build. `pnpm test` runs one turbo task per two CPUs: on a 2 CPU, 3.9 GB orb, turbo's default
+of ten at once ran out of memory and stalled tests past their timeouts, and the Storybook suite
+alone needs up to 2.1 GB. Rejected: longer test timeouts, which hide the stall instead of
+removing it.
