@@ -375,8 +375,6 @@ body {
 
 .type-field:first-child {
   grid-column: 1 / -1;
-  padding-right: 6px;
-  color: var(--wb-soft-ink);
 }
 
 .type-family {
@@ -579,7 +577,184 @@ body {
   font-weight: 600;
 }
 
+/* The family row and the Template's two fonts: a button that opens the font picker. */
+.font-open {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  outline: none;
+}
+
+.font-open > :first-child {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.font-open > .icon {
+  color: var(--wb-soft-ink);
+}
+
+.font-open:disabled {
+  color: var(--wb-soft-ink);
+  cursor: default;
+}
+
+.font-missing {
+  display: flex;
+  margin: 0 2px;
+  color: #b86e00;
+}
+
+.font-missing[hidden] {
+  display: none;
+}
+
+.font-root {
+  display: grid;
+  grid-template-columns: 76px 1fr;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  color: var(--wb-soft-ink);
+}
+
+.font-root[hidden] {
+  display: none;
+}
+
+.font-root .type-field {
+  color: var(--wb-ink);
+}
+
+.font-root .type-reset:disabled {
+  display: none;
+}
+
+/* The font picker: a search field over one list of three groups. */
+.font-picker {
+  position: fixed;
+  inset: auto;
+  width: 248px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow:
+    0 0 0 0.5px rgb(0 0 0 / 0.12),
+    0 8px 24px rgb(0 0 0 / 0.16);
+  color: var(--wb-ink);
+  font:
+    12px/1.4 system-ui,
+    sans-serif;
+  transform-origin: top;
+  transition:
+    opacity 120ms ease-out,
+    scale 120ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+@starting-style {
+  .font-picker:popover-open {
+    opacity: 0;
+    scale: 0.97;
+  }
+}
+
+.font-head {
+  display: flex;
+  gap: 4px;
+  padding: 8px;
+  border-bottom: 1px solid var(--wb-line);
+}
+
+.font-search,
+.font-filter {
+  box-sizing: border-box;
+  height: 24px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: #f5f5f5;
+  color: inherit;
+  font: inherit;
+  outline: none;
+}
+
+.font-search {
+  flex: 1;
+  min-width: 0;
+  padding: 0 6px;
+}
+
+.font-search:focus {
+  border-color: var(--wb-accent);
+}
+
+.font-filter {
+  width: 84px;
+  padding: 0 2px;
+  color: var(--wb-soft-ink);
+  cursor: pointer;
+}
+
+.font-list {
+  max-height: 320px;
+  padding: 4px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.font-group[hidden],
+.font-row[hidden] {
+  display: none;
+}
+
+.font-label {
+  padding: 6px 8px 2px;
+  color: var(--wb-soft-ink);
+  font-size: 11px;
+}
+
+.font-note {
+  padding: 2px 8px 6px;
+  color: var(--wb-soft-ink);
+}
+
+/* content-visibility skips laying out the rows off screen, so 2000 stay cheap. */
+.font-row {
+  overflow: hidden;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 4px;
+  line-height: 24px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: default;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 24px;
+}
+
+.font-row[aria-selected="true"] {
+  background: var(--wb-accent);
+  color: #fff;
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .font-picker {
+    transition: opacity 120ms ease-out;
+  }
+
   .steps {
     transition: opacity 120ms ease-out;
   }

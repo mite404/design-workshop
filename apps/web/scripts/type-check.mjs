@@ -2,9 +2,11 @@
 // The type lever (ETH-105): drives the Workbench at /__workbench/ in headless Chromium through the
 // first heading of the scripted demo brief: select it, pick a larger step, type 15, pick Bold
 // Italic, set letter spacing to -0.5, press Up twice in line height, align centre, align a taller
-// block to the bottom, then reset each. Each step checks the computed style, the control and the
-// override file. Screenshots go to .artifacts/type/. Exits 1 when any step fails. It writes the
-// real override file and leaves it empty, so start from an empty one.
+// block to the bottom, then reset each. Then the font picker (ETH-106), with no network: open it,
+// type "news", move to Newsreader Variable and back out with Escape, pick it, reset it, and see
+// the missing font warning for a made-up family. Each step checks the computed style, the control
+// and the override file. Screenshots go to .artifacts/type/. Exits 1 when any step fails. It
+// writes the real override file and leaves it empty, so start from an empty one.
 //
 //   node apps/web/scripts/type-check.mjs [--base http://localhost:5173] [--out dir]
 import assert from "node:assert/strict";
@@ -32,6 +34,7 @@ const before = changed();
 
 const browser = await launch();
 const { context, page, errors } = await workbenchPage(browser);
+await context.route(/api\.fontsource\.org|cdn\.jsdelivr\.net/, (route) => route.abort());
 const frame = page.frameLocator("iframe");
 const heading = frame.locator("h2").first();
 const panel = page.locator("section[aria-label=Typography]");
@@ -276,6 +279,177 @@ await step("a type value in the element's own style is read-only", async () => {
   assert.equal(await page.getByRole("button", { name: "Size steps" }).isDisabled(), true);
   assert.equal(await panel.locator(".type-note").isVisible(), true);
   await heading.evaluate((el) => el.style.removeProperty("font-size"));
+});
+
+const family = page.locator(".type-family");
+const picker = page.locator("#wb-fonts");
+const search = page.getByRole("combobox", { name: "Search fonts" });
+const openPicker = async () => {
+  await page.getByRole("button", { name: /^Font family/ }).click();
+  await picker.waitFor();
+  await page.waitForFunction(() => document.activeElement?.ariaLabel === "Search fonts", null, {
+    timeout: 5000,
+  });
+};
+// Offline there is no Google category to say Newsreader is a serif, so it falls back to sans-serif.
+const NEWS = '"Newsreader Variable", sans-serif';
+const settled = (want) =>
+  page.waitForFunction(
+    ([w]) =>
+      getComputedStyle(document.querySelector("iframe").contentDocument.querySelector("h2"))
+        .fontFamily === w,
+    [want],
+    { timeout: 5000 },
+  );
+
+await step("the family row opens the font picker with its three groups", async () => {
+  await page.keyboard.press("Escape");
+  await select(heading);
+  await openPicker();
+  const groups = await picker.getByRole("group").evaluateAll((els) => els.map((e) => e.ariaLabel));
+  assert.deepEqual(groups, ["In this mockup", "Google", "Installed"]);
+  const mockup = await picker
+    .getByRole("group", { name: "In this mockup" })
+    .getByRole("option")
+    .allTextContents();
+  assert.deepEqual(mockup, ["Inter Variable", "Newsreader Variable"]);
+  await picker.getByText(/Google fonts could not be listed/).waitFor();
+  await page.waitForTimeout(200);
+  await page.screenshot({ path: `${out}/11-font-picker.png` });
+});
+
+await step("typing narrows the list; moving previews; Escape puts the font back", async () => {
+  const own = await css("font-family");
+  await search.pressSequentially("news");
+  assert.deepEqual(await picker.getByRole("option").filter({ visible: true }).allTextContents(), [
+    "Newsreader Variable",
+  ]);
+  await page.keyboard.press("ArrowDown");
+  assert.equal(
+    await picker.getByRole("option", { name: "Newsreader Variable" }).getAttribute("aria-selected"),
+    "true",
+  );
+  assert.equal(await css("font-family"), own, "no preview before the move settles");
+  await settled(NEWS);
+  await page.screenshot({ path: `${out}/12-font-search.png` });
+  await page.keyboard.press("Escape");
+  await picker.waitFor({ state: "hidden" });
+  await settled(own);
+  assert.equal(readFileSync(OVERRIDES, "utf8"), EMPTY, "nothing saved");
+});
+
+await step("Enter picks the font and saves it; the styles follow it", async () => {
+  await openPicker();
+  await search.pressSequentially("news");
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("Enter");
+  await expectType([`font-family: ${NEWS}`], "font-family", NEWS);
+  assert.equal(await family.textContent(), "Newsreader Variable");
+  const styles = await control("style").locator("option").allTextContents();
+  assert.ok(styles.includes("ExtraLight") && !styles.includes("Thin"), styles.join());
+  assert.deepEqual(
+    changed(),
+    sorted([...new Set([...before, "packages/catalog/src/overrides.css"])]),
+  );
+});
+
+await step("reset puts the heading's own font back", async () => {
+  await page.getByRole("button", { name: "Reset font family" }).click();
+  await expectType([], "font-family", '"Inter Variable", Inter, Helvetica, Arial, sans-serif');
+  assert.equal(await family.textContent(), "Inter Variable");
+  assert.equal(readFileSync(OVERRIDES, "utf8"), EMPTY);
+});
+
+// A failed copy, refused by the dev server or lost on the network, leaves no preview face behind:
+// Lora stays a Google font, the heading its own, and the repo unchanged.
+const failures = {
+  refused: (route) => route.fulfill({ status: 502, json: { error: "stubbed refusal" } }),
+  lost: (route) => route.abort(),
+};
+for (const how of Object.keys(failures)) {
+  const fail = failures[how];
+  await step(`a ${how} Google font copy leaves no preview face and saves nothing`, async () => {
+    const google = [
+      {
+        id: "lora",
+        family: "Lora",
+        category: "serif",
+        variable: true,
+        weights: [400, 700],
+        styles: ["normal", "italic"],
+        defSubset: "latin",
+      },
+    ];
+    await page.route(/api\.fontsource\.org\/v1\/fonts\?type=google/, (r) =>
+      r.fulfill({ json: google }),
+    );
+    await page.route("**/__workbench/fonts", fail);
+    const own = await css("font-family");
+    await page.evaluate(() => location.reload()); // a fresh page fetches the stubbed list
+    await frame.locator("[data-slot=window]").waitFor({ timeout: 30_000 });
+    await page.locator(".tool").click();
+    await page.frames()[1].goto(`${base}/t/demo-brief`);
+    await heading.waitFor({ timeout: 30_000 });
+    await heading.scrollIntoViewIfNeeded();
+    await page.locator(".tool").click();
+    await select(heading);
+    await openPicker();
+    await search.pressSequentially("lora");
+    await picker
+      .getByRole("group", { name: "Google" })
+      .getByRole("option", { name: "Lora" })
+      .waitFor();
+    await page.keyboard.press("ArrowDown");
+    await settled("Lora, serif");
+    await page.keyboard.press("Enter");
+    await page.locator(".message").filter({ hasText: "Not saved" }).waitFor();
+    await settled(own);
+    const lora = () =>
+      heading.evaluate(
+        (el) => [...el.ownerDocument.fonts].filter((f) => f.family === "Lora").length,
+      );
+    for (let i = 0; i < 50 && (await lora()) > 0; i++) await page.waitForTimeout(50);
+    assert.equal(await lora(), 0, "no Lora face left in the frame");
+    assert.equal((await heading.getAttribute("style")) ?? "", "");
+    assert.equal(readFileSync(OVERRIDES, "utf8"), EMPTY);
+    assert.deepEqual(changed(), before, "the repo is unchanged");
+    await openPicker();
+    await search.pressSequentially("lora");
+    const group = await picker
+      .getByRole("option", { name: "Lora", exact: true })
+      .evaluate((el) => el.closest("[role=group]").ariaLabel);
+    assert.equal(group, "Google", "Lora is still listed as a Google font");
+    await page.keyboard.press("Escape");
+    await page.unrouteAll();
+  });
+}
+
+await step("a saved family that is nowhere shows the missing font warning", async () => {
+  const warning = page.locator(".font-missing");
+  assert.equal(await warning.isHidden(), true, "Inter is in the repo");
+  const post = (value, was) =>
+    page.evaluate(
+      async ([selector, v, w]) =>
+        (
+          await fetch("/__workbench/values", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ selector, name: "font-family", value: v, was: w }),
+          })
+        ).status,
+      [sel, value, was],
+    );
+  const made = '"Zzyzx Made Up", sans-serif';
+  assert.equal(await post(made, null), 200);
+  await warning.waitFor();
+  assert.equal(
+    await warning.getAttribute("title"),
+    "Zzyzx Made Up is not in the repo or installed on this computer",
+  );
+  await page.screenshot({ path: `${out}/13-font-missing.png` });
+  assert.equal(await post(null, made), 200);
+  await warning.waitFor({ state: "hidden" });
+  assert.equal(readFileSync(OVERRIDES, "utf8"), EMPTY);
 });
 
 await context.close();

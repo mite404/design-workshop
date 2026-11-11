@@ -198,3 +198,19 @@ License, and the licence file travels with the font.
 ## Drift log
 
 Record here anything built differently from this plan, and why.
+
+* The Template's two font rows sit in the Window section under Corner radius, since the dial
+  ticket's Type panel does not exist yet. They show when the window is selected.
+* The font endpoint takes a variable font's files from Fontsource's `:vf@VERSION` path and the
+  licence from the `@fontsource/ID@VERSION` package on the same host, `cdn.jsdelivr.net`.
+* A preview of a variable Google font loads the axis files over the weights the list gives,
+  because the list carries no axis range; the saved rules use `/v1/variable/ID`'s range.
+* The browser test runs with Fontsource and jsDelivr blocked, so Newsreader Variable has no
+  Google category there and saves with `sans-serif`. With the network it saves with `serif`.
+* Browsers: the levers run in Playwright Chromium on Linux. The Installed group was tried in
+  that Chromium with the `local-fonts` permission granted (51 fonts, DejaVu picked and reset).
+  Actual Safari, Google Chrome on macOS and Helium were not exercised for this ticket.
+* Review fixes: a pick owns its preview's faces and removes them when the copy is refused or the
+  network fails, and once the repo's own face loads when it succeeds. The endpoint also refuses
+  an unsafe default subset, details for another ID, a file not over HTTPS, and any redirect, and
+  it stops reading a file once it passes 5 MB.

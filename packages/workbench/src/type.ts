@@ -1,9 +1,11 @@
 // The Typography section's maths (ETH-105): the values each type property may take, letter
 // spacing between Figma's percentage and CSS's `em`, matching a size to a step of the type
 // scale, and the styles a family offers.
+import { isFamilyValue } from "./fonts.ts";
 
 /** The type properties the Workbench sets on an element, in the inspector's order. */
 export const TYPE = [
+  "font-family",
   "font-weight",
   "font-style",
   "font-size",
@@ -29,6 +31,7 @@ const WEIGHT = /^(?:[1-9]\d{0,2}|1000)$/;
 
 // Each type property's check: the whole value must pass before it reaches the file.
 const CHECKS: Record<TypeName, (v: string) => boolean> = {
+  "font-family": isFamilyValue,
   "font-weight": (v) => WEIGHT.test(v),
   "font-style": (v) => v === "normal" || v === "italic",
   "font-size": (v) => STEP_VAR.test(v) || WHOLE_PX.test(v),

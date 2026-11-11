@@ -1,8 +1,15 @@
-import { mkdtempSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { describe, expect, test } from "vitest";
-import { readValues, writeValue } from "./plugin";
+import { afterEach, describe, expect, test, vi } from "vitest";
+import { installFont, readValues, writeValue } from "./plugin";
 
 const HEADER = "/* Written by the Workbench. One design value per line. Do not edit by hand. */\n";
 const SAVED = `${HEADER}:root {\n  --window-radius: 20px;\n}\n`;
@@ -114,6 +121,10 @@ describe("writeValue", () => {
     ["letter-spacing", "2em", "2.5em"],
     ["text-align", "center", "justify"],
     ["align-content", "end", "space-between"],
+    ["font-family", '"Newsreader", serif', '"Newsreader"; } body { color: red } a { b: "c", serif'],
+    ["font-family", '"Inter Variable", sans-serif', '"Inter */ x", sans-serif'],
+    ["font-family", '"Fira Code", monospace', '"Fira Code", cursive'],
+    ["font-family", '"Fira Code", monospace', "Fira Code, monospace"],
   ])("saves and resets %s %s, and refuses %s", (name, value, refused) => {
     const file = overrideFile(SAVED);
     const type = { selector: CARD, name, was: null };
@@ -123,6 +134,15 @@ describe("writeValue", () => {
     expect(readFileSync(file, "utf8")).toBe(`${SAVED}${CARD} {\n  ${name}: ${value};\n}\n`);
     expect(post(file, { ...type, value: null, was: value }, ORIGIN).status).toBe(200);
     expect(readFileSync(file, "utf8")).toBe(SAVED);
+  });
+
+  test("sets the Template's two fonts on :root", () => {
+    const file = overrideFile(SAVED);
+    const text = { selector: ":root", name: "--font-text", value: '"Lora", serif', was: null };
+    expect(post(file, { ...text, value: "Lora; color: red" }, ORIGIN).status).toBe(400);
+    expect(post(file, text, ORIGIN).status).toBe(200);
+    expect(readFileSync(file, "utf8")).toBe(SAVED.replace("}", '  --font-text: "Lora", serif;\n}'));
+    expect(post(file, { ...text, name: "--font-mono" }, ORIGIN).status).toBe(400);
   });
 
   test("refuses a type property on :root and a property off the list", () => {
@@ -150,10 +170,206 @@ describe("writeValue", () => {
 test("readValues reads each token's baseline and override, and each element's values", () => {
   const tokens = ":root {\n  --btn-radius: 4px;\n  --window-radius: 12px; /* the window */\n}\n";
   expect(readValues(`${SAVED}${CARD} {\n  gap: 22px;\n}\n`, tokens)).toEqual({
-    tokens: { "--window-radius": { baseline: "12px", override: "20px" } },
+    tokens: {
+      "--window-radius": { baseline: "12px", override: "20px" },
+      "--font-text": { baseline: null, override: null },
+      "--font-display": { baseline: null, override: null },
+    },
     saved: { [CARD]: { gap: "22px" } },
   });
   const empty = readValues(`${HEADER}:root {\n}\n`, tokens);
   expect(empty.tokens["--window-radius"]?.override).toBeNull();
   expect(empty.saved).toEqual({});
+});
+
+const CDN = "https://cdn.jsdelivr.net";
+const API = "https://api.fontsource.org/v1";
+const latin = (url: string) => ({
+  latin: { url: { woff2: url } },
+  "latin-ext": { url: { woff2: "x" } },
+});
+const NEWSREADER = {
+  id: "newsreader",
+  family: "Newsreader",
+  category: "serif",
+  variable: true,
+  weights: [200, 400, 800],
+  styles: ["italic", "normal"],
+  defSubset: "latin",
+  npmVersion: "5.3.0",
+  variants: {},
+};
+const ABEEZEE = {
+  ...NEWSREADER,
+  id: "abeezee",
+  family: "ABeeZee",
+  category: "sans-serif",
+  variable: false,
+  weights: [400],
+  variants: {
+    "400": {
+      italic: latin(`${CDN}/fontsource/fonts/abeezee@5.3.0/latin-400-italic.woff2`),
+      normal: latin(`${CDN}/fontsource/fonts/abeezee@5.3.0/latin-400-normal.woff2`),
+    },
+  },
+};
+const FONTS_HEADER = "/* the Workbench's fonts */\n";
+
+// Stubs fetch with Fontsource's API for the two fonts and a file for every other address,
+// `size` bytes long, and returns the addresses fetched. A font answers at its `at`, else its ID.
+// An address under /redirect/ redirects as a real fetch would: it follows unless told not to.
+function fontsource(fonts: Record<string, unknown>[], size = 8): string[] {
+  const asked: string[] = [];
+  const reply = (url: string): Response => {
+    const font = fonts.find((f) => url === `${API}/fonts/${String(f.at ?? f.id)}`);
+    if (font !== undefined) return Response.json(font);
+    if (url.startsWith(`${API}/variable/`)) {
+      return Response.json({ axes: { wght: { min: "200", max: "800" } } });
+    }
+    if (url.startsWith(API)) return new Response("{}", { status: 404 });
+    return new Response(new Uint8Array(size).fill(65));
+  };
+  vi.stubGlobal("fetch", (to: string | URL, init?: RequestInit) => {
+    const url = String(to);
+    asked.push(url);
+    if (url.includes("/redirect/") && init?.redirect === "error") {
+      return Promise.reject(new TypeError("fetch failed: unexpected redirect"));
+    }
+    return Promise.resolve(reply(url));
+  });
+  return asked;
+}
+
+function catalog(): string {
+  const dir = mkdtempSync(path.join(tmpdir(), "catalog-"));
+  writeFileSync(path.join(dir, "fonts.css"), FONTS_HEADER);
+  return dir;
+}
+
+const install = (dir: string, id: unknown, origin = ORIGIN) =>
+  installFont(dir, { origin, host: HOST, body: JSON.stringify({ id }) });
+
+describe("installFont", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  test("copies a variable font's axis files, its licence and its rules", async () => {
+    const asked = fontsource([NEWSREADER]);
+    const dir = catalog();
+    const reply = await install(dir, "newsreader");
+    expect(reply).toEqual({ status: 200, body: { id: "newsreader", family: "Newsreader" } });
+    expect(readdirSync(path.join(dir, "fonts/newsreader")).toSorted()).toEqual([
+      "LICENSE",
+      "latin-wght-italic.woff2",
+      "latin-wght-normal.woff2",
+    ]);
+    expect(asked).toContain(`${CDN}/fontsource/fonts/newsreader:vf@5.3.0/latin-wght-italic.woff2`);
+    expect(asked).toContain(`${CDN}/npm/@fontsource/newsreader@5.3.0/LICENSE`);
+    const css = readFileSync(path.join(dir, "fonts.css"), "utf8");
+    expect(css.startsWith(`${FONTS_HEADER}/* fontsource: newsreader */\n@font-face {`)).toBe(true);
+    expect(css).toContain(
+      '  font-family: "Newsreader";\n  font-style: normal;\n  font-display: swap;\n' +
+        '  font-weight: 200 800;\n  src: url("./fonts/newsreader/latin-wght-normal.woff2") format("woff2");\n',
+    );
+    expect(css.match(/@font-face/g)).toHaveLength(2);
+  });
+
+  test("copies one file per weight and style of a font with separate weights", async () => {
+    fontsource([ABEEZEE]);
+    const dir = catalog();
+    expect((await install(dir, "abeezee")).status).toBe(200);
+    expect(readdirSync(path.join(dir, "fonts/abeezee")).toSorted()).toEqual([
+      "LICENSE",
+      "latin-400-italic.woff2",
+      "latin-400-normal.woff2",
+    ]);
+    const css = readFileSync(path.join(dir, "fonts.css"), "utf8");
+    expect(css).toContain(
+      'font-weight: 400;\n  src: url("./fonts/abeezee/latin-400-italic.woff2")',
+    );
+    expect(css).not.toContain("latin-ext");
+  });
+
+  test("a second request for the same font fetches and changes nothing", async () => {
+    fontsource([ABEEZEE]);
+    const dir = catalog();
+    await install(dir, "abeezee");
+    const css = readFileSync(path.join(dir, "fonts.css"), "utf8");
+    const asked = fontsource([ABEEZEE]);
+    expect(await install(dir, "abeezee")).toEqual({
+      status: 200,
+      body: { id: "abeezee", family: "ABeeZee" },
+    });
+    expect(asked).toEqual([]);
+    expect(readFileSync(path.join(dir, "fonts.css"), "utf8")).toBe(css);
+  });
+
+  test.each([["../etc"], ["Inter"], ["a--b"], ["-a"], ["a".repeat(65)], [7], [null]])(
+    "refuses the ID %s without fetching",
+    async (id) => {
+      const asked = fontsource([ABEEZEE]);
+      const dir = catalog();
+      expect((await install(dir, id)).status).toBe(400);
+      expect(asked).toEqual([]);
+      expect(readdirSync(dir)).toEqual(["fonts.css"]);
+    },
+  );
+
+  test("refuses a foreign origin", async () => {
+    const asked = fontsource([ABEEZEE]);
+    expect((await install(catalog(), "abeezee", "http://evil.test")).status).toBe(403);
+    expect(asked).toEqual([]);
+  });
+
+  test("refuses a file on another host and writes nothing", async () => {
+    const evil = structuredClone(ABEEZEE);
+    evil.variants["400"].normal = latin("https://evil.test/latin-400-normal.woff2");
+    const asked = fontsource([evil]);
+    const dir = catalog();
+    const reply = await install(dir, "abeezee");
+    expect(reply.status).toBe(502);
+    expect(asked.some((u) => u.startsWith("https://evil.test"))).toBe(false);
+    expect(readdirSync(dir)).toEqual(["fonts.css"]);
+    expect(readFileSync(path.join(dir, "fonts.css"), "utf8")).toBe(FONTS_HEADER);
+  });
+
+  // Each unsafe upstream reply for abeezee: its default subset, the ID it names, and its file.
+  const FILE = `${CDN}/fontsource/fonts/abeezee@5.3.0/latin-400-normal.woff2`;
+  test.each([
+    ["a subset that climbs out of the folder", "../escaped", "abeezee", FILE],
+    ["details for another ID", "latin", "probe", FILE],
+    ["a file over plain HTTP", "latin", "abeezee", FILE.replace("https:", "http:")],
+    ["a file that redirects", "latin", "abeezee", `${CDN}/redirect/latin-400-normal.woff2`],
+  ])("refuses %s and writes nothing", async (_, defSubset, id, file) => {
+    const font = {
+      ...ABEEZEE,
+      id,
+      at: "abeezee",
+      defSubset,
+      variants: { "400": { normal: { [defSubset]: { url: { woff2: file } } } } },
+    };
+    const asked = fontsource([font]);
+    const dir = catalog();
+    expect((await install(dir, "abeezee")).status).toBe(502);
+    expect(readdirSync(dir)).toEqual(["fonts.css"]);
+    expect(readFileSync(path.join(dir, "fonts.css"), "utf8")).toBe(FONTS_HEADER);
+    expect(asked.some((u) => u.startsWith("http://"))).toBe(false);
+  });
+
+  test("refuses a file over 5 MB and writes nothing", async () => {
+    fontsource([ABEEZEE], 5 * 1024 * 1024 + 1);
+    const dir = catalog();
+    expect((await install(dir, "abeezee")).status).toBe(502);
+    expect(existsSync(path.join(dir, "fonts"))).toBe(false);
+    expect(readFileSync(path.join(dir, "fonts.css"), "utf8")).toBe(FONTS_HEADER);
+  });
+
+  test("refuses a font Fontsource does not have", async () => {
+    fontsource([]);
+    const dir = catalog();
+    mkdirSync(path.join(dir, "fonts"));
+    expect((await install(dir, "nope")).status).toBe(502);
+    expect(readdirSync(path.join(dir, "fonts"))).toEqual([]);
+  });
 });

@@ -33,6 +33,18 @@ import {
   wholeNumber,
   type Styled,
 } from "./dom";
+import {
+  fallbackOf,
+  familyValue,
+  googleName,
+  installedFaces,
+  isFamilyName,
+  matchesFamily,
+  mergeFamilies,
+  parseGoogleFont,
+  previewFiles,
+  type GoogleFont,
+} from "./fonts";
 import { pick } from "./selector";
 import {
   boundedOffset,
@@ -61,6 +73,7 @@ import {
 const NAME = "--window-radius";
 const ROOT = ":root";
 const ENDPOINT = "/__workbench/values";
+const FONTS_ENDPOINT = "/__workbench/fonts";
 const LEAST_INSET = 8;
 const PADDING_INSET = 5; // a padding handle's least distance inside its edge
 const DRAG_START = 3; // px a press moves before it is a drag rather than a click
@@ -243,14 +256,19 @@ async function load(): Promise<void> {
   const values: unknown = await (await fetch(ENDPOINT)).json();
   const token = prop(prop(values, "tokens"), NAME);
   baseline = px(text(prop(token, "baseline")) ?? "0");
-  files = new Map(
-    entries(prop(values, "saved")).map(([selector, rule]) => [
+  const root = new Map(
+    entries(prop(values, "tokens")).flatMap(([n, t]): [string, string][] => {
+      const saved = text(prop(t, "override"));
+      return saved === null ? [] : [[n, saved]];
+    }),
+  );
+  files = new Map([
+    ...entries(prop(values, "saved")).map(([selector, rule]): [string, Map<string, string>] => [
       selector,
       new Map(entries(rule).flatMap(([n, v]) => (typeof v === "string" ? [[n, v]] : []))),
     ]),
-  );
-  const radius = text(prop(token, "override"));
-  if (radius !== null) files.set(ROOT, new Map([[NAME, radius]]));
+    [ROOT, root],
+  ]);
   reset.disabled = savedRadius() === null;
   show(onDisk());
   await settleRadius();
@@ -601,6 +619,8 @@ function select(node: Styled | null): void {
   commit();
   for (const name of TYPE) commitType(name);
   if (stepList.matches(":popover-open")) stepList.hidePopover();
+  endFonts();
+  if (fontPicker.matches(":popover-open")) fontPicker.hidePopover();
   closeInplace(false);
   selection =
     node === null
@@ -916,6 +936,7 @@ const ICONS = {
   end: "M1.5 10.5h9M4 2v6M8 4.5v3.5",
   reset: "M3 3.6A4 4 0 1 1 2 6M3 1.2v2.6h2.6",
   chevron: "M3.5 4.75 6 7.25l2.5-2.5",
+  warning: "M6 1.5 11 10.5H1L6 1.5ZM6 5v2.4M6 8.9v.1",
 };
 
 function icon(path: string): HTMLElement {
@@ -1029,7 +1050,454 @@ function typeField(
   return input;
 }
 
+// The font picker (ETH-106): one list of the mockup's families, Google's and the computer's,
+// for the selection's family or one of the Template's two fonts on the frame's root. Moving to a
+// row previews it inline; a pick saves it, after copying a Google font into the repo.
+
+// What the picker sets: `name` on `node`, saved under `selector`, opened from `anchor`.
+type FontTarget = { node: Styled; selector: string; name: string; anchor: HTMLButtonElement };
+type FontGroup = "mockup" | "google" | "installed";
+// One row: its family, its group, the value a pick saves, and the Google font behind it.
+type FontRow = {
+  family: string;
+  group: FontGroup;
+  value: string;
+  google: GoogleFont | undefined;
+  el: HTMLElement;
+};
+
+const GROUPS: Record<FontGroup, string> = {
+  mockup: "In this mockup",
+  google: "Google",
+  installed: "Installed",
+};
+const GOOGLE_LIST = "https://api.fontsource.org/v1/fonts?type=google";
+const LOADING = "Loading Google fonts…";
+const ASKING = "Asking for the computer's fonts…";
+const GENERIC = new Set(["serif", "sans-serif", "monospace", "cursive", "fantasy", "system-ui"]);
+const SAMPLE = "mmmmmmmmmmlli1WQ@#&";
+const ROOT_FONTS = { "--font-text": "Text font", "--font-display": "Display font" };
+
+let fontTarget: FontTarget | null = null;
+let fontRows: FontRow[] = [];
+let shownRows: FontRow[] = [];
+let activeRow = -1;
+let previewTimer = 0;
+const previewFaces = new Map<string, FontFace[]>(); // by family, until the picker closes
+const addedFaces = new Set<FontFace>(); // every face a preview added and not yet removed
+let googleFonts: GoogleFont[] | string = ""; // the list, or why there is none ("" not asked)
+const installed = new Map<string, string[]>(); // each installed family's style names
+let installedNote = ""; // why the Installed group is empty
+const measured = new Map<string, boolean>(); // whether each family measured as missing
+
+const reason = (error: unknown): string => (error instanceof Error ? error.message : String(error));
+const unquote = (family: string): string => family.trim().replaceAll(/["']/g, "");
+
+const fontSearch = element("input", {
+  className: "font-search",
+  placeholder: "Search fonts",
+  ariaLabel: "Search fonts",
+  autocomplete: "off",
+  role: "combobox",
+  ariaExpanded: "true",
+  ariaAutoComplete: "list",
+});
+fontSearch.spellcheck = false;
+fontSearch.setAttribute("aria-controls", "wb-font-list");
+const fontFilter = element(
+  "select",
+  { className: "font-filter", ariaLabel: "Font source" },
+  element("option", { value: "" }, "All fonts"),
+  ...Object.entries(GROUPS).map(([value, title]) => element("option", { value }, title)),
+);
+const fontList = element("div", {
+  id: "wb-font-list",
+  role: "listbox",
+  ariaLabel: "Fonts",
+  className: "font-list",
+});
+const fontPicker = element(
+  "div",
+  { id: "wb-fonts", className: "font-picker" },
+  element("div", { className: "font-head" }, fontSearch, fontFilter),
+  fontList,
+);
+fontPicker.popover = "auto";
+
+// The families the frame's page loads, without the faces a preview added.
+function mockupFamilies(): string[] {
+  const d = doc();
+  if (d === null) return [];
+  return [...d.fonts]
+    .filter((f) => !addedFaces.has(f))
+    .map((f) => unquote(f.family))
+    .filter((f) => isFamilyName(f));
+}
+
+// Moves to row `index` of the shown rows and previews it once the move settles. No row puts the
+// font back, unless `restore` is false.
+function setActive(index: number, scroll = true, restore = true): void {
+  const old = shownRows[activeRow];
+  if (old !== undefined) old.el.ariaSelected = "false";
+  activeRow = index;
+  const row = shownRows[index];
+  window.clearTimeout(previewTimer);
+  if (row === undefined) {
+    fontSearch.removeAttribute("aria-activedescendant");
+    if (restore && fontTarget !== null) fontTarget.node.style.removeProperty(fontTarget.name);
+    return;
+  }
+  row.el.ariaSelected = "true";
+  fontSearch.setAttribute("aria-activedescendant", row.el.id);
+  if (scroll) row.el.scrollIntoView({ block: "nearest" });
+  previewTimer = window.setTimeout(() => {
+    previewFont(row);
+  }, 150);
+}
+
+// Narrows the list to the search and the group filter, and drops the row in hand.
+function filterFonts(restore = true): void {
+  setActive(-1, false, restore);
+  const group = fontFilter.value;
+  for (const row of fontRows) {
+    row.el.hidden =
+      (group !== "" && row.group !== group) || !matchesFamily(fontSearch.value, row.family);
+  }
+  shownRows = fontRows.filter((r) => r.el.hidden !== true);
+  for (const el of fontList.children) {
+    if (!(el instanceof HTMLElement)) continue;
+    const key = el.dataset.group;
+    el.hidden =
+      (group !== "" && key !== group) ||
+      (el.querySelector(".font-note") === null && !shownRows.some((r) => r.group === key));
+  }
+}
+
+// Builds the list, keeping the row in hand when the Google or installed fonts arrive.
+function fillFonts(): void {
+  const keep = shownRows[activeRow];
+  const google = typeof googleFonts === "string" ? [] : googleFonts;
+  const merged = mergeFamilies(mockupFamilies(), google);
+  const byName = new Map(google.map((g) => [g.family, g]));
+  const row = (family: string, group: FontGroup, font?: GoogleFont): FontRow => {
+    const category = (font ?? byName.get(googleName(family)))?.category;
+    const el = element("div", { role: "option", className: "font-row", title: family }, family);
+    const value = familyValue(family, group === "installed" ? "sans-serif" : fallbackOf(category));
+    const made: FontRow = { family, group, value, google: font, el };
+    el.ariaSelected = "false";
+    el.addEventListener("pointermove", () => {
+      const at = shownRows.indexOf(made);
+      if (at !== activeRow) setActive(at, false);
+    });
+    el.addEventListener("click", () => {
+      pickFont(made);
+    });
+    return made;
+  };
+  fontRows = [
+    ...merged.mockup.map((f) => row(f, "mockup")),
+    ...merged.google.map((g) => row(g.family, "google", g)),
+    ...[...installed.keys()]
+      .filter((f) => isFamilyName(f))
+      .toSorted((a, b) => a.localeCompare(b))
+      .map((f) => row(f, "installed")),
+  ];
+  for (const [i, r] of fontRows.entries()) r.el.id = `wb-font-${i}`;
+  const notes: Record<string, string> = {
+    mockup: "",
+    google: typeof googleFonts === "string" ? googleFonts : "",
+    installed: installedNote,
+  };
+  fontList.replaceChildren(
+    ...Object.entries(GROUPS).map(([key, title]) => {
+      const group = element(
+        "div",
+        { role: "group", ariaLabel: title, className: "font-group" },
+        element("div", { className: "font-label", ariaHidden: "true" }, title),
+        ...fontRows.filter((r) => r.group === key).map((r) => r.el),
+      );
+      const why = notes[key] ?? "";
+      if (why !== "") group.append(element("div", { className: "font-note" }, why));
+      group.dataset.group = key;
+      return group;
+    }),
+  );
+  filterFonts(false);
+  const at = shownRows.findIndex((r) => r.family === keep?.family && r.group === keep.group);
+  setActive(at, true, keep !== undefined);
+}
+
+async function loadGoogle(): Promise<void> {
+  googleFonts = LOADING;
+  try {
+    const response = await fetch(GOOGLE_LIST);
+    if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
+    const list: unknown = await response.json();
+    googleFonts = Array.isArray(list) ? list.flatMap((e) => parseGoogleFont(e) ?? []) : [];
+  } catch (error) {
+    googleFonts = `Google fonts could not be listed: ${reason(error)}`;
+  }
+  if (fontTarget !== null) fillFonts();
+}
+
+// Adds one of queryLocalFonts' FontData to its family's style names.
+function addInstalled(font: unknown): void {
+  const family = text(prop(font, "family"));
+  const name = text(prop(font, "style"));
+  if (family !== null && name !== null)
+    installed.set(family, [...(installed.get(family) ?? []), name]);
+}
+
+// Lists the computer's fonts with the browser's queryLocalFonts, which asks for permission once.
+async function loadInstalled(): Promise<void> {
+  const query: unknown = Reflect.get(window, "queryLocalFonts");
+  if (typeof query !== "function") {
+    installedNote = "This browser cannot list installed fonts. Chrome and Edge can.";
+    return;
+  }
+  installedNote = ASKING;
+  try {
+    const fonts: unknown = await Reflect.apply(query, window, []);
+    for (const font of Array.isArray(fonts) ? fonts : []) addInstalled(font);
+    installedNote = installed.size === 0 ? "No installed fonts were listed." : "";
+  } catch (error) {
+    installedNote = `Installed fonts are not available: ${reason(error)}`;
+  }
+  if (fontTarget !== null) fillFonts();
+}
+
+function previewFont(row: FontRow): void {
+  const d = doc();
+  const view = d?.defaultView;
+  if (fontTarget === null || d === null || view === null || view === undefined) return;
+  if (row.google !== undefined && !previewFaces.has(row.family)) {
+    const faces = previewFiles(row.google).map(
+      (f) => new view.FontFace(row.family, `url(${f.url})`, { weight: f.weight, style: f.style }),
+    );
+    for (const face of faces) {
+      d.fonts.add(face);
+      addedFaces.add(face);
+    }
+    previewFaces.set(row.family, faces);
+  }
+  fontTarget.node.style.setProperty(fontTarget.name, row.value);
+}
+
+// Puts back what a preview changed, once the picker closes without a pick.
+function endFonts(): void {
+  window.clearTimeout(previewTimer);
+  const target = fontTarget;
+  fontTarget = null;
+  target?.node.style.removeProperty(target.name);
+  for (const faces of previewFaces.values()) void dropFaces(faces, false);
+  previewFaces.clear();
+  if (target !== null && fontPicker.contains(document.activeElement)) target.anchor.focus();
+}
+
+// Removes faces a preview added: at once, or once `copied` the repo's own face of their family
+// is in the frame, so the text does not flash its fallback.
+async function dropFaces(faces: FontFace[], copied: boolean): Promise<void> {
+  const family = unquote(faces[0]?.family ?? "");
+  for (let i = 0; i < (copied ? 300 : 0); i++) {
+    const own = [...(doc()?.fonts ?? [])].some(
+      (f) => unquote(f.family) === family && !addedFaces.has(f),
+    );
+    if (own) break;
+    // oxlint-disable-next-line no-await-in-loop -- one look per painted frame
+    await nextFrame();
+  }
+  for (const face of faces) {
+    doc()?.fonts.delete(face);
+    addedFaces.delete(face);
+  }
+}
+
+// Copies a Google font into the repo through the dev server. True when it is there.
+async function copyFont(font: GoogleFont): Promise<boolean> {
+  message.textContent = `Copying ${font.family} into the repo…`;
+  const response = await fetch(FONTS_ENDPOINT, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ id: font.id }),
+  });
+  if (response.ok) {
+    message.textContent = "";
+    return true;
+  }
+  const body: unknown = await response.json();
+  message.textContent = `Not saved: ${text(prop(body, "error")) ?? response.statusText}`;
+  return false;
+}
+
+function pickFont(row: FontRow): void {
+  const target = fontTarget;
+  if (target === null) return;
+  window.clearTimeout(previewTimer);
+  target.node.style.setProperty(target.name, row.value);
+  // The pick owns its preview's faces: they go once the repo has the font, or when it fails.
+  const faces = previewFaces.get(row.family) ?? [];
+  previewFaces.delete(row.family);
+  fontTarget = null;
+  target.anchor.focus();
+  fontPicker.hidePopover();
+  enqueue(async () => {
+    let copied = false;
+    try {
+      copied = row.google === undefined || (await copyFont(row.google));
+    } finally {
+      void dropFaces(faces, copied);
+      if (!copied) target.node.style.removeProperty(target.name);
+    }
+    if (!copied) return;
+    if (was(target.selector, target.name) === row.value) {
+      target.node.style.removeProperty(target.name);
+    } else {
+      saveValue(target.node, target.selector, target.name, row.value);
+    }
+  });
+}
+
+// Readies the picker for `target` just before its button opens it.
+function prepareFonts(target: FontTarget): void {
+  fontTarget = target;
+  fontSearch.value = "";
+  fontFilter.value = "";
+  const rect = (target.anchor.parentElement ?? target.anchor).getBoundingClientRect();
+  fontPicker.style.left = `${rect.right - 248}px`; // its right edge on the field's
+  fontPicker.style.top = `${rect.bottom + 4}px`;
+  if (installed.size === 0 && installedNote !== ASKING) void loadInstalled();
+  if (typeof googleFonts === "string" && googleFonts !== LOADING) void loadGoogle();
+  shownRows = [];
+  fillFonts();
+}
+
+// A button that opens the picker for the target `of` names, or nothing when it names none.
+function fontOpener(
+  of: (anchor: HTMLButtonElement) => FontTarget | null,
+  ...children: HTMLElement[]
+) {
+  const open = element(
+    "button",
+    { type: "button", className: "font-open", ariaHasPopup: "listbox", ariaExpanded: "false" },
+    ...children,
+    icon(ICONS.chevron),
+  );
+  open.popoverTargetElement = fontPicker;
+  open.addEventListener("click", () => {
+    if (fontPicker.matches(":popover-open")) return;
+    const target = of(open);
+    if (target !== null) prepareFonts(target);
+  });
+  return open;
+}
+
+fontSearch.addEventListener("input", () => {
+  filterFonts();
+});
+fontFilter.addEventListener("change", () => {
+  filterFonts();
+  fontSearch.focus();
+});
+fontSearch.addEventListener("keydown", (event) => {
+  const sign = UP_DOWN[event.key];
+  if (sign !== undefined) {
+    event.preventDefault();
+    setActive(Math.min(Math.max(activeRow - sign, 0), shownRows.length - 1));
+  }
+  const row = shownRows[activeRow] ?? shownRows[0];
+  if (event.key === "Enter" && row !== undefined) {
+    event.preventDefault(); // focus moves to the opener, which Enter would click open again
+    pickFont(row);
+  }
+  if (event.key === "Escape") {
+    event.preventDefault();
+    event.stopPropagation();
+    fontPicker.hidePopover();
+  }
+});
+fontPicker.addEventListener("toggle", (event) => {
+  const open = event.newState === "open";
+  for (const b of [familyOpen, ...rootFonts.map((r) => r.open)]) {
+    b.ariaExpanded = String(open && fontTarget?.anchor === b);
+  }
+  if (!open) endFonts();
+  else if (fontTarget === null) fontPicker.hidePopover();
+  else fontSearch.focus();
+});
+
+// Whether a family is neither in the frame's fonts nor installed: set in it with a fallback, a
+// sample is as wide as in the fallback alone, for two different fallbacks.
+// ponytail: cannot tell a missing font from one exactly as wide as both fallbacks.
+function missing(d: Document, family: string): boolean {
+  if (GENERIC.has(family) || [...d.fonts].some((f) => unquote(f.family) === family)) return false;
+  let gone = measured.get(family);
+  if (gone === undefined) {
+    const context = d.createElement("canvas").getContext("2d");
+    const width = (font: string): number => {
+      if (context === null) return 0;
+      context.font = font;
+      return context.measureText(SAMPLE).width;
+    };
+    gone = ["serif", "monospace"].every(
+      (f) => width(`40px "${family}", ${f}`) === width(`40px ${f}`),
+    );
+    measured.set(family, gone);
+  }
+  return gone;
+}
+
 const familyText = element("span", { className: "type-family" });
+const familyMissing = element(
+  "span",
+  { className: "font-missing", role: "img", hidden: true },
+  icon(ICONS.warning),
+);
+const familyOpen = fontOpener(
+  (anchor) =>
+    selection === null
+      ? null
+      : { node: selection.node, selector: selection.selector, name: "font-family", anchor },
+  familyText,
+  familyMissing,
+);
+const familyReset = typeReset("font family");
+familyReset.addEventListener("click", () => {
+  resetType("font-family");
+});
+
+// The Template's two fonts, on the frame's root, shown when the window is selected.
+const rootFonts = Object.entries(ROOT_FONTS).map(([name, title]) => {
+  const value = element("span");
+  const open = fontOpener((anchor) => {
+    const root = doc()?.documentElement;
+    return root === undefined ? null : { node: root, selector: ROOT, name, anchor };
+  }, value);
+  open.ariaLabel = title;
+  const clear = typeReset(title.toLowerCase());
+  clear.addEventListener("click", () => {
+    const root = doc()?.documentElement;
+    if (root !== undefined && was(ROOT, name) !== null) saveValue(root, ROOT, name, null);
+  });
+  const row = element(
+    "div",
+    { className: "font-root" },
+    element("span", {}, title),
+    element("div", { className: "type-field" }, open, clear),
+  );
+  return { name, value, open, clear, row };
+});
+
+function trackRootFonts(): void {
+  const root = doc()?.documentElement;
+  const visible = root !== undefined && selection !== null && selection.node === windowElement();
+  for (const r of rootFonts) {
+    r.row.hidden = !visible;
+    if (!visible) continue;
+    const family = unquote(style(root).getPropertyValue(r.name).split(",")[0] ?? "");
+    if (r.value.textContent !== family) r.value.textContent = family;
+    r.clear.disabled = was(ROOT, r.name) === null;
+  }
+}
 
 const styleSelect = element("select", { id: "wb-style", ariaLabel: "Style" });
 const styleReset = typeReset("style");
@@ -1231,7 +1699,7 @@ const typePanel = element(
   element(
     "div",
     { className: "type-grid" },
-    cell(familyText),
+    cell(familyOpen, familyReset),
     cell(styleSelect, icon(ICONS.chevron), styleReset),
     cell(sizeInput, sizeMark, sizeOpen, sizeReset),
     cell(
@@ -1274,14 +1742,16 @@ function textHeight(node: Element, lineHeight: string): number {
 
 // Lists the family's styles, rebuilt only when the family or the current style changes.
 function fillStyles(node: Element, family: string, weight: number, italic: boolean): void {
-  const key = `${family}|${weight}|${italic}`;
+  const key = `${family}|${weight}|${italic}|${installed.size}`;
   if (key === styleKey) return;
   styleKey = key;
   const faces = [...node.ownerDocument.fonts].filter(
     (f) => f.family.replaceAll(/["']/g, "") === family,
   );
+  // An installed family has no face in the page: its weights come from its style names.
+  const known = faces.length > 0 ? faces : installedFaces(installed.get(family) ?? []);
   styleSelect.replaceChildren(
-    ...styleList(faces, { weight, italic }).map((s) =>
+    ...styleList(known, { weight, italic }).map((s) =>
       element("option", { value: `${s.weight}${s.italic ? "i" : ""}` }, s.label),
     ),
   );
@@ -1310,6 +1780,13 @@ function trackStyle(target: Selection, s: CSSStyleDeclaration): void {
   const family = s.fontFamily.split(",")[0]?.trim().replaceAll(/["']/g, "") ?? "";
   familyText.textContent = family;
   familyText.title = family;
+  familyOpen.ariaLabel = `Font family, ${family}`;
+  familyOpen.disabled = target.locked.has("font-family");
+  familyReset.disabled = was(target.selector, "font-family") === null;
+  const gone = missing(target.node.ownerDocument, family);
+  familyMissing.hidden = !gone;
+  familyMissing.title = gone ? `${family} is not in the repo or installed on this computer` : "";
+  familyMissing.ariaLabel = familyMissing.title;
   fillStyles(target.node, family, Number(s.fontWeight), s.fontStyle !== "normal");
   styleSelect.disabled = target.locked.has("font-weight") || target.locked.has("font-style");
   styleReset.disabled =
@@ -1434,6 +1911,7 @@ function track(): void {
   trackSelection();
   trackFields();
   trackType();
+  trackRootFonts();
   trackUnmatched();
   requestAnimationFrame(track);
 }
@@ -1449,6 +1927,7 @@ document.body.append(
       element("div", { className: "tools" }, tool),
       element("h2", {}, "Window"),
       element("div", { className: "row" }, label, field, reset),
+      ...rootFonts.map((r) => r.row),
       selectionPanel,
       typePanel,
       unmatchedPanel,
@@ -1456,7 +1935,7 @@ document.body.append(
     ),
   ),
 );
-document.body.append(stepList);
+document.body.append(stepList, fontPicker);
 paddingLayer.append(...paddingBars.flatMap((b) => [b.el, b.space]));
 unmatchedPanel.hidden = true;
 
