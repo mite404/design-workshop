@@ -7,6 +7,7 @@ import type { Plugin, ViteDevServer } from "vite";
 import { parseOverrides, setOverride } from "./overrides.ts";
 import { isSelector } from "./selector.ts";
 import { SPACING } from "./spacing.ts";
+import { isType, TYPE, typeValue } from "./type.ts";
 
 const OVERRIDES = fileURLToPath(new URL("../../catalog/src/overrides.css", import.meta.url));
 const TOKENS = fileURLToPath(new URL("../../catalog/src/tokens.css", import.meta.url));
@@ -57,18 +58,22 @@ export function readValues(
   };
 }
 
-// A POST body, checked: a selector, one name it may set, the new px value or null, and the
-// value last read.
+// A POST body, checked: a selector, one name it may set, the new value or null, and the value
+// last read.
 type Write = { selector: string; name: string; value: string | null; was: string | null };
 
 // `:root` takes the editable tokens; an element, by a selector of the grammar its function
-// makes, takes gap, the four paddings and a two-dimensional offset.
+// makes, takes gap, the four paddings, a two-dimensional offset and the type properties.
 function namesOf(selector: string): readonly string[] {
   if (selector === ROOT) return EDITABLE;
-  return isSelector(selector) ? [...SPACING, "translate"] : [];
+  return isSelector(selector) ? [...SPACING, "translate", ...TYPE] : [];
 }
-const isValue = (v: unknown, name: string): v is string | null =>
-  v === null || (typeof v === "string" && (name === "translate" ? TRANSLATE : PX).test(v));
+function isValue(v: unknown, name: string): v is string | null {
+  if (v === null) return true;
+  if (typeof v !== "string") return false;
+  if (isType(name)) return typeValue(name, v);
+  return (name === "translate" ? TRANSLATE : PX).test(v);
+}
 const isWas = (v: unknown): v is string | null => v === null || typeof v === "string";
 
 function json(text: string): unknown {
@@ -94,7 +99,7 @@ function parseWrite(body: string): Write | string {
     return `not an editable selector and name: ${JSON.stringify([selector, name])}`;
   }
   if (!isValue(value, name)) {
-    return `not a pixel length: ${JSON.stringify(value)}`;
+    return `not a value ${name} takes: ${JSON.stringify(value)}`;
   }
   if (!isWas(was)) return "was must be a string or null";
   return { selector, name, value, was };
@@ -103,8 +108,8 @@ function parseWrite(body: string): Write | string {
 /**
  * Sets one editable value in the override file at `file`, or removes it when `value` is null,
  * through a temp file and a rename. Refuses, writing nothing, a foreign `origin` (403), a
- * selector off the grammar, a name it may not set or a value that is not a whole pixel length
- * (400), and a `was` that is not the value now on disk (409).
+ * selector off the grammar, a name it may not set or a value its name's check refuses (400),
+ * and a `was` that is not the value now on disk (409).
  */
 export function writeValue(
   file: string,

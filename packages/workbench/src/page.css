@@ -243,7 +243,8 @@ body {
 }
 
 .note,
-.offset-note {
+.offset-note,
+.type-note {
   margin: 8px 0 0;
   color: var(--wb-soft-ink);
 }
@@ -338,4 +339,248 @@ body {
 
 .message:empty {
   display: none;
+}
+
+/* Typography (ETH-105): Figma's grid of compact fields, two to a row. */
+.type-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.type-field,
+.type-align {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  height: 24px;
+}
+
+.type-field {
+  box-sizing: border-box;
+  padding: 0 2px 0 6px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: #f5f5f5;
+  font-variant-numeric: tabular-nums;
+}
+
+.type-field:hover {
+  border-color: var(--wb-line);
+}
+
+.type-field:focus-within {
+  border-color: var(--wb-accent);
+}
+
+.type-field:first-child {
+  grid-column: 1 / -1;
+  padding-right: 6px;
+  color: var(--wb-soft-ink);
+}
+
+.type-family {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.type-field :is(input, select) {
+  flex: 1;
+  min-width: 3ch;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  outline: none;
+}
+
+.type-field select {
+  appearance: none;
+  cursor: pointer;
+}
+
+.type-field :is(input:read-only, select:disabled) {
+  color: var(--wb-soft-ink);
+}
+
+.type-field label {
+  display: flex;
+  margin-right: 6px;
+  color: var(--wb-soft-ink);
+}
+
+.type-field .unit {
+  margin-left: 4px;
+  color: var(--wb-soft-ink);
+  white-space: nowrap;
+}
+
+.type-field .unit[data-off="true"] {
+  color: #b86e00;
+}
+
+.icon {
+  display: flex;
+}
+
+.icon svg {
+  fill: none;
+  stroke: currentcolor;
+  stroke-width: 1.1;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.type-field > .icon {
+  margin: 0 2px;
+  color: var(--wb-soft-ink);
+  pointer-events: none;
+}
+
+.type-reset,
+.type-open,
+.segmented button {
+  display: grid;
+  flex: none;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  background: none;
+  color: var(--wb-soft-ink);
+  cursor: pointer;
+}
+
+.type-reset,
+.type-open {
+  width: 18px;
+  height: 18px;
+}
+
+.type-reset:disabled {
+  visibility: hidden;
+}
+
+.type-open:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+:is(.type-reset, .type-open):hover:enabled {
+  background: var(--wb-line);
+  color: var(--wb-ink);
+}
+
+.type-align {
+  gap: 2px;
+}
+
+.type-align[hidden] {
+  display: none;
+}
+
+.segmented {
+  display: flex;
+  flex: 1;
+  padding: 1px;
+  border-radius: 4px;
+  background: #f5f5f5;
+}
+
+.segmented button {
+  flex: 1;
+  height: 22px;
+  transition: transform 100ms ease-out;
+}
+
+.segmented button:hover:enabled {
+  color: var(--wb-ink);
+}
+
+.segmented button:active:enabled {
+  transform: scale(0.94);
+}
+
+.segmented button[aria-pressed="true"] {
+  background: #fff;
+  box-shadow:
+    0 0 0 0.5px rgb(0 0 0 / 0.12),
+    0 1px 2px rgb(0 0 0 / 0.08);
+  color: var(--wb-ink);
+}
+
+.segmented button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* The Size list: the nine steps, each with its size in px. */
+.steps {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  padding: 4px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--wb-ink);
+  box-shadow: 0 6px 20px rgb(0 0 0 / 0.2);
+  color: #fff;
+  box-sizing: border-box;
+  font:
+    12px/1.4 system-ui,
+    sans-serif;
+  transform-origin: top;
+  transition:
+    opacity 120ms ease-out,
+    scale 120ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+@starting-style {
+  .steps:popover-open {
+    opacity: 0;
+    scale: 0.97;
+  }
+}
+
+.step {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  height: 24px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  align-items: center;
+  cursor: pointer;
+}
+
+.step .unit {
+  color: rgb(255 255 255 / 0.55);
+}
+
+.step:is(:hover, :focus-visible) {
+  background: var(--wb-accent);
+  outline: none;
+}
+
+.step:is(:hover, :focus-visible) .unit {
+  color: #fff;
+}
+
+.step[aria-selected="true"] > span:first-child {
+  font-weight: 600;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .steps {
+    transition: opacity 120ms ease-out;
+  }
 }

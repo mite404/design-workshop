@@ -172,3 +172,23 @@ the list holds only what the family has.
 ## Drift log
 
 Record here anything built differently from this plan, and why.
+
+* Size shows the computed size in pixels with the step's name after it ("14 sm"). Off the
+  scale, the name becomes an amber "off", because "off scale" pushed the typed number out of a
+  100px field.
+* The Style list reads every face in the frame's `document.fonts`, loaded or not. Inter's faces
+  are split by unicode range and load on demand, so "loaded only" would drop weights the family
+  has.
+* "Taller than its text" counts the text's lines and multiplies by the line height. A text
+  range's own box is the glyph height, which is shorter than the line, and showed the vertical
+  buttons on every one-line heading.
+* The type lever is `apps/web/scripts/type-check.mjs`, run by `pnpm test:browser`. It clicks
+  30px inside the heading's left edge: on a 24px tall element ETH-102's padding handles cover the
+  centre and the left edge, and a click there opens the padding field instead of selecting
+  deeper. That overlap is ETH-102's behaviour and is left as it is.
+* The page set-up and the results report the spacing, corner radius and type levers share moved
+  into `harness.mjs` (`workbenchPage`, `report`), which fallow flagged as copied three times.
+* Browsers: the lever runs in Playwright Chromium on Linux. The same walk ran in Safari 27.2 and
+  Google Chrome 156 on macOS 27.2 against the orb's dev server, with captures. Helium was not
+  available and was not exercised. The story's Figma screenshot is not in the repo, so the
+  captures were compared with the order AC 1 gives, not with the screenshot.

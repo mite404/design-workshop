@@ -10,7 +10,7 @@
 import assert from "node:assert/strict";
 import { mkdirSync, readFileSync } from "node:fs";
 import path from "node:path";
-import { arg, launch, ROOT } from "./harness.mjs";
+import { arg, launch, report, ROOT, workbenchPage } from "./harness.mjs";
 
 const base = arg("--base", "http://localhost:5173");
 const out = arg("--out", path.join(ROOT, ".artifacts/spacing"));
@@ -22,14 +22,10 @@ mkdirSync(out, { recursive: true });
 assert.equal(readFileSync(OVERRIDES, "utf8"), EMPTY, "the override file starts empty");
 
 const browser = await launch();
-const context = await browser.newContext({
-  viewport: { width: 1440, height: 900 },
-  deviceScaleFactor: 2,
-  ...(video === undefined ? {} : { recordVideo: { dir: out } }),
-});
-const page = await context.newPage();
-const errors = [];
-page.on("pageerror", (e) => errors.push(String(e)));
+const { context, page, errors } = await workbenchPage(
+  browser,
+  video === undefined ? {} : { recordVideo: { dir: out } },
+);
 const frame = page.frameLocator("iframe");
 const card = frame.locator("section.card.state").first();
 const selector = page.locator(".selector");
@@ -327,10 +323,4 @@ await step("values whose selector matches nothing are listed and can be deleted"
 await context.close();
 if (video !== undefined) await page.video().saveAs(video);
 await browser.close();
-for (const { name, ok, detail } of results) {
-  console.log(`${ok ? "ok  " : "FAIL"} ${name}${detail === "" ? "" : `: ${detail}`}`);
-}
-for (const e of errors) console.log(`FAIL page error: ${e}`);
-const failed = results.filter((r) => !r.ok).length + errors.length;
-console.log(`${results.length - failed} of ${results.length} steps passed; screenshots in ${out}`);
-process.exit(failed === 0 ? 0 : 1);
+report(results, errors, out);

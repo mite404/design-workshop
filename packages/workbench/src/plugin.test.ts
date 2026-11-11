@@ -102,6 +102,37 @@ describe("writeValue", () => {
     expect(post(file, { ...offset, selector: ":root", value: "0px 0px" }, ORIGIN).status).toBe(400);
   });
 
+  // Each type property: one value it saves, and one it refuses.
+  test.each([
+    ["font-weight", "550", "1001"],
+    ["font-style", "italic", "oblique"],
+    ["font-size", "var(--text-lg)", "var(--text-5xl)"],
+    ["font-size", "15px", "15.5px"],
+    ["font-size", "var(--text-lg)", "var(--text-lg); color: red"],
+    ["line-height", "28px", "0px"],
+    ["letter-spacing", "-0.005em", "-0.0005em"],
+    ["letter-spacing", "2em", "2.5em"],
+    ["text-align", "center", "justify"],
+    ["align-content", "end", "space-between"],
+  ])("saves and resets %s %s, and refuses %s", (name, value, refused) => {
+    const file = overrideFile(SAVED);
+    const type = { selector: CARD, name, was: null };
+    expect(post(file, { ...type, value: refused }, ORIGIN).status).toBe(400);
+    expect(readFileSync(file, "utf8")).toBe(SAVED);
+    expect(post(file, { ...type, value }, ORIGIN).status).toBe(200);
+    expect(readFileSync(file, "utf8")).toBe(`${SAVED}${CARD} {\n  ${name}: ${value};\n}\n`);
+    expect(post(file, { ...type, value: null, was: value }, ORIGIN).status).toBe(200);
+    expect(readFileSync(file, "utf8")).toBe(SAVED);
+  });
+
+  test("refuses a type property on :root and a property off the list", () => {
+    const file = overrideFile(SAVED);
+    expect(post(file, { ...RADIUS, name: "font-size", value: "15px" }, ORIGIN).status).toBe(400);
+    const color = { selector: CARD, name: "color", value: "red", was: null };
+    expect(post(file, color, ORIGIN).status).toBe(400);
+    expect(readFileSync(file, "utf8")).toBe(SAVED);
+  });
+
   test.each(REFUSALS)("refuses %s and writes nothing", (_, change, origin, status) => {
     const file = overrideFile(SAVED);
     const body = { ...RADIUS, value: "8px", was: "20px", ...change };

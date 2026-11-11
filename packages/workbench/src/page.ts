@@ -47,6 +47,16 @@ import {
   type Side,
   type Spacing,
 } from "./spacing";
+import {
+  emOf,
+  percentOf,
+  STEPS,
+  stepOf,
+  styleList,
+  TYPE,
+  type TextStep,
+  type TypeName,
+} from "./type";
 
 const NAME = "--window-radius";
 const ROOT = ":root";
@@ -85,7 +95,12 @@ const BLOCKED = [
 type Drag = { control: HTMLElement; from: number; x: number; y: number };
 // The selection: the element, its selector, and the values its own `style` attribute sets,
 // which no stylesheet can override.
-type Selection = { node: Styled; selector: string; locked: Set<Spacing>; nudgeLocked: boolean };
+type Selection = {
+  node: Styled;
+  selector: string;
+  locked: Set<Spacing | TypeName>;
+  nudgeLocked: boolean;
+};
 // A change to the selection's spacing: the values before it, and the names it set inline.
 type Edit = { selection: Selection; before: Record<Spacing, number>; touched: Set<Spacing> };
 // A spacing handle: its element, the highlight of the space it controls, and its drag axis.
@@ -584,6 +599,8 @@ const gapBars: Bar[] = [];
 function select(node: Styled | null): void {
   endOffset();
   commit();
+  for (const name of TYPE) commitType(name);
+  if (stepList.matches(":popover-open")) stepList.hidePopover();
   closeInplace(false);
   selection =
     node === null
@@ -591,7 +608,9 @@ function select(node: Styled | null): void {
       : {
           node,
           selector: selectorOf(node),
-          locked: new Set(SPACING.filter((n) => node.style.getPropertyValue(n) !== "")),
+          locked: new Set(
+            [...SPACING, ...TYPE].filter((n) => node.style.getPropertyValue(n) !== ""),
+          ),
           nudgeLocked: hasNativeTransform(node),
         };
   selectorText.textContent = selection?.selector ?? "";
@@ -876,6 +895,470 @@ const offsetRows = (["x", "y"] as const).map((axis) => {
   });
   return { axis, input, clear, row };
 });
+
+// The Typography section (ETH-105). Each control sets one type property inline during a change
+// and saves it on release, Enter or blur; its reset removes the saved value.
+
+// A type value set inline during a change: the selection it is on, and its computed value before.
+const typeEdits = new Map<TypeName, { target: Selection; before: string }>();
+const BLOCKS = new Set(["block", "inline-block", "flow-root", "list-item"]);
+const H_ALIGN = { left: "Align left", center: "Align center", right: "Align right" };
+const V_ALIGN = { start: "Align top", center: "Align middle", end: "Align bottom" };
+// 12px icons, stroked in the text colour.
+const ICONS = {
+  lineHeight: "M1 1.5h10M1 10.5h10M3.6 8.3 6 3.7l2.4 4.6M4.3 7h3.4",
+  letterSpacing: "M1.5 1.5v9M10.5 1.5v9M3.6 8.3 6 3.7l2.4 4.6M4.3 7h3.4",
+  left: "M1.5 2.5h9M1.5 6h5M1.5 9.5h7",
+  center: "M1.5 2.5h9M3.5 6h5M2.5 9.5h7",
+  right: "M1.5 2.5h9M5.5 6h5M3.5 9.5h7",
+  start: "M1.5 1.5h9M4 4v6M8 4v3.5",
+  middle: "M1.5 6h9M4 2.5v7M8 3.75v4.5",
+  end: "M1.5 10.5h9M4 2v6M8 4.5v3.5",
+  reset: "M3 3.6A4 4 0 1 1 2 6M3 1.2v2.6h2.6",
+  chevron: "M3.5 4.75 6 7.25l2.5-2.5",
+};
+
+function icon(path: string): HTMLElement {
+  const span = element("span", { className: "icon", ariaHidden: "true" });
+  span.innerHTML = `<svg viewBox="0 0 12 12" width="12" height="12"><path d="${path}"/></svg>`;
+  return span;
+}
+
+function typeReset(what: string): HTMLButtonElement {
+  return element(
+    "button",
+    { type: "button", className: "type-reset", ariaLabel: `Reset ${what}`, title: "Reset" },
+    icon(ICONS.reset),
+  );
+}
+
+// The selection's text node, when it holds text directly: a child text node not only white space.
+const ownText = (node: Element): Text | undefined =>
+  [...node.childNodes].find((c): c is Text => c.nodeType === 3 && c.textContent?.trim() !== "");
+
+// Each step's size in px, as the frame's tokens.css values it now.
+function stepSizes(): Partial<Record<TextStep, number>> {
+  const root = doc()?.documentElement;
+  if (root === undefined) return {};
+  const s = style(root);
+  return Object.fromEntries(STEPS.map((step) => [step, px(s.getPropertyValue(`--text-${step}`))]));
+}
+
+// The value a control shows: the change in hand, else the saved one.
+const current = (target: Selection, name: TypeName): string | null =>
+  target.node.style.getPropertyValue(name) || was(target.selector, name);
+
+function setType(name: TypeName, value: string): void {
+  if (selection === null || selection.locked.has(name)) return;
+  if (typeEdits.get(name)?.target !== selection) {
+    typeEdits.set(name, {
+      target: selection,
+      before: style(selection.node).getPropertyValue(name),
+    });
+  }
+  selection.node.style.setProperty(name, value);
+}
+
+// Saves a type value set inline, or drops it when it changes nothing.
+function commitType(name: TypeName): void {
+  const pending = typeEdits.get(name);
+  if (pending === undefined) return;
+  typeEdits.delete(name);
+  const { node, selector } = pending.target;
+  const value = node.style.getPropertyValue(name);
+  const saved = was(selector, name);
+  const same =
+    saved === null ? style(node).getPropertyValue(name) === pending.before : value === saved;
+  if (same) node.style.removeProperty(name);
+  else saveValue(node, selector, name, value);
+}
+
+// Puts back a type value set inline, unsaved.
+function revertType(name: TypeName): void {
+  const pending = typeEdits.get(name);
+  typeEdits.delete(name);
+  pending?.target.node.style.removeProperty(name);
+}
+
+function resetType(...names: TypeName[]): void {
+  if (selection === null) return;
+  for (const name of names) {
+    revertType(name);
+    if (was(selection.selector, name) !== null) {
+      saveValue(selection.node, selection.selector, name, null);
+    }
+  }
+}
+
+// A number field: Up and Down step it live, Enter or blur saves what was typed, Escape reverts.
+// `data-dirty` marks typing not yet saved, which the field keeps on screen.
+function typeField(
+  id: string,
+  aria: string,
+  name: TypeName,
+  step: (event: KeyboardEvent, sign: 1 | -1) => string | null,
+  typed: (raw: string) => string | null,
+): HTMLInputElement {
+  const input = element("input", { id, ariaLabel: aria, autocomplete: "off" });
+  input.spellcheck = false;
+  input.addEventListener("input", () => {
+    input.dataset.dirty = "";
+  });
+  input.addEventListener("keydown", (event) => {
+    const sign = UP_DOWN[event.key];
+    if (sign !== undefined && !input.readOnly) {
+      event.preventDefault();
+      const value = step(event, sign);
+      if (value !== null) setType(name, value);
+      delete input.dataset.dirty;
+    }
+    if (event.key === "Enter") input.blur();
+    if (event.key === "Escape") {
+      event.stopPropagation();
+      delete input.dataset.dirty;
+      revertType(name);
+      input.blur();
+    }
+  });
+  input.addEventListener("blur", () => {
+    const value = input.dataset.dirty !== undefined && !input.readOnly ? typed(input.value) : null;
+    delete input.dataset.dirty;
+    if (value !== null) setType(name, value);
+    commitType(name);
+  });
+  return input;
+}
+
+const familyText = element("span", { className: "type-family" });
+
+const styleSelect = element("select", { id: "wb-style", ariaLabel: "Style" });
+const styleReset = typeReset("style");
+let styleKey = "";
+styleSelect.addEventListener("change", () => {
+  const [, weight = "400", italic] = /^(\d+)(i?)$/.exec(styleSelect.value) ?? [];
+  setType("font-weight", weight);
+  setType("font-style", italic === "i" ? "italic" : "normal");
+  commitType("font-weight");
+  commitType("font-style");
+});
+styleReset.addEventListener("click", () => {
+  resetType("font-weight", "font-style");
+});
+
+// Size: the step in hand, and the next one up or down from a size, on the scale or off it.
+function sizeStep(target: Selection): TextStep | null {
+  const value = current(target, "font-size") ?? "";
+  const named = /^var\(--text-(.+)\)$/.exec(value)?.[1];
+  if (named !== undefined) return STEPS.find((s) => s === named) ?? null;
+  if (value !== "") return null;
+  return stepOf(px(style(target.node).fontSize), stepSizes());
+}
+function nextStep(sign: 1 | -1): TextStep | null {
+  if (selection === null) return null;
+  const sizes = stepSizes();
+  const at = sizeStep(selection);
+  const size = px(style(selection.node).fontSize);
+  const order = sign === 1 ? STEPS : STEPS.toReversed();
+  if (at !== null) return order[order.indexOf(at) + 1] ?? at;
+  return order.find((s) => (sizes[s] ?? 0) * sign > size * sign) ?? null;
+}
+const sizeInput = typeField(
+  "wb-font-size",
+  "Size",
+  "font-size",
+  (_, sign) => {
+    const s = nextStep(sign);
+    return s === null ? null : `var(--text-${s})`;
+  },
+  (raw) => {
+    const n = wholeNumber(raw);
+    return n === null || n < 1 ? null : `${n}px`;
+  },
+);
+const sizeMark = element("span", { className: "unit" });
+const sizeOpen = element(
+  "button",
+  {
+    type: "button",
+    className: "type-open",
+    ariaLabel: "Size steps",
+    ariaHasPopup: "listbox",
+    ariaExpanded: "false",
+  },
+  icon(ICONS.chevron),
+);
+const sizeReset = typeReset("size");
+const stepOptions = STEPS.map((s) => {
+  const size = element("span", { className: "unit" });
+  const option = element(
+    "button",
+    { type: "button", role: "option", className: "step" },
+    element("span", {}, s),
+    size,
+  );
+  option.dataset.step = s;
+  option.addEventListener("click", () => {
+    setType("font-size", `var(--text-${s})`);
+    commitType("font-size");
+    stepList.hidePopover();
+    sizeInput.focus();
+  });
+  return { s, option, size };
+});
+const stepList = element(
+  "div",
+  { id: "wb-steps", className: "steps", role: "listbox", ariaLabel: "Size steps" },
+  ...stepOptions.map((o) => o.option),
+);
+stepList.popover = "auto";
+stepList.addEventListener("keydown", (event) => {
+  const sign = UP_DOWN[event.key];
+  if (sign === undefined) return;
+  event.preventDefault();
+  const at = stepOptions.findIndex((o) => o.option === document.activeElement);
+  stepOptions[Math.min(Math.max(at - sign, 0), STEPS.length - 1)]?.option.focus();
+});
+stepList.addEventListener("toggle", (event) => {
+  const open = (event as ToggleEvent).newState === "open";
+  sizeOpen.ariaExpanded = String(open);
+  if (!open) return;
+  const at = selection === null ? null : sizeStep(selection);
+  const sizes = stepSizes();
+  for (const { s, option, size } of stepOptions) {
+    size.textContent = String(sizes[s] ?? "");
+    option.ariaSelected = String(s === at);
+  }
+  (stepOptions.find((o) => o.s === at) ?? stepOptions[0])?.option.focus();
+});
+sizeOpen.addEventListener("click", () => {
+  const rect = sizeInput.parentElement?.getBoundingClientRect();
+  if (rect !== undefined) {
+    stepList.style.left = `${rect.left}px`;
+    stepList.style.top = `${rect.bottom + 4}px`;
+    stepList.style.width = `${rect.width}px`;
+  }
+  stepList.togglePopover();
+});
+sizeReset.addEventListener("click", () => {
+  resetType("font-size");
+});
+
+// Line height: the browser's height for one line of the text, for an arrow key from Auto.
+function lineBox(node: Element): number {
+  const own = ownText(node);
+  if (own === undefined) return 0;
+  const range = node.ownerDocument.createRange();
+  range.selectNodeContents(own);
+  return range.getClientRects()[0]?.height ?? 0;
+}
+const lineInput = typeField(
+  "wb-line-height",
+  "Line height",
+  "line-height",
+  (_, sign) => {
+    if (selection === null) return null;
+    const now = style(selection.node).lineHeight;
+    if (now === "normal") return `${Math.max(Math.ceil(lineBox(selection.node) / 4) * 4, 4)}px`;
+    return `${Math.max(Math.round(px(now)) + sign * 4, 4)}px`;
+  },
+  (raw) => {
+    const n = wholeNumber(raw);
+    return n === null || n < 1 ? null : `${n}px`;
+  },
+);
+const lineReset = typeReset("line height");
+lineReset.addEventListener("click", () => {
+  resetType("line-height");
+});
+
+const spacingNow = (node: Element): number => {
+  const s = style(node);
+  return s.letterSpacing === "normal" ? 0 : percentOf(px(s.letterSpacing), px(s.fontSize));
+};
+const trackingInput = typeField(
+  "wb-letter-spacing",
+  "Letter spacing",
+  "letter-spacing",
+  (event, sign) =>
+    selection === null ? null : emOf(spacingNow(selection.node) + sign * (event.shiftKey ? 10 : 1)),
+  (raw) => {
+    const n = Number(/^\s*(-?\d+(?:\.\d+)?)\s*%?\s*$/.exec(raw)?.[1] ?? Number.NaN);
+    return Number.isFinite(n) && n >= -100 && n <= 200 ? emOf(n) : null;
+  },
+);
+const trackingReset = typeReset("letter spacing");
+trackingReset.addEventListener("click", () => {
+  resetType("letter-spacing");
+});
+
+// A row of three buttons that each set `name` to their value.
+function segmented(name: TypeName, labels: Record<string, string>, icons: string[]) {
+  const buttons = Object.entries(labels).map(([value, title], i) => {
+    const button = element(
+      "button",
+      { type: "button", ariaLabel: title, title, ariaPressed: "false" },
+      icon(icons[i] ?? ""),
+    );
+    button.dataset.value = value;
+    button.addEventListener("click", () => {
+      setType(name, value);
+      commitType(name);
+    });
+    return button;
+  });
+  const clear = typeReset(name === "text-align" ? "horizontal alignment" : "vertical alignment");
+  clear.addEventListener("click", () => {
+    resetType(name);
+  });
+  const group = element("div", { className: "segmented", role: "group" }, ...buttons);
+  group.ariaLabel = name === "text-align" ? "Horizontal alignment" : "Vertical alignment";
+  return { buttons, clear, cell: element("div", { className: "type-align" }, group, clear) };
+}
+const hAlign = segmented("text-align", H_ALIGN, [ICONS.left, ICONS.center, ICONS.right]);
+const vAlign = segmented("align-content", V_ALIGN, [ICONS.start, ICONS.middle, ICONS.end]);
+
+const typeNote = element(
+  "p",
+  { className: "type-note" },
+  "Read-only fields are set in the element's own style attribute, which no stylesheet overrides.",
+);
+const cell = (...children: HTMLElement[]) =>
+  element("div", { className: "type-field" }, ...children);
+const typePanel = element(
+  "section",
+  { ariaLabel: "Typography", className: "type" },
+  element("h2", {}, "Typography"),
+  element(
+    "div",
+    { className: "type-grid" },
+    cell(familyText),
+    cell(styleSelect, icon(ICONS.chevron), styleReset),
+    cell(sizeInput, sizeMark, sizeOpen, sizeReset),
+    cell(
+      element("label", { htmlFor: lineInput.id, title: "Line height" }, icon(ICONS.lineHeight)),
+      lineInput,
+      lineReset,
+    ),
+    cell(
+      element(
+        "label",
+        { htmlFor: trackingInput.id, title: "Letter spacing" },
+        icon(ICONS.letterSpacing),
+      ),
+      trackingInput,
+      element("span", { className: "unit" }, "%"),
+      trackingReset,
+    ),
+    hAlign.cell,
+    vAlign.cell,
+  ),
+  typeNote,
+);
+
+// Computed alignments as the buttons name them.
+const H_ALIGNED: Record<string, string> = { start: "left", end: "right" };
+const V_ALIGNED: Record<string, string> = {
+  normal: "start",
+  "flex-start": "start",
+  "flex-end": "end",
+};
+
+// The height of the element's text as laid out: its lines, each a line height tall.
+function textHeight(node: Element, lineHeight: string): number {
+  const range = node.ownerDocument.createRange();
+  range.selectNodeContents(node);
+  const rects = [...range.getClientRects()];
+  const lines = new Set(rects.map((r) => Math.round(r.bottom))).size;
+  return lines * (lineHeight === "normal" ? (rects[0]?.height ?? 0) : px(lineHeight));
+}
+
+// Lists the family's styles, rebuilt only when the family or the current style changes.
+function fillStyles(node: Element, family: string, weight: number, italic: boolean): void {
+  const key = `${family}|${weight}|${italic}`;
+  if (key === styleKey) return;
+  styleKey = key;
+  const faces = [...node.ownerDocument.fonts].filter(
+    (f) => f.family.replaceAll(/["']/g, "") === family,
+  );
+  styleSelect.replaceChildren(
+    ...styleList(faces, { weight, italic }).map((s) =>
+      element("option", { value: `${s.weight}${s.italic ? "i" : ""}` }, s.label),
+    ),
+  );
+  styleSelect.value = `${weight}${italic ? "i" : ""}`;
+}
+
+// Shows `value` in a field the user is not typing in, leaving its caret alone when unchanged.
+function fill(input: HTMLInputElement, value: string): void {
+  if (input.dataset.dirty === undefined && input.value !== value) input.value = value;
+}
+
+// Shows a number field's value, read-only state and reset.
+function trackField(
+  target: Selection,
+  name: TypeName,
+  input: HTMLInputElement,
+  value: string,
+  clear: HTMLButtonElement,
+): void {
+  fill(input, value);
+  input.readOnly = target.locked.has(name);
+  clear.disabled = was(target.selector, name) === null;
+}
+
+function trackStyle(target: Selection, s: CSSStyleDeclaration): void {
+  const family = s.fontFamily.split(",")[0]?.trim().replaceAll(/["']/g, "") ?? "";
+  familyText.textContent = family;
+  familyText.title = family;
+  fillStyles(target.node, family, Number(s.fontWeight), s.fontStyle !== "normal");
+  styleSelect.disabled = target.locked.has("font-weight") || target.locked.has("font-style");
+  styleReset.disabled =
+    was(target.selector, "font-weight") === null && was(target.selector, "font-style") === null;
+}
+
+function trackSize(target: Selection, s: CSSStyleDeclaration): void {
+  const at = sizeStep(target);
+  trackField(target, "font-size", sizeInput, String(px(s.fontSize)), sizeReset);
+  sizeMark.textContent = at ?? "off";
+  sizeMark.dataset.off = String(at === null);
+  sizeMark.title = at === null ? "Off the type scale: does not follow the type dial" : "";
+  sizeOpen.disabled = sizeInput.readOnly;
+}
+
+function trackAlign(target: Selection, s: CSSStyleDeclaration): void {
+  const h = H_ALIGNED[s.textAlign] ?? s.textAlign;
+  const v = V_ALIGNED[s.alignContent] ?? s.alignContent;
+  for (const [{ buttons, clear }, name, value] of [
+    [hAlign, "text-align", h],
+    [vAlign, "align-content", v],
+  ] as const) {
+    for (const b of buttons) {
+      b.ariaPressed = String(b.dataset.value === value);
+      b.disabled = target.locked.has(name);
+    }
+    clear.disabled = was(target.selector, name) === null;
+  }
+  // Vertical alignment only moves text in a block taller than its text.
+  const { node } = target;
+  const content = node.clientHeight - px(s.paddingTop) - px(s.paddingBottom);
+  vAlign.cell.hidden = !BLOCKS.has(s.display) || content <= textHeight(node, s.lineHeight) + 1;
+}
+
+function trackType(): void {
+  const target = selection;
+  typePanel.hidden = target === null || ownText(target.node) === undefined;
+  if (target === null || typePanel.hidden) return;
+  const s = style(target.node);
+  trackStyle(target, s);
+  trackSize(target, s);
+  const line = s.lineHeight === "normal" ? "Auto" : String(Math.round(px(s.lineHeight)));
+  trackField(target, "line-height", lineInput, line, lineReset);
+  const tracking = String(spacingNow(target.node));
+  trackField(target, "letter-spacing", trackingInput, tracking, trackingReset);
+  trackAlign(target, s);
+  typeNote.hidden = !TYPE.some((n) => target.locked.has(n));
+}
+
 const selectionPanel = element(
   "section",
   { ariaLabel: "Selection" },
@@ -950,6 +1433,7 @@ function track(): void {
   trackRadius();
   trackSelection();
   trackFields();
+  trackType();
   trackUnmatched();
   requestAnimationFrame(track);
 }
@@ -966,11 +1450,13 @@ document.body.append(
       element("h2", {}, "Window"),
       element("div", { className: "row" }, label, field, reset),
       selectionPanel,
+      typePanel,
       unmatchedPanel,
       message,
     ),
   ),
 );
+document.body.append(stepList);
 paddingLayer.append(...paddingBars.flatMap((b) => [b.el, b.space]));
 unmatchedPanel.hidden = true;
 
