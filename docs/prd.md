@@ -173,11 +173,11 @@ git HEAD ──read baseline + override──> inspector and canvas
 - Undo and redo step through edits since the last commit. Discard restores the override file from
   git.
 - Check and commit is one press (ADR-026). It runs type check and tests and commits, with the
-  message written from the change list. It shows no value diff and no message. No screenshots:
-  the canvas already shows the state.
-- Not built yet: the single press, where the build still shows the diff and waits for a second
-  press; and, before the checks, a list of what else on the screen moved or changed size. See
-  [the story](feature/check-and-commit/check-and-commit-story.md).
+  message written from the change list. It shows no value diff, no message and no list of
+  changes: the press accepts everything on the canvas. No screenshots: the canvas already shows
+  the state.
+- Not built yet: the single press. The build still shows the diff and waits for a second press.
+  See [the story](feature/check-and-commit/check-and-commit-story.md).
 
 ## 9. Requirements
 
@@ -299,4 +299,6 @@ These are Ethan's stated preferences for how the Workbench itself should look an
 
 ## 14. Open questions
 
-None right now.
+- How does a designer learn that a change broke or moved something on a screen, a state or a
+  story that is not on the canvas? Not at the press (ADR-026). It needs the Workbench to load
+  other screens and stories first (ETH-115 part B), so it has no story and no ticket yet.

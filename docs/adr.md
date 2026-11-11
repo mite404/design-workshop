@@ -258,3 +258,12 @@ name the component that moved.
 The costs: the note that repository hooks still run, which Ethan asked to keep visible, loses
 the review it sat in and has to stay beside the progress; and with no second press, cancelling
 during the checks is the only way back from a press made by mistake.
+Amended 2026-11-11: there is no list at the press. The press accepts everything on the canvas,
+including what an edit moved. (Ethan: "any change that exists on something when i click 'check
+& commit' would be implicit. i don't need to see a list of all the things im about to change,
+b/c i've already thought about it and modified values directly in the editor view".) The draft
+list is withdrawn. It compared only the screen in the canvas, which the designer had already
+looked at, and it waited for a second press. A check is worth having only for screens, states
+and stories that are not on the canvas. That is an open question in PRD section 14, with no
+story and no ticket. The cost: something an edit moved below the fold of the current screen is
+not reported.
