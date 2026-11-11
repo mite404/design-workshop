@@ -35,4 +35,5 @@ portal URLs.
 ## Tickets
 
 Product: `docs/prd.md`. Research: `docs/research/`. Each ticket is a plan in `docs/feature/<name>/`,
-named after its Linear ID, with a drift log for anything built differently from the plan.
+named after its Linear ID, with a drift log for anything built differently from the plan. A folder
+moves to `docs/done/<name>/` once every ticket in it is Done.

@@ -115,8 +115,9 @@ contains a saved design, report that unmet precondition separately; do not chang
 
 Baseline fixtures do not verify the candidate's saved design. Restore `candidate-overrides.css`
 only in `$RUN`, then inspect the affected screens, states and component stories with those values.
-Use the feature story under `docs/feature/` as the expected behavior. A layout that intentionally
-changed is not a failure just because it differs from an old screenshot (ADR-020).
+Use the feature story under `docs/feature/`, or `docs/done/` once built, as the expected behavior.
+A layout that intentionally changed is not a failure just because it differs from an old
+screenshot (ADR-020).
 
 ## Evidence
 

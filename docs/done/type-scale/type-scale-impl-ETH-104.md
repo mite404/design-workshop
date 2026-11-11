@@ -41,7 +41,7 @@ Measured at `cf734ed`, in `apps/web/src`, `packages/catalog/src` and `packages/u
   (`text-xs` is `font-size: var(--text-xs)`), and the app's layer order
   (`theme, base, catalog, components, utilities`) puts `tokens.css` above Tailwind's theme.
 * `WorkDetails.browser.test.tsx` asserts 13px and 15px. The test suite story
-  (`docs/feature/test-suite/test-suite-story.md`) plans to make it compare the two sizes instead.
+  (`docs/done/test-suite/test-suite-story.md`) plans to make it compare the two sizes instead.
 
 ## Approach
 

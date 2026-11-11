@@ -52,6 +52,10 @@ Each feature has a story and a ticket file under `docs/feature/<name>/`, and eac
 drift log so the plan and the build can be compared. Linear tracks progress at a glance. GitHub
 issues were tried for the first three tickets and dropped as duplicate bookkeeping.
 
+Amended 2026-11-11: a feature folder moves to `docs/done/<name>/` once every ticket in it is
+Done in Linear, so `docs/feature/` holds only open work. (Ethan: "lets move any feature dirs
+that are done into a docs/done/ dir")
+
 ## ADR-008 - The agent mocks up, the designer tunes
 
 2026-11-11 - Accepted.

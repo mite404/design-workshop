@@ -259,7 +259,7 @@ both the old workbook and the yaklabs calibration step. Blocks 2 and 3 are the t
 Everything after is interface on top of them.
 
 The first feature, the window's corner radius, cuts a thin slice through blocks 3, 4 and 7 for one
-value. See [the story](feature/corner-radius/corner-radius-story.md).
+value. See [the story](done/corner-radius/corner-radius-story.md).
 
 The current workbook is retired once the Template looks and feels good. The
 `design-tutorial-workshop` branch keeps it as it is today.
@@ -309,7 +309,8 @@ These are Ethan's stated preferences for how the Workbench itself should look an
   copying that project's override file.
 - The override file stays as the project's look.
 - Stories live at `docs/feature/<name>/<name>-story.md` and tickets at
-  `docs/feature/<name>/<name>-impl-<Linear ID>.md`. Each ticket ends in a drift log.
+  `docs/feature/<name>/<name>-impl-<Linear ID>.md`. Each ticket ends in a drift log. A folder
+  moves to `docs/done/<name>/` once every ticket in it is Done in Linear.
 
 ## 14. Open questions
 
