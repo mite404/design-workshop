@@ -3,11 +3,9 @@ import type { Session } from "@yaklabs/runtime";
 import { useEffect, type ReactNode } from "react";
 import { env } from "./env";
 
-/**
- * What sign-in carries through WorkOS for `safeReturnTo` to read back: where the visitor was,
- * with the query, so a `?scenario=` link lands on its mock and never on the device's data.
- */
-export function signInState(at: Pick<Location, "pathname" | "search">): { returnTo: string } {
+// What sign-in carries through WorkOS for `safeReturnTo` to read back: where the visitor was,
+// with the query, so a `?scenario=` link lands on its mock and never on the device's data.
+function signInState(at: Pick<Location, "pathname" | "search">): { returnTo: string } {
   return { returnTo: at.pathname + at.search };
 }
 

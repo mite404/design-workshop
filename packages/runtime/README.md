@@ -248,9 +248,8 @@ pnpm --filter @yaklabs/runtime typecheck
 ```
 
 - `unit` runs in node: the workspace helpers, the mint, the protocol, the schema and `planV2`, the
-  store in `:memory:`, the scenarios, the Markdown emitter, the live agent's fold and request
-  projection, the live agent against the gateway's real playground route and its test kit,
-  through the agent loop, and the agent loop, faults included.
+  store in `:memory:`, the scenarios, the Markdown emitter, and the agent loop, faults included.
+  The live agent has no tests here; they were removed with the gateway's on 2026-11-11.
 - `browser` runs in headless Chromium through `@vitest/browser-playwright`: the store in real OPFS
   across workers, Ethan's v1 database migrated, rerun and recovered from a crash inside the step
   (through `src/sqliteStore.testWorker.ts`, since OPFS's fast mode exists only in a Worker), and

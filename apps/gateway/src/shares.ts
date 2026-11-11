@@ -89,7 +89,8 @@ export async function revokeShare(
   return { status: 204 };
 }
 
-/** A store in memory that forgets each share at its end, as KV does; for tests. */
+/** A store in memory that forgets each share at its end, as KV does; for the share lever. */
+// fallow-ignore-next-line unused-export -- apps/web/scripts/share-checks.mjs loads it through Vite
 export function memoryShares(now: () => number): ShareStore {
   const shares = new Map<string, StoredShare>();
   return {
