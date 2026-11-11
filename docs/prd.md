@@ -54,6 +54,18 @@ under the component's name, so every instance changes, in the shell and in stori
 mode it changes the one element selected. Component mode edits the inside of a component, its
 own padding included; where the component sits and the space around it belong to Live mode.
 
+Which mode to use:
+
+- Component mode is for a new component, for a state the app is not showing, and for a change
+  meant for every instance of a component that already exists.
+- Live mode is for an edit to one instance and for where components sit.
+- A component that appears once looks the same after an edit in either mode, so Live mode is
+  expected to carry most edits to components already in the app.
+- A new component, or a state with no story, needs an agent to write the component or the
+  story first (ADR-001). The Workbench does not create either.
+- A story is one state of one component. A flow across screens, a happy path and then an
+  error path, is walked in Live mode by driving the app.
+
 ### Welcome and mock chat
 
 Keep the current Vitruvian welcome and Atlas empty canvas. Remove the other splash artworks and
