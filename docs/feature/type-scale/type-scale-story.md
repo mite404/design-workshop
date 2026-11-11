@@ -1,8 +1,7 @@
 # Story: scale all the type in a mockup together
 
-Status: draft, not yet confirmed by Ethan, Nov 11 2026. Tickets:
-[ETH-104](type-scale-impl-ETH-104.md) (preparation: name the sizes). The dial ticket is not
-written yet.
+Status: confirmed by Ethan, Nov 11 2026. Tickets: [ETH-104](type-scale-impl-ETH-104.md)
+(preparation: name the sizes). The dial ticket is not written yet.
 
 **As** a designer tuning a mockup an agent has already built,
 **I want** to change the size of all the type at once while every size keeps its relationship
@@ -40,6 +39,8 @@ Measured on the Template at PR #4:
   larger ones.
 - No named sizes at all, so there is nothing for a dial to turn. That is what the preparation
   ticket fixes.
+- In the three folders the preparation ticket covers, leaving out the drift tool's own
+  stylesheet: 107 declarations in 16 values.
 
 ## Acceptance criteria
 
@@ -48,9 +49,12 @@ Preparation (ETH-104):
 1. Every font size in the app shell, the catalog and the shared components comes from one of
    nine named steps. No pixel font size is written in place in those folders.
 2. The nine steps are a modular scale with a 12px base and a ratio of 1.2, rounded down to even:
-   10, 12, 14, 16, 20, 24, 28, 34 and 42px.
-3. Sizes that follow the width of the window (three `clamp()` headlines) and the 96px splash
-   numeral stay as they are, and the ticket lists them.
+   10, 12, 14, 16, 20, 24, 28, 34 and 42px. They carry Tailwind's size names, `--text-2xs` to
+   `--text-4xl` (ADR-019).
+3. A size worked out from another value stays as it is, and the ticket lists it. There is one:
+   a guide title sized from the spacing unit. (Corrected Nov 11 2026: the three `clamp()`
+   headlines and the 96px numeral first listed here are in the drift tool's stylesheet, which
+   is out of this story anyway.)
 4. Ethan can compare before and after screenshots of the shell and judge the rounding.
 
 The dial (ticket to follow, once this story is confirmed):

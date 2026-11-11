@@ -136,3 +136,12 @@ review, so each commit message or report names them.
 
 2026-11-11 - Accepted.
 The whole repo, Template included, moves to TypeScript 7 for the native compiler's speed.
+
+## ADR-019 - Type steps use Tailwind's names
+
+2026-11-11 - Accepted, with the type scale story.
+The nine type sizes are named as Tailwind names them, `--text-2xs` to `--text-4xl`, and valued
+once in the baseline tokens. Tailwind's size classes already read those variables, so plain CSS,
+Tailwind classes and imported shadcn components all follow one scale with no mapping (ADR-014).
+The cost: `text-lg` and larger no longer mean Tailwind's default sizes. Rejected: names of our
+own, which would need a mapping for every step.
