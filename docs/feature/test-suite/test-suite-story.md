@@ -1,7 +1,7 @@
 # Story: tests that let the look change and keep the shell working
 
-Status: draft, Nov 11 2026, not yet confirmed by Ethan. Tickets: none yet. One is planned,
-listed at the end.
+Status: confirmed by Ethan, Nov 11 2026. The follow-up test-pruning request supersedes the
+original keep-everything proposal. One implementation ticket is listed at the end.
 
 **As** a designer tuning a mockup an agent has already built,
 **I want** the tests to pass whatever look I save, and to fail when the shell stops working,
@@ -13,9 +13,10 @@ purposes."
 
 ## What I found
 
-Measured at `11084b2`. The suite is 120 test files and 13 story files, about 1180 tests as the
-runner counts them: catalog 314, runtime 314, web 279, storybook 138 (the stories and the
-catalog's browser tests), gateway 112, workbench 22, ui 5.
+Historical baseline at `11084b2`: about 1180 tests. After the approved pruning, checked on
+Nov 11 against `39323ce` plus the recovered pruning diff: 1015 tests pass, with catalog 281,
+runtime 285, web 266, Storybook 138, Workbench 40 and UI 5. The full root command reports
+10 successful tasks. These counts describe that run, not a fixed acceptance threshold.
 
 The look can change in two ways, and each can break different tests.
 
@@ -64,21 +65,25 @@ So the rewrite is small. The suite already tests behaviour almost everywhere.
    A test compares two values, or checks that a rule uses its named value.
 3. No test reads the live override file. A test of the file's reader and writer brings its own
    text.
-4. Every test of what the shell does stays: the mocked agent loop, the gateway, routing,
+4. Every test of what the design shell does stays: the mocked agent loop, routing,
    dragging, scrolling, the sidebar and the composer.
 5. Each Workbench ticket brings the tests for its own code, as ETH-100 did.
 
 ## Keep, change, drop
 
-- Keep: everything except the three tests below. About 1180 tests.
+- Keep: the scripted app, shell, catalog, storage and Workbench behavior tests, including live
+  dictation and catalog sharing behavior used by the Template.
 - Change: three tests.
   - `overrides.test.ts` brings its own empty file.
   - The button radius test checks that every button takes its corners from the one named
     value, and no longer says the value is 4px.
   - The `WorkDetails` test checks that the lines are smaller than the outcome, and no longer
     says 13px and 15px.
-- Drop: nothing more. The drift tool's 109 tests and the seal's test went with the drift tool
-  (ADR-020). The onboarding flow has no tests of its own.
+- Drop: the gateway tests and test kit, live-model request/transport tests, and app sign-in,
+  return-to and server-sharing tests. Keep their implementation for later sharing work, as Ethan
+  requested. Restore those tests from history before that architecture becomes a supported flow.
+- The drift tool's 109 tests and the seal's test went with the drift tool (ADR-020). The
+  onboarding flow has no tests of its own.
 
 ## Not in this story
 
@@ -88,7 +93,7 @@ So the rewrite is small. The suite already tests behaviour almost everywhere.
 - A warning inside the Workbench when a saved colour is hard to read. Today that would show
   only as a failed story test at "Check and commit". Add it with the colour story.
 
-## Decisions that are mine, for Ethan to confirm
+## Confirmed decisions
 
 - The stories keep running on the saved values. Rejected: running them on the Template's
   untouched values, which would make every test blind to what Ethan saved, and "Check and
@@ -100,9 +105,9 @@ So the rewrite is small. The suite already tests behaviour almost everywhere.
 
 - ETH-104 changes the two sizes in the `WorkDetails` test to 12px and 14px. If this story's
   ticket lands first, ETH-104 leaves that test alone. I will amend ETH-104 either way.
-- ETH-101 is being built now and may touch the button radius test. The ticket here is written
-  after ETH-101 lands, against what it left.
+- ETH-101 has landed. Recheck the three named tests before editing them; preserve any fixes
+  already present rather than repeating the earlier plan.
 
 ## Planned ticket
 
-1. Fix the three tests (small). Needs nothing. Best built before ETH-104.
+1. [ETH-108](test-suite-impl-ETH-108.md): fix the three tests. Blocks ETH-104.

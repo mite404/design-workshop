@@ -139,6 +139,8 @@ Part 4, saving:
 
 ## Test plan
 
+* Check font rendering in Helium, Chrome and Safari. Inspect actual Safari when available;
+  label Linux WebKit as an approximation and report any browser not exercised.
 * One browser test walks the story on a heading in the scripted demo: select it, pick a larger
   step, type 15, pick Bold Italic, set letter spacing to -0.5, press Up twice in line height,
   align centre, then reset each. At each step it asserts the computed style, the control's

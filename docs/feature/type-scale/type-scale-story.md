@@ -1,7 +1,7 @@
 # Story: scale all the type in a mockup together
 
 Status: confirmed by Ethan, Nov 11 2026. Tickets: [ETH-104](type-scale-impl-ETH-104.md)
-(preparation: name the sizes). The dial ticket is not written yet.
+(preparation: name the sizes) and [ETH-109](type-scale-impl-ETH-109.md) (the Type panel).
 
 **As** a designer tuning a mockup an agent has already built,
 **I want** to change the size of all the type at once while every size keeps its relationship
@@ -54,7 +54,7 @@ Preparation (ETH-104):
    first listed here went with the drift tool, ADR-020, and the first-visit guide.)
 4. Ethan can compare before and after screenshots of the shell and judge the rounding.
 
-The dial (ticket to follow, once this story is confirmed):
+The dial (ETH-109):
 
 5. The inspector has a Type panel with three fields: base size, ratio and leading. Below them
    it lists the nine steps with the size and line height each one works out to.

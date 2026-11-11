@@ -143,6 +143,8 @@ Part 5, tests and after screenshots:
 
 ## Test plan
 
+* Check font rendering in Helium, Chrome and Safari. Inspect actual Safari when available;
+  label Linux WebKit as an approximation and report any browser not exercised.
 * The new test passes, and fails when a `font-size: 13px` is added to any of the seven files.
 * These searches return nothing under the three folders: `text-\[[0-9.]+px\]`, and `fontSize`
   followed by a number.

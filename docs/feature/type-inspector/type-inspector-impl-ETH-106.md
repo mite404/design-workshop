@@ -154,6 +154,8 @@ Part 6, the Template's two fonts:
 
 ## Test plan
 
+* Check font rendering in Helium, Chrome and Safari. Inspect actual Safari when available;
+  label Linux WebKit as an approximation and report any browser not exercised.
 * Unit tests for the font endpoint stub `fetch`. They cover a variable font, a font with
   separate weights, a second request for the same ID, an ID that is not allowed, a file address
   on another host, and a file that is too large.

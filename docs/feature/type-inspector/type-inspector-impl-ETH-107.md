@@ -104,6 +104,8 @@ Part 3, the controls:
 
 ## Test plan
 
+* Check font rendering in Helium, Chrome and Safari. Inspect actual Safari when available;
+  label Linux WebKit as an approximation and report any browser not exercised.
 * One browser test on a paragraph in the scripted demo: open the popover, set justify,
   underline, upper case, cap-height trim, bulleted, and paragraph spacing by pressing Up three
   times, then reset each. At each step it asserts the computed style and the override file.
