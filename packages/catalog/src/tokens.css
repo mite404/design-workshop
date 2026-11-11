@@ -162,12 +162,8 @@
   /* derived: the desk the window sits on, between Ethan's two stone greys; 1.54:1 against the
      bright paper, 1.43:1 against the paper and 6.30:1 against the bar, so every edge shows (Q10) */
   --desk: color-mix(in srgb, var(--yak-stone-pale) 85%, var(--yak-stone));
-  /* a new thread's welcome and the empty canvas (ADR-136). Both paintings sit under one wash of
-     the paper and show through at 11%, Ethan's Figma value for the landscape, so either reads as
-     a picture under the field, never a photograph on it; the words sit in the clearing, on plain
-     paper. Atlas is the ink at 30%, Ethan's Figma value: 1.84:1 off the paper in light, so he
-     reads as a sketch without competing with the words */
-  --splash-wash: color-mix(in srgb, var(--paper) 89%, transparent);
+  /* Atlas is the ink at 30%, Ethan's Figma value: 1.84:1 off the paper in light, so he
+     reads as a sketch without competing with the welcome's words. */
   --splash-figure: color-mix(in srgb, var(--ink) 30%, transparent);
   /* the construction lines behind Atlas, the ink at 12%: 1.26:1 off the paper, so they read as
      pencil under the figure and never as ground */
@@ -346,9 +342,7 @@ button:hover {
   --bubble-line: #4f5257; /* 2.02:1 */
   --shadow: color-mix(in srgb, black 50%, transparent);
   --shadow-strong: color-mix(in srgb, black 70%, transparent);
-  /* the paintings show a step more on the dark paper (20%), where a daylight picture sits back
-     anyway; Atlas is the ink at 26%, 2.29:1 off the dark paper */
-  --splash-wash: color-mix(in srgb, var(--paper) 80%, transparent);
+  /* Atlas is the ink at 26%, 2.29:1 off the dark paper. */
   --splash-figure: color-mix(in srgb, var(--ink) 26%, transparent);
   --warn-bg: #2b2618; /* derived: the warm notice, deepened */
   --warn-ink: #c7ad40; /* Zed: ansi yellow; 6.8:1 on it */

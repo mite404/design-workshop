@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { DEMO_WORLD } from "../world/demo";
-import { scriptsOf } from "../world/spec";
+import { brief } from "./scenarios/brief";
+import { interrupted } from "./scenarios/interrupted";
+import { returned } from "./scenarios/returned";
 import { durationOf, type Beat } from "./script";
 
-const scripts = scriptsOf(DEMO_WORLD);
+const scripts = [brief, interrupted, returned];
 
 // The interview walkthrough: about a minute of playback at 1x, and never past three with the
 // pauses that stand in for reading time.
@@ -39,7 +40,7 @@ describe("the scripted scenarios", () => {
 
   it("shows three separations of concern", () => {
     expect(scripts.map((script) => script.id)).toEqual(["brief", "interrupted", "returned"]);
-    const returned = scripts.at(-1)?.beats.filter((beat) => beat.kind !== "reply");
-    expect(returned?.map((beat) => beat.kind)).toEqual(["choose", "user", "answer"]);
+    const returnedBeats = scripts.at(-1)?.beats.filter((beat) => beat.kind !== "reply");
+    expect(returnedBeats?.map((beat) => beat.kind)).toEqual(["choose", "user", "answer"]);
   });
 });

@@ -1,6 +1,6 @@
 // oxlint-disable no-await-in-loop, no-console -- a lever drives one step at a time and reports on stdout
 // The spacing lever (ETH-102): drives the Workbench at /__workbench/ in headless Chromium through
-// the story on the scripted demo's "Catalog limit" card, a flex column: select it, drag its gap
+// the completed brief's "Catalog limit" card, a flex column: select it, drag its gap
 // by an uneven amount, drag a padding with Alt, type an odd value, Escape mid-drag, reset, and
 // delete values left matching nothing. Each step checks the computed style, the inspector's field and the
 // override file. Screenshots go to .artifacts/spacing/. Exits 1 when any step fails. It writes
@@ -104,16 +104,14 @@ const step = async (name, run) => {
   }
 };
 
-await step("with the select tool off, the app runs the scripted demo", async () => {
+await step("with the select tool off, the completed conversation is ready", async () => {
   await page.goto(`${base}/__workbench/`);
   await frame.locator("[data-slot=window]").waitFor({ timeout: 30_000 });
   await page.locator(".tool").click();
   assert.equal(await page.locator(".tool").getAttribute("aria-pressed"), "false");
   await page.frames()[1].goto(`${base}/t/demo-brief`);
-  const toolbar = frame.getByRole("toolbar", { name: "Scripted demo" });
-  await toolbar.getByRole("button", { name: "Fast forward, 2x" }).click({ timeout: 30_000 });
-  await toolbar.getByRole("button", { name: "Play", exact: true }).click();
-  await frame.locator("[data-slot=demo-status]", { hasText: "Done" }).waitFor({ timeout: 90_000 });
+  await card.waitFor({ timeout: 30_000 });
+  assert.equal(await frame.locator('[data-slot="demo-controls"]').count(), 0);
   await card.scrollIntoViewIfNeeded();
   await page.locator(".tool").click();
 });

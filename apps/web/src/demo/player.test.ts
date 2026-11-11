@@ -1,17 +1,19 @@
 import type { AgentEvent } from "@yaklabs/catalog/agent";
 import type { ThreadHandle } from "@yaklabs/catalog/thread";
 import { describe, expect, it } from "vitest";
+import { brief } from "./scenarios/brief";
+import { interrupted } from "./scenarios/interrupted";
+import { returned } from "./scenarios/returned";
 import type { Clock } from "./clock";
-import { DEMO_WORLD } from "../world/demo";
 import { ids } from "../world/ids";
-import { scriptsOf, show, worldOf } from "../world/spec";
+import { show, worldOf } from "../world/spec";
 import { createWorld, type World } from "../world/world";
 import { createPlayer, cuesOf, type Played, type Player } from "./player";
 import { at, type Beat, type Script } from "./script";
 
 // The Demo's script by its id.
 function scriptFor(id: string): Script {
-  const found = scriptsOf(DEMO_WORLD).find((script) => script.id === id);
+  const found = [brief, interrupted, returned].find((script) => script.id === id);
   if (found === undefined) throw new Error(`The Demo has no script "${id}"`);
   return found;
 }

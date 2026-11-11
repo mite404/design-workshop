@@ -575,37 +575,6 @@ html[data-dragging="sidebar"] * {
       box-shadow: 0 0 0 3px transparent;
     }
   }
-  /* A show's Play says where to start while the show is not playing (ShowBar.tsx, Ethan: "on
-     loop so its blinking when not in play state"): the olive flash a focused lane gives, round
-     the button's own corners, then a beat of rest, every 2s. Under reduced motion the ring holds
-     still instead. */
-  [data-slot="demo-controls"] [data-callout] {
-    animation: play-callout 2s ease-out infinite;
-  }
-  @keyframes play-callout {
-    0% {
-      box-shadow: 0 0 0 3px var(--olive);
-    }
-    60%,
-    100% {
-      box-shadow: 0 0 0 3px transparent;
-    }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    [data-slot="demo-controls"] [data-callout] {
-      animation: none;
-      box-shadow: 0 0 0 3px var(--olive);
-    }
-  }
-  /* Which demo is on, in the title bar's own green (Ethan). The dark bar is Umbralkai's grey
-     (ADR-162), as dark as the paper under the title, so there it takes the ink. */
-  .demo-title {
-    color: var(--chrome);
-  }
-  html[data-theme="dark"] .demo-title {
-    color: var(--ink);
-  }
-
   /* A divider that drags shows a hint of a line while the pointer is on it (ADR-089): full ink
      for 40px either side of the pointer's height, fading to nothing by 70px (Ethan: "longer in
      both directions by another 20px"), so the whole length reads as something to take hold of

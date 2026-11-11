@@ -188,6 +188,23 @@ export function verbs(deps: Deps, doc: ShellState): ShellVerbs {
       if (leavesChild(active, main, pane)) go(main);
     },
     setMode: (main, mode) => {
+      // Save before leaving the app so the editor's frame opens in the chosen mode.
+      // Inside that frame, switches stay in the app instead of nesting another editor.
+      if (import.meta.env.DEV && typeof window !== "undefined" && window.self === window.top) {
+        const state = runtime.state();
+        if (state.kind !== "ready") return;
+        const current = parseShell(state.workspace.shell, state.workspace);
+        const target = new URL(deps.href(main));
+        inBackground(
+          runtime.saveShell(setMode(visit(current, { main, focus: null }), main, mode)).then(() => {
+            return window.location.assign(
+              `/__workbench/?${new URLSearchParams({ path: target.pathname + target.search })}`,
+            );
+          }),
+          "Opening the editor",
+        );
+        return;
+      }
       change((current) => setMode(current, main, mode));
       if (active?.focus !== null && active?.main === main) go(main);
     },

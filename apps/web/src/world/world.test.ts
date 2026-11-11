@@ -1,6 +1,7 @@
 import { childrenOf, latestMain, sidebarTree } from "@yaklabs/runtime";
 import { describe, expect, it } from "vitest";
 import { brief } from "../demo/scenarios/brief";
+import { interrupted } from "../demo/scenarios/interrupted";
 import { at, type Script } from "../demo/script";
 import { ids } from "./ids";
 import {
@@ -21,7 +22,7 @@ import {
 } from "./testing";
 
 describe("the Demo world's workspace", () => {
-  it("opens on the Demo project, its three shows in order, the brief its entry", async () => {
+  it("opens the brief already complete, including its answered question and child cards", async () => {
     const world = playing();
     const ws = workspaceOf(world.state());
     const [demo] = sidebarTree(ws);
@@ -33,7 +34,12 @@ describe("the Demo world's workspace", () => {
     expect(demo.mains.map((each) => each.main.id)).toEqual([BRIEF, INTERRUPTED, RETURNED]);
     expect(latestMain(ws)).toBe(BRIEF);
     expect(ws.shell).toBeNull();
-    expect(await world.open(BRIEF)).toEqual([]);
+    const turns = await world.open(BRIEF);
+    expect(turns.map((turn) => turn.role)).toEqual(["user", "agent", "user", "agent"]);
+    expect(turns[2]).toMatchObject({ text: "Oldest first" });
+    expect(turns[3]).toMatchObject({ streaming: false });
+    expect(turns[3].text).toContain("Monday support brief (draft)");
+    expect(ws.lanes[BRIEF]).toHaveLength(3);
     await expect(world.open(idOf("nobody"))).rejects.toThrow(/no thread "nobody"/);
   });
 
@@ -44,7 +50,14 @@ describe("the Demo world's workspace", () => {
     const ws = workspaceOf(world.state());
     expect(ws.lanes[RETURNED]).toHaveLength(3);
     const main = await world.open(RETURNED);
-    expect(main.map((turn) => turn.role)).toEqual(["user", "agent"]);
+    expect(main.map((turn) => turn.role)).toEqual([
+      "user",
+      "agent",
+      "user",
+      "agent",
+      "user",
+      "agent",
+    ]);
     const asked = Date.parse(main[0].time); // → when the user last spoke
     expect(asked).toBeGreaterThanOrEqual(before - 25 * 60_000);
     expect(asked).toBeLessThanOrEqual(after - 25 * 60_000);
@@ -52,6 +65,20 @@ describe("the Demo world's workspace", () => {
     expect(south[1]).toMatchObject({
       streaming: false,
       text: "67 invoices matched; 2 bill more than was delivered.",
+    });
+  });
+
+  it("keeps one settled child per repeated step in a finished conversation", async () => {
+    const world = playing();
+    const ws = workspaceOf(world.state());
+    expect(
+      childrenOf(ws, INTERRUPTED)
+        .map((child) => child.id)
+        .toSorted(),
+    ).toEqual([ids.child(INTERRUPTED, "orders"), ids.child(INTERRUPTED, "refunds")]);
+    expect((await world.open(ids.child(INTERRUPTED, "orders"))).at(-1)).toMatchObject({
+      streaming: false,
+      text: "All 41 lookups answered on the second try.",
     });
   });
 });
@@ -96,7 +123,7 @@ describe("the Demo world's verbs", () => {
 
 describe("the Demo world's scripted replies", () => {
   it("answers a request with the script's first reply, chunk by chunk and in order", async () => {
-    const world = playing();
+    const world = playing([brief]);
     const chunks = await drain(world, BRIEF, ask("Prepare the brief"));
     expect(wordsOf(chunks)).toEqual(wordsOf(firstReply(brief)));
     const turns = await world.open(BRIEF);
@@ -149,7 +176,7 @@ describe("the Demo world's children", () => {
   );
 
   it("makes, runs and settles the children its steps name, replying as they work", async () => {
-    const world = playing();
+    const world = playing([brief]);
     const seen = recordReplying(world);
     await drain(world, BRIEF, ask("Prepare the brief"));
     expect(seen).toEqual([
@@ -170,7 +197,7 @@ describe("the Demo world's children", () => {
   });
 
   it("cancels the children still running when the reply is stopped", async () => {
-    const world = playing();
+    const world = playing([brief]);
     const stop = new AbortController();
     await drain(
       world,
@@ -194,7 +221,7 @@ describe("the Demo world's lanes", () => {
   );
 
   it("opens the children's lanes left to right as the sidebar lists them", async () => {
-    const world = playing();
+    const world = playing([brief]);
     await drain(world, BRIEF, ask("Prepare the brief"));
     const ws = workspaceOf(world.state());
     // Top to bottom in the sidebar is newest first.
@@ -211,7 +238,7 @@ describe("the Demo world's lanes", () => {
 
 describe("the Demo world's failed children", () => {
   it("notes a child that could not finish for the bell", async () => {
-    const world = playing();
+    const world = playing([interrupted]);
     await drain(world, INTERRUPTED, ask("Check the refunds"));
     expect(workspaceOf(world.state()).notifications.map((each) => each.text)).toEqual([
       "Refund audit: Order lookups could not finish.",

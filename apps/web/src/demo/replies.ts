@@ -191,6 +191,8 @@ export function openedRun(script: Script, opening: Opening, now: number): Opened
     const steps = turn.work.steps.map((step) => {
       const found = placed(script, step);
       if (found === undefined) return step;
+      // A later step for the same child replaces its earlier state in the opened run.
+      for (const child of children.keys()) if (child.id === found.child.id) children.delete(child);
       children.set(
         found.child,
         childTurns(openingTurns(found.child, turn.time), found.step, turn.time),

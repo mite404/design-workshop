@@ -36,18 +36,8 @@ function Workspace({ children }: { children: ReactNode }) {
  * (shadcn's sidebar-16 pattern) and, inset like Kay's content pane, the workspace. The stage
  * clips at the rail's edge, the gate the panel slides out from behind when it peeks.
  * @param theme The visitor's light, dark or system look, which the account menu changes.
- * @param banner A full-width row between the title bar and the body, such as a scripted demo's
- * controls; nothing by default.
  */
-export function Window({
-  theme,
-  banner,
-  children,
-}: {
-  theme: ThemeChoice;
-  banner?: ReactNode;
-  children: ReactNode;
-}) {
+export function Window({ theme, children }: { theme: ThemeChoice; children: ReactNode }) {
   const choice = useSidebarOpen();
   const sized = useSidebarWidth();
   const chrome = useChrome();
@@ -65,7 +55,6 @@ export function Window({
           style={sidebarVars(sized.width)}
         >
           <TitleBar chrome={chrome} />
-          {banner}
           <div data-slot="window-body" className="relative flex min-h-0 flex-1">
             <Rail ref={rail} theme={theme} chrome={chrome} />
             {/* The stage: the panel's containing block, beside the workspace it sits over. It

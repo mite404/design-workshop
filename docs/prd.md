@@ -53,8 +53,16 @@ Both views edit the same design values, so a change made on a component shows up
 Keep the current Vitruvian welcome and Atlas empty canvas. Remove the other splash artworks and
 their picker. The welcome has no chat composer. The mock conversation shows the complete chat
 thread, including user bubbles, agent bubbles, a card, and the user-choice modal.
-The initial Component mode uses the catalog's shared chat fixture; the Storybook index and
-single-story navigation below remain planned.
+Both welcome buttons open the completed Weekly brief with varied cards and the catalog's
+user-choice fixture. Live mode fills the preview; Component mode frames the same chat panel.
+In development, either button opens the Workbench with that conversation selected, so the
+selection, spacing, and radius tools are reachable without typing an editor URL. Mode switches
+inside the editor stay in its existing frame. Production builds show the mock without editor
+endpoints. The Storybook index and single-story navigation below remain planned.
+
+The scripted-demo transport bar is removed. Demo conversations open complete without Play,
+typing animation, or a playback wait. Gateway, authentication, and live-model implementations
+remain available for later work but are not needed for this preview flow.
 
 The existing lane-and-card canvas remains a layout within the running Template. It is not the
 Storybook-backed Component mode. Mode changes must not discard its saved lanes, cards, or threads.
@@ -149,8 +157,8 @@ git HEAD ──read baseline + override──> inspector and canvas
 
 ### Must have for a first usable version
 
-- R1. The Template: shell, component library, Storybook, and a mocked agent loop that replays a
-  scripted conversation at an adjustable speed.
+- R1. The Template: shell, component library, Storybook, and completed mock conversations with
+  user and agent messages, varied cards, and a user-choice panel, without playback controls.
 - R2. The Workbench opens beside the Template's normal dev servers and frames them. It is absent
   from production builds.
 - R3. Two modes: Live mode and Component mode, offered under More actions with chat and browser icons.

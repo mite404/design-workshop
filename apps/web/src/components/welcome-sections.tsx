@@ -6,6 +6,7 @@ import { Link } from "react-router";
 import { usePaths } from "../runtime";
 import { useShell } from "../shell/model";
 import { entryOf } from "../shell/state";
+import { ids } from "../world/ids";
 
 /**
  * Kay's own corners for the greeting's actions, the app's 8px and not the site's 4px button:
@@ -84,27 +85,26 @@ export function Projects() {
 /** Opens the running mocked app or its complete chat component preview. */
 export function Actions({ thread }: { thread: ThreadSummary }) {
   const shell = useShell();
+  const open = (mode: "live" | "component") => {
+    const brief = ids.show("brief");
+    if (shell?.workspace.threads.some((each) => each.id === brief)) {
+      shell.setMode(brief, mode);
+      shell.open(brief);
+    } else {
+      shell?.setMode(thread.id, mode);
+    }
+  };
   return (
     <section aria-labelledby="welcome-actions" className="flex flex-col gap-2">
       <h2 id="welcome-actions" className={LABEL}>
         More actions
       </h2>
       <div className="flex flex-wrap gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          className={ACTION}
-          onClick={() => shell?.setMode(thread.id, "live")}
-        >
+        <Button variant="outline" size="sm" className={ACTION} onClick={() => open("live")}>
           <MessageSquareText />
           Live mode
         </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          className={ACTION}
-          onClick={() => shell?.setMode(thread.id, "component")}
-        >
+        <Button variant="outline" size="sm" className={ACTION} onClick={() => open("component")}>
           <Globe />
           Component mode
         </Button>

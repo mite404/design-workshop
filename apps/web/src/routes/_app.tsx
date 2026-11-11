@@ -5,7 +5,6 @@ import { Deck } from "../shell/deck";
 import { ShellProvider, useShell } from "../shell/model";
 import { Window } from "../shell/window";
 import { DemoOverlay } from "../world/provider";
-import { ShowBar } from "../world/ShowBar";
 import type { ThemeChoice } from "../theme";
 
 // The route's own page, drawn only while no tab is on screen. The deck shows the tab an address
@@ -30,7 +29,7 @@ export default function Protected() {
       <RuntimeProvider>
         <DemoOverlay>
           <ShellProvider>
-            <Window theme={theme} banner={<ShowBar />}>
+            <Window theme={theme}>
               <Deck />
               <Page />
             </Window>

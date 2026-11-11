@@ -37,7 +37,7 @@ const step = async (name, run) => {
 };
 
 await step(
-  "fresh / lands on the splash with exactly Demo and Live Playground, abstract, no canvas",
+  "fresh / lands on the splash with exactly Demo and Live Playground, no canvas",
   async () => {
     await page.goto(`${base}/`);
     await page.waitForURL(/\/t\/playground$/, { timeout: 20_000 });
@@ -48,19 +48,17 @@ await step(
       ["Demo", "Live Playground"],
     );
     assert.equal(await page.getByText("Demo store").count(), 0);
-    assert.equal(await page.evaluate(() => document.documentElement.dataset.splash), "abstract");
+    assert.equal(await page.locator('[data-slot="welcome-figure"]').count(), 1);
     assert.equal(await page.getByRole("region", { name: "Compose canvas" }).count(), 0);
     await page.screenshot({ path: `${out}/01-splash.png` });
     return page.url();
   },
 );
-await step("the Demo row opens /t/demo-brief with the Play bar; canvas still hidden", async () => {
+await step("the Demo row opens the finished brief; canvas still hidden", async () => {
   await page.locator(".welcome").getByRole("link", { name: "Demo" }).click();
   await page.waitForURL(/\/t\/demo-brief$/);
-  await page
-    .getByRole("toolbar", { name: "Scripted demo" })
-    .getByRole("button", { name: "Play", exact: true })
-    .waitFor();
+  await page.getByText("Monday support brief (draft)").first().waitFor();
+  assert.equal(await page.locator('[data-slot="demo-controls"]').count(), 0);
   assert.equal(await page.getByRole("region", { name: "Compose canvas" }).count(), 0);
   await page.screenshot({ path: `${out}/02-demo-brief.png` });
 });
@@ -74,34 +72,36 @@ await step("the layout switch shows the canvas, and only then", async () => {
   await page.getByRole("region", { name: "Compose canvas" }).waitFor();
   await page.screenshot({ path: `${out}/03-canvas-opened.png` });
 });
-await step(
-  "the Live Playground row opens /t/playground with no Play bar, and a message gets a structured reply through the worker",
-  async () => {
-    await page.goto(`${base}/t/demo-brief`);
-    await page.locator(".welcome").waitFor();
-    await page.locator(".welcome").getByRole("link", { name: "Live Playground" }).click();
-    await page.waitForURL(/\/t\/playground$/);
-    await page
-      .getByRole("toolbar", { name: "Scripted demo" })
-      .waitFor({ state: "detached", timeout: 5000 });
-    const box = page.locator(".compose-box textarea").first();
-    await box.fill("What can you do?");
-    await box.press("Enter");
-    await page.locator(".turn-agent").first().waitFor({ timeout: 30_000 });
-    await page.waitForFunction(
-      () => !document.querySelector(".turn-agent[aria-busy='true']"),
-      null,
-      { timeout: 60_000 },
-    );
-    const text = await page.locator(".turn-agent").first().innerText();
-    await page.screenshot({ path: `${out}/04-live-reply.png` });
-    return text.slice(0, 80);
-  },
-);
+await step("a new Playground thread has a working compose box and keeps its reply", async () => {
+  await page.getByRole("link", { name: "Home" }).click();
+  await page.locator(".welcome").waitFor();
+  await page.getByRole("button", { name: "New thread in Live Playground" }).click();
+  await page.waitForURL(/\/t\//);
+  await page.getByRole("group", { name: "Layout" }).getByRole("button", { name: "Canvas" }).click();
+  await page.locator('[data-slot="demo-controls"]').waitFor({ state: "detached", timeout: 5000 });
+  const box = page.locator('[role="tabpanel"]:not([inert]) .compose-box textarea').first();
+  await box.fill("What can you do?");
+  await box.press("Enter");
+  await page
+    .locator('[role="tabpanel"]:not([inert]) .turn-agent')
+    .first()
+    .waitFor({ timeout: 30_000 });
+  await page.waitForFunction(
+    () => !document.querySelector('[role="tabpanel"]:not([inert]) .turn-agent[aria-busy="true"]'),
+    null,
+    { timeout: 60_000 },
+  );
+  const text = await page.locator('[role="tabpanel"]:not([inert]) .turn-agent').first().innerText();
+  await page.screenshot({ path: `${out}/04-live-reply.png` });
+  return text.slice(0, 80);
+});
 await step("a reload keeps the live thread's turns (persisted through the worker)", async () => {
   await page.reload();
-  await page.locator(".turn-agent").first().waitFor({ timeout: 30_000 });
-  return `${await page.locator(".turn-agent").count()} agent turn(s) after reload`;
+  await page
+    .locator('[role="tabpanel"]:not([inert]) .turn-agent')
+    .first()
+    .waitFor({ timeout: 30_000 });
+  return `${await page.locator('[role="tabpanel"]:not([inert]) .turn-agent').count()} agent turn(s) after reload`;
 });
 await step(
   "/playground, /demo/weekly-brief?script=returned and /demo/weekly-brief/t/demo-brief-workload redirect",
@@ -127,6 +127,69 @@ await step("/new is gone", async () => {
   );
   return `${response?.status()} ${page.url()} :: ${body.replace(/\s+/g, " ").slice(0, 80)}`;
 });
+for (const mode of ["Live", "Component"]) {
+  await step(
+    `${mode} opens the completed mock in the editor through the welcome button`,
+    async () => {
+      const fresh = await browser.newContext({
+        viewport: { width: 1440, height: 900 },
+        deviceScaleFactor: 2,
+      });
+      try {
+        const entry = await fresh.newPage();
+        await entry.goto(base);
+        await entry
+          .locator(".welcome")
+          .getByRole("button", { name: `${mode} mode` })
+          .click();
+        await entry.waitForURL(/\/__workbench\/\?path=/);
+        const canvas = entry.frameLocator("iframe");
+        const preview = canvas.locator(`[aria-label="${mode} preview"]`);
+        await preview.getByText("Monday support brief (draft)").first().waitFor();
+        assert.equal(await canvas.locator('[data-slot="demo-controls"]').count(), 0);
+        assert.ok((await preview.locator(".turn-user").count()) >= 1);
+        await preview.getByText("Oldest first", { exact: true }).waitFor();
+        assert.ok((await preview.locator(".turn-agent").count()) >= 2);
+        assert.ok((await preview.locator(".card").count()) >= 3);
+        const card = preview.locator("section.card.state").first();
+        await card.scrollIntoViewIfNeeded();
+        for (let attempt = 0; attempt < 30; attempt++) {
+          const box = await card.boundingBox();
+          assert.ok(box);
+          await entry.mouse.click(box.x + 60, box.y + 6);
+          const selected = await entry.locator(".selector").textContent();
+          if (
+            await card.evaluate(
+              (el, selector) => typeof selector === "string" && el.matches(selector),
+              selected,
+            )
+          )
+            break;
+        }
+        const selected = await entry.locator(".selector").textContent();
+        assert.ok(
+          await card.evaluate(
+            (el, selector) => typeof selector === "string" && el.matches(selector),
+            selected,
+          ),
+        );
+        assert.equal(await entry.locator("#wb-gap").isEnabled(), true);
+        assert.equal(await entry.locator("#wb-padding-left").isEnabled(), true);
+        await entry.screenshot({ path: `${out}/${mode.toLowerCase()}-editor.png` });
+        await entry.locator(".tool").click();
+        const other = mode === "Live" ? "Component" : "Live";
+        await canvas
+          .getByRole("group", { name: "Layout" })
+          .getByRole("button", { name: `${other} mode` })
+          .click();
+        await canvas.locator(`[aria-label="${other} preview"]`).waitFor();
+        assert.equal(await canvas.locator("iframe").count(), 0, "no nested editor");
+      } finally {
+        await fresh.close();
+      }
+    },
+  );
+}
 results.push({ name: "no console errors", ok: errors.length === 0, detail: errors.join(" | ") });
 await browser.close();
 writeFileSync(path.join(out, "results.json"), JSON.stringify(results, null, 2));

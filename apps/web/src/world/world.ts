@@ -38,7 +38,7 @@ function prefersReducedMotion(): boolean {
 function answererOf(seat: Seat<Show>): Agent {
   switch (seat.kind) {
     case "scripted":
-      return seat.script.agent;
+      return seat.script.script.beats.length === 0 ? labAgent : seat.script.agent;
     case "lab":
       return labAgent;
     default: {

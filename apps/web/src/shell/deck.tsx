@@ -1,5 +1,3 @@
-import { ChatThreadPanel } from "@yaklabs/catalog";
-import { threads } from "@yaklabs/catalog/thread";
 import type { ThreadId, ThreadSummary } from "@yaklabs/runtime";
 import {
   ResizableHandle,
@@ -19,6 +17,7 @@ import {
 } from "react";
 import { trackHintLine } from "../components/divider";
 import { MainCanvas } from "../components/main-canvas";
+import { MockThread } from "../components/mock-thread";
 import { ThreadPane } from "../components/thread-pane";
 import { Welcome } from "../components/welcome";
 import { BrowserPane } from "./browser-pane";
@@ -29,9 +28,6 @@ import { SPLIT, viewOf, type PaneKind, type View } from "./state";
 // needs no direct dependency on the panel library.
 type GroupRef = NonNullable<ComponentProps<typeof ResizablePanelGroup>["groupRef"]>;
 type GroupHandle = GroupRef extends Ref<infer Handle> ? NonNullable<Handle> : never;
-
-// The same card, bubbles, and question data used by the catalog's stories.
-const MOCK_CHAT = { ...threads.profit, awaiting: threads.awaiting.awaiting };
 
 // The panels' shares for a pane. The thread alone fills the width; on a wide screen the browser
 // or the canvas shares it with the thread, and on a phone it fills the width alone.
@@ -80,15 +76,29 @@ function Retain({
 
 // The live thread has no frame of its own. Hidden on a phone while a side pane fills the
 // width, it stays mounted but inert so replies and drafts survive the layout change.
-function MainPane({ thread, hidden }: { thread: ThreadSummary; hidden: boolean }) {
+function MainPane({
+  thread,
+  hidden,
+  view,
+}: {
+  thread: ThreadSummary;
+  hidden: boolean;
+  view: View;
+}) {
+  const preview = view.mode === "live" && view.pane === "thread";
   return (
     <div
       inert={hidden}
       data-retain=""
-      className="h-full min-w-0"
+      className="grid h-full min-w-0"
       style={{ ["--thread-height" as string]: "100%" }}
     >
-      <ThreadPane key={thread.id} thread={thread} bare />
+      <Retain shown={preview}>
+        <MockThread />
+      </Retain>
+      <Retain shown={!preview}>
+        <ThreadPane key={thread.id} thread={thread} bare />
+      </Retain>
     </div>
   );
 }
@@ -161,7 +171,7 @@ function Workspace(beside: Beside) {
         collapsedSize="0"
         collapsedThreshold={`${SPLIT.min}`}
       >
-        <MainPane thread={thread} hidden={narrow && view.pane !== "thread"} />
+        <MainPane thread={thread} hidden={narrow && view.pane !== "thread"} view={view} />
       </ResizablePanel>
       {/* Above the panes, so nothing positioned in them can cover its hit area. */}
       <ResizableHandle
@@ -198,7 +208,7 @@ function DesignWorkspace(props: Beside) {
       </Retain>
       <Retain shown={component}>
         <section aria-label="Component mode" className="h-full min-h-0">
-          <ChatThreadPanel thread={MOCK_CHAT} bare cardsCarry={false} />
+          <MockThread component />
         </section>
       </Retain>
     </div>

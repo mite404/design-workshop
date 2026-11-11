@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { brief } from "../demo/scenarios/brief";
+import { interrupted as interruptedScript } from "../demo/scenarios/interrupted";
 import { ids } from "./ids";
 import {
   ask,
@@ -13,7 +15,7 @@ import {
 
 describe("a show's Restart", () => {
   it("puts its thread back as it opens and leaves the other shows alone", async () => {
-    const world = playing();
+    const world = playing([brief, interruptedScript]);
     const fresh = workspaceOf(world.state());
     await drain(world, BRIEF, ask("Prepare the brief"));
     await drain(world, INTERRUPTED, ask("Check the refunds"));
@@ -31,7 +33,7 @@ describe("a show's Restart", () => {
   });
 
   it("leaves the same workspace when pressed twice as when pressed once", async () => {
-    const world = playing();
+    const world = playing([brief]);
     await drain(world, BRIEF, ask("Prepare the brief"));
     world.showOf(BRIEF)?.restart();
     const once = workspaceOf(world.state());
@@ -42,7 +44,7 @@ describe("a show's Restart", () => {
 
 describe("a Restart during a reply", () => {
   it("lets a reply still unwinding write nothing into the next take", async () => {
-    const world = playing();
+    const world = playing([brief]);
     const restart = onStart("issues", () => {
       world.showOf(BRIEF)?.restart();
     });

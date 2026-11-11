@@ -1401,7 +1401,7 @@
   margin: 8px 16px;
 }
 .card[data-context="thread"] .table-wrap {
-  max-height: 220px;
+  max-height: 260px;
   padding: 0 16px 12px;
 }
 .card[data-context="thread"] footer {
