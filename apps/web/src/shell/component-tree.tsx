@@ -9,6 +9,7 @@ import { FoldChevron, SidebarSection } from "@yaklabs/ui/components/sidebar-sect
 import { componentTree, DRAWER, TREE_EVENT, type ComponentNode } from "@yaklabs/workbench/tree";
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
 import { useShell } from "./model";
+import StoryTree from "./story-tree";
 
 const NAMED = "[data-wb]";
 const ids = new WeakMap<Element, number>();
@@ -222,12 +223,15 @@ export default function ComponentTree() {
   }
 
   return (
-    <SidebarGroup>
-      <SidebarSection label="Components" count={0} defaultOpen>
-        <SidebarMenu ref={tree} role="tree" aria-label="Components">
-          {renderNodes(nodes)}
-        </SidebarMenu>
-      </SidebarSection>
-    </SidebarGroup>
+    <>
+      <SidebarGroup>
+        <SidebarSection label="Components" count={0} defaultOpen>
+          <SidebarMenu ref={tree} role="tree" aria-label="Components">
+            {renderNodes(nodes)}
+          </SidebarMenu>
+        </SidebarSection>
+      </SidebarGroup>
+      <StoryTree />
+    </>
   );
 }

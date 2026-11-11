@@ -116,4 +116,27 @@ issue or PR under repo policy (ADR-007, ADR-017).
 
 ## Drift log
 
-Record here anything built differently from this plan, and why.
+* Built on ETH-115 at `45b8b96`. The preview remains one chat, with no Canvas button. The
+  Components tree still contains only rendered app components. Stories appear below it only
+  in Component mode, using the existing drawer rows and section styles.
+* The app forwards `/__stories/` to port 6006. Storybook's development Vite builder needs
+  that base, prefixed virtual entry scripts, and a same-origin HMR socket. These changes
+  apply only in its middleware-mode dev server, not its Vitest or production builds.
+* The selected story and app route are stored as `story` and `path` in the Workbench URL.
+  Opening an app component clears the story. Switching modes retains the story iframe and
+  app workspace instead of navigating either document.
+* The existing overlay moves to the story iframe's rectangle. Measurements remain in the
+  active document's coordinates, rather than adding the nested offset to every handle.
+  Reference highlights add that offset too. Listeners follow document changes and are
+  installed once per document, including after switching back to a retained frame.
+* Named story roots remain selectable when they fill the viewport. Unnamed surroundings
+  remain unselectable. The same named-root selector and override file serve both cascades.
+* A Workbench API write hot reloads Storybook through its existing watcher. No second
+  notification endpoint was needed. The browser check waits for the computed value and
+  removal of the temporary inline preview, then checks the same value in the Live shell.
+* The story theme follows the app root, including after Storybook rerenders on hot reload.
+* CI has a separate stories browser group with both dev servers. It runs the forward and
+  editing checks, stops Storybook, then checks the start-command message and app-component
+  opening. The full local browser command now also needs Storybook running.
+* Chrome checks run in Chromium in the Linux orb. Safari remains a manual check, as for
+  ETH-115. No Mac satellite was started.

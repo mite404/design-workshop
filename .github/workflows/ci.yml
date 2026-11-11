@@ -32,7 +32,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        group: [selection, editing]
+        group: [selection, editing, stories]
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
@@ -48,6 +48,18 @@ jobs:
         run: |
           (cd apps/web && exec node_modules/.bin/react-router dev --port 5173 --strictPort) > /tmp/web.log 2>&1 &
           server=$!
-          trap 'kill $server' EXIT
+          storybook=""
+          trap 'kill "$server"; if [ -n "$storybook" ]; then kill "$storybook"; fi' EXIT
           timeout 120 bash -c 'until curl -sf http://localhost:5173/ > /dev/null; do sleep 1; done' || { cat /tmp/web.log; exit 1; }
+          if [ '${{ matrix.group }}' = stories ]; then
+            (cd apps/storybook && exec node_modules/.bin/storybook dev -p 6006 --ci --no-open) > /tmp/storybook.log 2>&1 &
+            storybook=$!
+            timeout 120 bash -c 'until curl -sf http://localhost:5173/__stories/index.json > /dev/null; do sleep 1; done' || { cat /tmp/storybook.log; exit 1; }
+          fi
           pnpm test:browser:${{ matrix.group }}
+          if [ -n "$storybook" ]; then
+            kill "$storybook"
+            wait "$storybook" || true
+            storybook=""
+            node apps/web/scripts/story-component-check.mjs --offline
+          fi

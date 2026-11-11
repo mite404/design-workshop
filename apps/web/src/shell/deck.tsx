@@ -5,7 +5,7 @@ import {
   ResizablePanelGroup,
 } from "@yaklabs/ui/components/resizable";
 import { useIsMobile } from "@yaklabs/ui/hooks/use-mobile";
-import { componentView, watchComponentView } from "@yaklabs/workbench/tree";
+import { componentView, storyView, watchComponentView } from "@yaklabs/workbench/tree";
 import {
   useCallback,
   useEffect,
@@ -206,7 +206,24 @@ function Workspace(beside: Beside) {
 // intact when switching, without writing synthetic messages into the device's thread history.
 const noComponentView = () => "none" as const;
 const subscribeComponent = import.meta.env.DEV ? watchComponentView : () => () => {};
-const readComponent = import.meta.env.DEV ? componentView : noComponentView;
+const readComponent = import.meta.env.DEV
+  ? () => {
+      const story = storyView();
+      return story === null ? componentView() : `story:${story}`;
+    }
+  : noComponentView;
+
+function componentDisplay(opened: string, mode: View["mode"], component: boolean) {
+  const story = opened.startsWith("story:") ? opened.slice(6) : null;
+  if (mode === "component" && story !== null)
+    return { story, showingStory: true, workspace: false, component: false };
+  return {
+    story,
+    showingStory: false,
+    workspace: !component,
+    component,
+  };
+}
 
 function useComponentView(props: Beside) {
   const { thread, view } = props;
@@ -216,12 +233,27 @@ function useComponentView(props: Beside) {
     if (import.meta.env.DEV && active === thread.id)
       document.documentElement.dataset.wbMode = view.mode ?? "live";
   }, [active, thread.id, view.mode]);
+  const component = opened === "none" ? view.mode === "component" : opened === "preview";
   return {
-    component: { none: view.mode === "component", preview: true, live: false, thread: false }[
-      opened
-    ],
+    ...componentDisplay(opened, view.mode, component),
     view: opened === "thread" ? { ...view, mode: undefined } : view,
   };
+}
+
+function StoryPreview({ story, shown }: { story: string | null; shown: boolean }) {
+  if (!import.meta.env.DEV || story === null) return null;
+  return (
+    <Retain shown={shown}>
+      {/* oxlint-disable-next-line react/iframe-missing-sandbox -- trusted same-origin development stories need scripts and DOM access */}
+      <iframe
+        key={story}
+        data-wb-story={story}
+        title="Component story"
+        src={`/__stories/iframe.html?id=${encodeURIComponent(story)}&viewMode=story`}
+        className="h-full w-full border-0"
+      />
+    </Retain>
+  );
 }
 
 function DesignWorkspace(props: Beside) {
@@ -231,7 +263,7 @@ function DesignWorkspace(props: Beside) {
     return <Welcome thread={thread} />;
   return (
     <div className="grid h-full min-h-0" style={{ ["--thread-height" as string]: "100%" }}>
-      <Retain shown={!opened.component}>
+      <Retain shown={opened.workspace}>
         <Workspace {...props} view={opened.view} />
       </Retain>
       <Retain shown={opened.component}>
@@ -239,6 +271,7 @@ function DesignWorkspace(props: Beside) {
           <MockThread component />
         </section>
       </Retain>
+      <StoryPreview story={opened.story} shown={opened.showingStory} />
     </div>
   );
 }

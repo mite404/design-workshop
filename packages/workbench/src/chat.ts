@@ -82,6 +82,7 @@ const panel = element(
 export const chatLayer = [highlight, stage, hint, dock, panel];
 
 let frame: HTMLIFrameElement | null = null;
+const watchedDocuments = new WeakSet<Document>();
 let choosing = false;
 let hover: Styled | null = null; // the element the highlight shows
 let picked: Styled | null = null; // the element chosen, awaiting Add to chat
@@ -341,13 +342,17 @@ export function watchReference(view: Window, from: HTMLIFrameElement): void {
   picked = null;
   stage.hidden = true;
   if (choosing) cursor(true);
+  if (watchedDocuments.has(view.document)) return;
+  watchedDocuments.add(view.document);
   view.addEventListener("pointermove", (event) => {
+    if (frame !== from) return;
     if (choosing) aim({ x: event.clientX, y: event.clientY });
     else pointer = { x: event.clientX, y: event.clientY };
   });
   view.addEventListener(
     "scroll",
     () => {
+      if (frame !== from) return;
       if (choosing && pointer !== null) aim(pointer);
     },
     true,
@@ -355,6 +360,7 @@ export function watchReference(view: Window, from: HTMLIFrameElement): void {
   view.addEventListener(
     "pointerdown",
     (event) => {
+      if (frame !== from) return;
       if (!choosing) return;
       event.preventDefault();
       event.stopImmediatePropagation();
@@ -371,12 +377,23 @@ export function watchReference(view: Window, from: HTMLIFrameElement): void {
   );
 }
 
+function referenceBox(node: Styled): DOMRect {
+  const box = node.getBoundingClientRect();
+  const offset = frame?.ownerDocument === document ? null : frame?.getBoundingClientRect();
+  return new DOMRect(
+    box.left + (offset?.left ?? 0),
+    box.top + (offset?.top ?? 0),
+    box.width,
+    box.height,
+  );
+}
+
 /** Each frame: places the highlight and the stage, and marks references gone or ambiguous. */
 export function trackChat(): void {
   const node = picked ?? hover;
   highlight.hidden = !choosing || node === null || !node.isConnected;
   if (node !== null && !highlight.hidden) {
-    const rect = node.getBoundingClientRect();
+    const rect = referenceBox(node);
     place(highlight, rect);
     highlight.style.borderRadius = style(node).borderTopLeftRadius;
     highlight.dataset.picked = String(picked !== null);

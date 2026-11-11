@@ -291,8 +291,18 @@ const prop = (value: unknown, key: string): unknown =>
 const entries = (value: unknown): [string, unknown][] =>
   typeof value === "object" && value !== null ? Object.entries(value) : [];
 const text = (value: unknown): string | null => (typeof value === "string" ? value : null);
+const appDoc = (): Document | null => frame.contentDocument;
+const storyFrame = (): HTMLIFrameElement | null => {
+  const d = appDoc();
+  if (d?.documentElement?.dataset.wbMode !== "component") return null;
+  const nested = d.querySelector("iframe[data-wb-story]:not([inert] *)");
+  return nested instanceof (d.defaultView ?? window).HTMLIFrameElement &&
+    nested.dataset.wbStory === new URL(location.href).searchParams.get("story")
+    ? nested
+    : null;
+};
 const doc = (): Document | null => {
-  const current = frame.contentDocument;
+  const current = (storyFrame() ?? frame).contentDocument;
   return current?.documentElement ? current : null;
 };
 const windowElement = (): Element | null => doc()?.querySelector("[data-slot=window]") ?? null;
@@ -888,12 +898,15 @@ function componentAvailable(): boolean {
 }
 
 function selectable(node: Styled): boolean {
+  if (storyFrame() !== null) return node.closest("[data-wb]") !== null;
   if (!componentMode || componentKey === null) return true;
   return componentAvailable() && component?.contains(node) === true;
 }
 
 function componentRoot(node: Styled): boolean {
-  return componentMode && node === component;
+  return (
+    componentMode && (node === component || (storyFrame() !== null && node.matches("[data-wb]")))
+  );
 }
 
 function selectionOf(node: Styled): Selection {
@@ -956,7 +969,7 @@ function onKey(event: KeyboardEvent): void {
     revert();
   } else if (selection !== null && climbs(event)) {
     event.preventDefault();
-    select(chain(selection.node).at(-2) ?? null);
+    select(componentChain(selection.node).at(-2) ?? null);
   }
 }
 
@@ -982,7 +995,7 @@ function cancelBody(): void {
 function drawerEvent(event: Event): boolean {
   const target = event.target;
   return (
-    target instanceof (doc()?.defaultView ?? window).Element &&
+    target instanceof (appDoc()?.defaultView ?? window).Element &&
     target.closest(
       `${DRAWER}, [data-slot="title-bar"], [data-slot="sidebar-trigger"], [data-slot="sidebar-push-scrim"], [data-slot="sidebar-hot-zone"]`,
     ) !== null
@@ -1013,6 +1026,7 @@ function openComponent(node: Styled): void {
     return;
   }
   const url = new URL(location.href);
+  url.searchParams.delete("story");
   componentKey = selectorOf(root);
   url.searchParams.set("component", componentKey);
   const path = frame.contentWindow?.location;
@@ -1033,23 +1047,30 @@ function openComponent(node: Styled): void {
 }
 
 function componentChain(node: Element | null): Styled[] {
-  const nodes = chain(node);
+  const story = storyFrame() !== null;
+  const nodes = chain(node, story);
+  if (story) {
+    const at = nodes.findIndex((candidate) => candidate.matches("[data-wb]"));
+    return at < 0 ? [] : nodes.slice(at);
+  }
   if (!componentMode || componentKey === null) return nodes;
   const at = component === null ? -1 : nodes.indexOf(component);
   return at < 0 ? [] : nodes.slice(at);
 }
 
 // Follows the frame's document across reloads: selection by click, and keys while it has focus.
-function watchFrame(): void {
-  const view = frame.contentWindow;
-  if (view === null) return;
+const watchedDocuments = new WeakSet<Document>();
+function watchFrame(from = frame): void {
+  const view = from.contentWindow;
+  if (view === null || watchedDocuments.has(view.document)) return;
+  watchedDocuments.add(view.document);
   treeHover = null;
   select(null);
   view.document.addEventListener(TREE_EVENT.select, (event) => {
     if (!("detail" in event)) return;
     const node = event.detail;
     if (
-      node instanceof (doc()?.defaultView ?? window).Element &&
+      node instanceof (view.document.defaultView ?? window).Element &&
       node.isConnected &&
       styled(node)
     ) {
@@ -1059,13 +1080,31 @@ function watchFrame(): void {
   view.document.addEventListener(TREE_EVENT.hover, (event) => {
     if (!("detail" in event)) return;
     treeHover =
-      event.detail instanceof (doc()?.defaultView ?? window).Element ? event.detail : null;
+      event.detail instanceof (view.document.defaultView ?? window).Element ? event.detail : null;
   });
-  watchReference(view, frame);
+  view.document.addEventListener(TREE_EVENT.story, (event) => {
+    if (
+      from !== frame ||
+      !("detail" in event) ||
+      typeof event.detail !== "string" ||
+      !/^[a-z0-9][a-z0-9-]*$/.test(event.detail)
+    )
+      return;
+    select(null);
+    component = null;
+    componentKey = null;
+    const url = new URL(location.href);
+    url.searchParams.set("story", event.detail);
+    url.searchParams.set("path", view.location.pathname + view.location.search);
+    url.searchParams.delete("component");
+    url.searchParams.delete("component-view");
+    window.history.replaceState(null, "", url);
+    view.document.dispatchEvent(new Event(TREE_EVENT.focus));
+  });
   view.addEventListener(
     "pointerdown",
     (event) => {
-      if (drawerEvent(event)) return;
+      if (from.contentDocument !== doc() || drawerEvent(event)) return;
       if (!selecting || event.button !== 0 || bodyPress !== null) return;
       view.focus();
       const under = view.document.elementFromPoint(event.clientX, event.clientY);
@@ -1075,6 +1114,7 @@ function watchFrame(): void {
     true,
   );
   view.addEventListener("pointermove", (event) => {
+    if (from.contentDocument !== doc()) return;
     pointer = { x: event.clientX, y: event.clientY };
     if (bodyPress === null || event.pointerId !== bodyPress.id || offsetEdit === null) return;
     const dx = event.clientX - bodyPress.x;
@@ -1278,16 +1318,41 @@ function showComponent(d: Document): void {
   if (focused && componentAvailable() && component !== null) maskComponent(d, component);
 }
 
+let activeDocument: Document | null = null;
+function trackCanvas(d: Document): void {
+  const nested = storyFrame();
+  if (activeDocument !== d) {
+    select(null);
+    treeHover = null;
+    activeDocument = d;
+    const view = (nested ?? frame).contentWindow;
+    if (view !== null) watchReference(view, nested ?? frame);
+    watchFrame(nested ?? frame);
+  }
+  if (nested !== null) {
+    place(overlay, nested.getBoundingClientRect());
+    const theme = appDoc()?.documentElement.dataset.theme;
+    if (theme !== undefined && d.documentElement.dataset.theme !== theme)
+      d.documentElement.dataset.theme = theme;
+  } else {
+    overlay.style.left = "";
+    overlay.style.top = "";
+    overlay.style.width = "";
+    overlay.style.height = "";
+  }
+}
+
 function trackComponent(): void {
   const d = doc();
   if (d === null) return;
-  const mode = d.documentElement.dataset.wbMode === "component";
+  trackCanvas(d);
+  const mode = appDoc()?.documentElement.dataset.wbMode === "component";
   if (componentMode !== mode) {
     componentMode = mode;
     const node = selection?.node ?? null;
     select(node !== null && !selectable(node) ? null : node);
   }
-  restoreComponent(d);
+  if (storyFrame() === null) restoreComponent(d);
   showComponent(d);
 }
 
@@ -3122,13 +3187,16 @@ draggable(label, (dx) => dx);
 overlay.addEventListener("pointermove", (event) => {
   const spacingBar = event.target instanceof HTMLElement ? event.target.closest(".bar") : null;
   const bounds = selection?.node.getBoundingClientRect();
+  const origin = overlay.getBoundingClientRect();
+  const pointerX = event.clientX - origin.left;
+  const pointerY = event.clientY - origin.top;
   // Keep spacing readouts beside the selected box, rather than on top of its content.
   const left = spacingBar?.getAttribute("data-name") === "padding-left";
-  const edge = spacingBar === null ? event.clientX : (bounds?.right ?? event.clientX);
+  const edge = spacingBar === null ? pointerX : (bounds?.right ?? pointerX);
   const x = left
-    ? Math.max(0, (bounds?.left ?? event.clientX) - 14 - pill.offsetWidth)
+    ? Math.max(0, (bounds?.left ?? pointerX) - 14 - pill.offsetWidth)
     : Math.min(edge + 14, overlay.clientWidth - pill.offsetWidth);
-  const y = spacingBar === null ? event.clientY + 14 : event.clientY - pill.offsetHeight / 2;
+  const y = spacingBar === null ? pointerY + 14 : pointerY - pill.offsetHeight / 2;
   pill.style.translate = `${x}px ${y}px`;
 });
 document.addEventListener("pointermove", (event) => {
@@ -3159,6 +3227,8 @@ canvasMode.addEventListener("change", () => {
   const root = doc()?.documentElement;
   for (const row of colourRows) root?.style.removeProperty(row.name);
   if (root !== undefined) root.dataset.theme = canvasMode.value;
+  const appRoot = appDoc()?.documentElement;
+  if (appRoot !== undefined) appRoot.dataset.theme = canvasMode.value;
   localStorage.setItem("theme", canvasMode.value);
   modeLabel.textContent = `Editing ${canvasMode.value === "dark" ? "Dark" : "Light"} mode · Other values apply to both modes`;
 });
@@ -3202,7 +3272,6 @@ import.meta.hot?.on("workbench:values", () => enqueue(refreshStatus));
 frame.addEventListener("load", () => {
   canvasMode.value = doc()?.documentElement.dataset.theme === "dark" ? "dark" : "light";
   modeLabel.textContent = `Editing ${canvasMode.value === "dark" ? "Dark" : "Light"} mode · Other values apply to both modes`;
-  watchFrame();
   void load();
 });
 requestAnimationFrame(track);

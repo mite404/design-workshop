@@ -19,7 +19,17 @@ export const TREE_EVENT = {
   selected: "workbench:selected",
   hover: "workbench:hover",
   focus: "workbench:component-view-changed",
+  story: "workbench:open-story",
 } as const;
+
+/** The story retained by this app route, or null outside a Workbench story view. */
+export function storyView(): string | null {
+  if (window.self === window.top) return null;
+  const params = new URL(window.parent.location.href).searchParams;
+  if (params.get("path") !== location.pathname + location.search) return null;
+  const story = params.get("story");
+  return story !== null && /^[a-z0-9][a-z0-9-]*$/.test(story) ? story : null;
+}
 
 /** Which retained workspace owns the open component, held by the Workbench URL. */
 export function componentView(): "none" | "live" | "thread" | "preview" {

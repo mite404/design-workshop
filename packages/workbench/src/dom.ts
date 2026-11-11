@@ -152,8 +152,9 @@ export function applied(doc: Document, selector: string, name: string): string |
  * The elements a click can select, from the top of the page down to `node`. Elements that fill
  * the frame, like the desk behind the window, and those with no box of their own are passed
  * over, so a click on the desk is a click on empty space.
+ * @param includeNamed Keep viewport-filling component roots in an isolated story.
  */
-export function chain(node: Element | null): Styled[] {
+export function chain(node: Element | null, includeNamed = false): Styled[] {
   const view = node?.ownerDocument.defaultView;
   const out: Styled[] = [];
   for (let e = node; e !== null && e.localName !== "body"; e = e.parentElement) {
@@ -163,7 +164,12 @@ export function chain(node: Element | null): Styled[] {
       r.top <= 0 &&
       r.right >= (view?.innerWidth ?? 0) &&
       r.bottom >= (view?.innerHeight ?? 0);
-    if (styled(e) && !fills && style(e).display !== "contents") out.unshift(e);
+    if (
+      styled(e) &&
+      (!fills || (includeNamed && e.hasAttribute("data-wb"))) &&
+      style(e).display !== "contents"
+    )
+      out.unshift(e);
   }
   return out;
 }

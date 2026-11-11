@@ -1,5 +1,23 @@
 import { expect, test } from "vitest";
-import { selectorOf } from "./dom";
+import { chain, selectorOf } from "./dom";
+
+test("isolated stories keep a named viewport root selectable, but never the unnamed canvas", () => {
+  const root = document.createElement("section");
+  root.dataset.wb = "FullScreen";
+  root.style.cssText = "position:fixed;inset:0;display:block";
+  const child = document.createElement("p");
+  child.textContent = "Story content";
+  root.append(child);
+  document.body.append(root);
+  try {
+    expect(chain(child)).not.toContain(root);
+    expect(chain(child, true)).toEqual([root, child]);
+    root.removeAttribute("data-wb");
+    expect(chain(child, true)).toEqual([child]);
+  } finally {
+    root.remove();
+  }
+});
 
 test("Live selectors keep their instance when another named component mounts", () => {
   const canvas = document.createElement("main");
