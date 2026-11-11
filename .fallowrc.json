@@ -11,7 +11,9 @@
     "apps/storybook/.storybook/main.ts",
     "apps/storybook/.storybook/preview.ts",
     "scripts/*.js",
-    "apps/web/scripts/*.mjs"
+    "apps/web/scripts/*.mjs",
+    // The Workbench page; its dev server plugin serves it by path, so nothing imports it.
+    "packages/workbench/src/page.ts"
   ],
   "duplicates": {
     // Hide pair-only clones; focus on widespread copy-paste

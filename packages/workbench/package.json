@@ -3,7 +3,8 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./overrides": "./src/overrides.ts"
+    "./overrides": "./src/overrides.ts",
+    "./plugin": "./src/plugin.ts"
   },
   "scripts": {
     "test": "vitest run",
@@ -14,6 +15,7 @@
     "@types/node": "catalog:",
     "@yaklabs/config": "workspace:*",
     "typescript": "catalog:",
+    "vite": "catalog:",
     "vitest": "catalog:"
   }
 }

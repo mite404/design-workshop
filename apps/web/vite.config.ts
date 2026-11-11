@@ -1,5 +1,6 @@
 import { reactRouter } from "@react-router/dev/vite";
 import tailwindcss from "@tailwindcss/vite";
+import { workbench } from "@yaklabs/workbench/plugin";
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
 
@@ -22,6 +23,7 @@ export default defineConfig({
       },
     },
     tailwindcss(),
+    workbench(),
     reactRouter(),
   ],
   optimizeDeps: {
