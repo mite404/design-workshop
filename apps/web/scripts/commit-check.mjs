@@ -169,7 +169,8 @@ const { page, context, errors } = await workbenchPage(browser);
 const button = (name) => page.getByRole("button", { name, exact: true });
 const off = (name) => page.getByRole("button", { name, exact: true, disabled: true }).waitFor();
 const status = page.locator(".commit-status");
-const shot = (name) => page.screenshot({ path: path.join(out, `${name}.png`) });
+const shot = (name) =>
+  page.screenshot({ path: path.join(out, `${name}.png`), animations: "disabled" });
 mkdirSync(out, { recursive: true });
 
 async function statusHas(value, timeout = 30_000) {
@@ -285,8 +286,12 @@ try {
     try {
       await startCommit();
       await statusHas("Running pnpm typecheck");
+      assert.ok(
+        await button("Cancel checks").evaluate((node) => node === document.activeElement),
+        "running checks focus their cancel button",
+      );
       await shotModes("checking");
-      await button("Cancel checks").click();
+      await page.keyboard.press("Enter");
       await statusHas("Cancelled. Nothing was committed.");
       await shot("cancelled");
     } finally {
@@ -303,6 +308,11 @@ try {
       .getByRole("button", { name: "Close", exact: true, disabled: false })
       .waitFor({ timeout: 900_000 });
     assert.match(await status.textContent(), /^Committed /);
+    assert.equal(
+      await page.locator(".message").evaluate((node) => getComputedStyle(node).color),
+      await page.locator("html").evaluate((node) => getComputedStyle(node).color),
+      "successful commit notice uses normal ink",
+    );
     await shotModes("success");
     assert.equal(
       execFileSync("git", ["show", "--format=", "--name-only", "HEAD"], {

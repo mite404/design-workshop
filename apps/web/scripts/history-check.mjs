@@ -202,6 +202,11 @@ try {
   await page.waitForFunction(() =>
     document.querySelector(".message").textContent.includes("changed on disk"),
   );
+  assert.equal(
+    await page.locator(".message").evaluate((node) => getComputedStyle(node).color),
+    "rgb(184, 67, 44)",
+    "save failures retain the error colour",
+  );
   assert.deepEqual(await state(), expectedHistory);
   await expectFile(external);
   await page.screenshot({ path: `${out}/conflict.png` });
@@ -223,6 +228,11 @@ try {
   await cursor(0);
   await off("Redo");
   await off("Discard");
+  assert.equal(
+    await page.locator(".message").evaluate((node) => getComputedStyle(node).color),
+    await page.locator("html").evaluate((node) => getComputedStyle(node).color),
+    "successful discard notice uses normal ink",
+  );
   await page.reload();
   await frame.locator("[data-slot=window]").waitFor();
   await cursor(0);

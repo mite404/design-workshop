@@ -354,6 +354,11 @@ function show(radius: number): void {
   doc()?.documentElement.style.setProperty(NAME, `${radius}px`);
 }
 
+function showMessage(value: string, error = false): void {
+  message.textContent = value;
+  message.classList.toggle("error", error);
+}
+
 function historyStatus(values: unknown): void {
   const nowHead = text(prop(values, "head")) ?? "";
   if (nowHead !== head) history = { steps: [], cursor: 0 };
@@ -372,10 +377,11 @@ function commitEvent(event: unknown): boolean {
     case "committing":
       commitStatus.textContent = "Checks passed. Committing overrides.css…";
       commitClose.disabled = true;
+      commitDialog.focus();
       return false;
     case "success":
       commitStatus.textContent = `Committed ${text(prop(event, "hash")) ?? ""}. Workbench did not push.`;
-      message.textContent = commitStatus.textContent;
+      showMessage(commitStatus.textContent);
       return true;
     case "error":
       commitStatus.textContent = text(prop(event, "message")) ?? "Commit failed.";
@@ -420,6 +426,7 @@ async function runCommit(): Promise<void> {
     commitController = controller;
     commitClose.disabled = false;
     commitClose.textContent = "Cancel checks";
+    commitClose.focus();
     const response = await fetch("/__workbench/commit", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -437,6 +444,7 @@ async function runCommit(): Promise<void> {
     commitController = null;
     commitClose.textContent = "Close";
     commitClose.disabled = false;
+    commitClose.focus();
     await refreshStatus();
   }
 }
@@ -508,13 +516,13 @@ async function writeChanges(changes: Change[], replaying = false): Promise<boole
     }),
   });
   if (response.status === 409) {
-    message.textContent = "The override file changed on disk, so this was not saved. Showing it.";
+    showMessage("The override file changed on disk, so this was not saved. Showing it.", true);
     await load();
     return false;
   }
   if (!response.ok) {
     const body: unknown = await response.json();
-    message.textContent = `Not saved: ${text(prop(body, "error")) ?? response.statusText}`;
+    showMessage(`Not saved: ${text(prop(body, "error")) ?? response.statusText}`, true);
     return false;
   }
   for (const c of changes) record(c.selector, c.name, c.after);
@@ -522,14 +530,14 @@ async function writeChanges(changes: Change[], replaying = false): Promise<boole
   const saved = readChanges(prop(body, "changes"));
   if (!replaying && saved !== null) history = push(history, saved);
   historyStatus(body);
-  message.textContent = "";
+  showMessage("");
   return true;
 }
 
 // Runs `task` after every earlier write: one write at a time (ADR-004).
 function enqueue(task: () => Promise<void>): void {
   queue = queue.then(task).catch((error: unknown) => {
-    message.textContent = `Not saved: ${String(error)}`;
+    showMessage(`Not saved: ${String(error)}`, true);
   });
 }
 
@@ -1849,18 +1857,18 @@ async function dropFaces(faces: FontFace[], copied: boolean): Promise<void> {
 
 // Copies a Google font into the repo through the dev server. True when it is there.
 async function copyFont(font: GoogleFont): Promise<boolean> {
-  message.textContent = `Copying ${font.family} into the repo…`;
+  showMessage(`Copying ${font.family} into the repo…`);
   const response = await fetch(FONTS_ENDPOINT, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ id: font.id }),
   });
   if (response.ok) {
-    message.textContent = "";
+    showMessage("");
     return true;
   }
   const body: unknown = await response.json();
-  message.textContent = `Not saved: ${text(prop(body, "error")) ?? response.statusText}`;
+  showMessage(`Not saved: ${text(prop(body, "error")) ?? response.statusText}`, true);
   return false;
 }
 
@@ -2190,9 +2198,9 @@ const scaleFields = SCALE.map((name) => {
     if (input.dataset.dirty !== undefined) {
       delete input.dataset.dirty;
       const typed = typedScale(name, input.value);
-      if (typed === null) message.textContent = `Not a ${title.toLowerCase()}: ${input.value}`;
+      if (typed === null) showMessage(`Not a ${title.toLowerCase()}: ${input.value}`, true);
       else {
-        message.textContent = "";
+        showMessage("");
         previewScale(name, Number.parseFloat(typed));
       }
     }
@@ -3243,6 +3251,12 @@ commitClose.addEventListener("click", () => {
   if (commitController !== null) void cancelCommit();
   else commitDialog.close();
 });
+commitDialog.addEventListener("keydown", (event) => {
+  if (event.key === "Tab") {
+    event.preventDefault();
+    (commitClose.disabled ? commitDialog : commitClose).focus();
+  }
+});
 commitDialog.addEventListener("cancel", (event) => {
   if (commitClose.disabled || commitController !== null) {
     event.preventDefault();
@@ -3254,11 +3268,11 @@ discard.addEventListener("click", () => {
   enqueue(async () => {
     const response = await fetch("/__workbench/discard", { method: "POST" });
     if (!response.ok) {
-      message.textContent = "Could not discard saved values. Nothing was cleared.";
+      showMessage("Could not discard saved values. Nothing was cleared.", true);
       return;
     }
     history = { steps: [], cursor: 0 };
-    message.textContent = "Saved values discarded.";
+    showMessage("Saved values discarded.");
     const previous = [...files].flatMap(([selector, values]) =>
       [...values.keys()].map((name) => ({ selector, name })),
     );

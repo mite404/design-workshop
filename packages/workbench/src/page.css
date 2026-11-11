@@ -19,25 +19,35 @@
   transform: scale(0.97);
 }
 
+/* Match catalog Modal's default look without its editable classes or tokens. */
 .commit-dialog {
   box-sizing: border-box;
   width: min(600px, calc(100vw - 32px));
   max-height: calc(100vh - 48px);
-  padding: 24px;
+  padding: 18px;
   overflow: auto;
-  border: 1px solid var(--wb-line);
-  border-radius: 12px;
-  color: var(--wb-ink);
-  box-shadow: 0 16px 64px rgb(0 0 0 / 0.18);
+  border: 1px solid rgb(37 37 36 / 0.25);
+  border-radius: 16px;
+  outline: none;
+  background: #f0efea;
+  color: #252524;
+  box-shadow: 0 18px 48px rgb(17 20 17 / 0.2);
+  animation: commit-rise 200ms ease-out;
 }
 
 .commit-dialog::backdrop {
-  background: rgb(0 0 0 / 0.25);
+  background: rgb(240 239 234 / 0.72);
+  backdrop-filter: blur(3px);
+  animation: commit-fade 160ms ease-out;
 }
 
 .commit-dialog h2 {
   margin: 0 0 8px;
-  font-size: 18px;
+  font-size: 14px;
+}
+
+.commit-note {
+  margin: 0 0 16px;
 }
 
 .commit-status {
@@ -55,6 +65,58 @@
   display: flex;
   justify-content: flex-end;
   gap: 8px;
+}
+
+.commit-dialog .history-button {
+  flex: none;
+  padding: 6px 14px;
+  border-color: rgb(37 37 36 / 0.72);
+  background: transparent;
+  color: inherit;
+  line-height: 16px;
+  transition:
+    background-color 150ms ease,
+    color 150ms ease;
+}
+
+.commit-dialog .history-button:disabled {
+  opacity: 0.45;
+}
+
+.commit-dialog .history-button:focus-visible {
+  outline: 2px solid #8a8a85;
+  outline-offset: 3px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .commit-dialog .history-button:enabled:hover {
+    border-color: #263b30;
+    background: #263b30;
+    color: #f0efea;
+  }
+}
+
+@keyframes commit-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes commit-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .commit-dialog {
+    animation-name: commit-fade;
+  }
+
+  .commit-dialog .history-button {
+    transition: none;
+  }
 }
 
 :root {
@@ -529,6 +591,10 @@ body {
 .message,
 .component-notice {
   margin: 12px 0 0;
+}
+
+.message.error,
+.component-notice {
   color: #b8432c;
 }
 

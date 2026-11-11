@@ -96,3 +96,17 @@ Record here anything built differently from this plan, and why.
 - Removed `tools` from the commit check's dependency-copy list. It is no longer a workspace
   directory, and a clean snapshot has no such directory. The first real-commit check failed
   with `ENOENT` before opening its browser; the list now matches `pnpm-workspace.yaml`.
+- Follow-up: reproduced focus staying on the dialog after its button became enabled. Opening
+  with Enter also showed the browser's heavy container ring. The dialog now has no outline,
+  and Cancel checks or Close receives focus when enabled. Enter cancels and Space closes;
+  Tab wraps inside. Close and Escape remain blocked while preview reads the snapshot.
+- Follow-up direction from Ethan: matched the catalog Modal's default paper, border, 16px
+  corners, shadow, blurred scrim, compact actions, muted focus cue and entrance. Kept the native
+  Workbench dialog in the top layer, with commit-only CSS and reduced-motion support. Reusing
+  React Modal would add React to the Workbench and couple its dialog to editable Template
+  classes and tokens. No catalog classes or `data-wb` markers were added, so the dialog stays
+  outside Template selection and style editing. Screenshots finish animations before capture.
+- Follow-up: reproduced red commit and discard notices. All toolbar message callers now use
+  one setter that resets the error state: success and progress inherit normal ink, while save,
+  validation, font and discard failures stay red. Browser checks cover running focus, keyboard
+  cancellation, success colours and the existing save-failure colour.
