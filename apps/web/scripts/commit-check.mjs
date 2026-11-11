@@ -37,7 +37,7 @@ function cloneSnapshot(clone) {
     cpSync(path.join(ROOT, file), path.join(clone, file));
   }
   const modules = ["node_modules", ".turbo"].filter((p) => existsSync(path.join(ROOT, p)));
-  for (const group of ["apps", "packages", "tools"]) {
+  for (const group of ["apps", "packages"]) {
     for (const entry of readdirSync(path.join(ROOT, group))) {
       const relative = path.join(group, entry, "node_modules");
       if (existsSync(path.join(ROOT, relative))) modules.push(relative);
@@ -180,12 +180,23 @@ async function statusHas(value, timeout = 30_000) {
   );
 }
 
-async function review() {
+async function shotModes(name) {
+  // oxlint-disable no-await-in-loop -- capture the same dialog against both canvas modes
+  for (const mode of ["light", "dark", "light"]) {
+    await page.locator("#theme").evaluate((select, value) => {
+      select.value = value;
+      select.dispatchEvent(new Event("change"));
+    }, mode);
+    await shot(`${name}-${mode}`);
+  }
+}
+
+async function startCommit() {
   await page
     .getByRole("button", { name: "Check and commit", exact: true, disabled: false })
     .waitFor();
   await button("Check and commit").click();
-  await button("Run checks and commit").waitFor();
+  await page.getByRole("dialog", { name: "Check and commit", exact: true }).waitFor();
 }
 
 try {
@@ -214,18 +225,6 @@ try {
     .click({ position: { x: 10, y: 10 } });
   await page.waitForFunction(() => document.querySelector(".selector").textContent !== "");
   const selected = await page.locator(".selector").textContent();
-  await review();
-  assert.ok((await page.locator(".commit-diff").textContent()).includes(`${radius}px`));
-  assert.match(await page.locator(".commit-message").textContent(), /^style: /);
-  await shot("review");
-  await page.keyboard.press("Escape");
-  await page.locator(".commit-dialog").waitFor({ state: "hidden", timeout: 3000 });
-  assert.equal(
-    await page.locator(".selector").textContent(),
-    selected,
-    "dialog Escape keeps the canvas selection",
-  );
-  await review();
   const foreign = await page.request.post(`${base}/__workbench/commit`, {
     headers: { origin: "http://foreign.invalid" },
     data: {},
@@ -246,14 +245,35 @@ try {
       })}\n`,
     }),
   );
-  await button("Run checks and commit").click();
-  await statusHas("pnpm test failed");
+  let releasePreview;
+  const previewHeld = new Promise((resolve) => {
+    releasePreview = resolve;
+  });
+  await page.route("**/__workbench/commit/preview", async (route) => {
+    await previewHeld;
+    await route.continue();
+  });
+  await startCommit();
+  await page.keyboard.press("Escape");
+  assert.ok(await page.getByRole("dialog", { name: "Check and commit", exact: true }).isVisible());
+  releasePreview();
+  await statusHas("pnpm test failed", 5000);
+  await page.unroute("**/__workbench/commit/preview");
   assert.match(await status.textContent(), /AssertionError/);
-  await shot("failed");
-  await button("Close").click();
+  assert.equal(await page.locator(".commit-diff, .commit-message, .commit-value").count(), 0);
+  assert.equal(await button("Run checks and commit").count(), 0);
+  assert.ok(readFileSync(file, "utf8").includes(`--window-radius: ${radius}px;`));
+  await shotModes("failed");
+  await page.keyboard.press("Escape");
+  await page.locator(".commit-dialog").waitFor({ state: "hidden", timeout: 3000 });
+  assert.equal(
+    await page.locator(".selector").textContent(),
+    selected,
+    "dialog Escape keeps the canvas selection",
+  );
   await page.unroute("**/__workbench/commit");
   console.log(
-    "ok clean/dirty button, value diff, message, origin/body refusals and failure display",
+    "ok one press starts checks without a diff or message; failure output and request refusals",
   );
 
   if (process.argv.includes("--commit")) {
@@ -263,10 +283,9 @@ try {
     held.scripts.typecheck = `node -e 'setInterval(() => {}, 1000)'`;
     writeFileSync(manifest, JSON.stringify(held));
     try {
-      await review();
-      await button("Run checks and commit").click();
+      await startCommit();
       await statusHas("Running pnpm typecheck");
-      await shot("checking");
+      await shotModes("checking");
       await button("Cancel checks").click();
       await statusHas("Cancelled. Nothing was committed.");
       await shot("cancelled");
@@ -279,21 +298,29 @@ try {
     );
     await button("Close").click();
     console.log("ok real cancellation leaves HEAD unchanged");
-    await review();
-    await button("Run checks and commit").click();
-    await page.waitForFunction(
-      () => document.querySelector(".commit-dialog .check-commit").hidden,
-      null,
-      { timeout: 900_000 },
-    );
+    await startCommit();
+    await page
+      .getByRole("button", { name: "Close", exact: true, disabled: false })
+      .waitFor({ timeout: 900_000 });
     assert.match(await status.textContent(), /^Committed /);
-    await shot("success");
+    await shotModes("success");
     assert.equal(
       execFileSync("git", ["show", "--format=", "--name-only", "HEAD"], {
         cwd: ROOT,
         encoding: "utf8",
       }).trim(),
       "packages/catalog/src/overrides.css",
+    );
+    const committed = execFileSync("git", ["show", "HEAD:packages/catalog/src/overrides.css"], {
+      cwd: ROOT,
+      encoding: "utf8",
+    });
+    assert.ok(committed.includes(`--window-radius: ${radius}px;`));
+    console.log(
+      execFileSync("git", ["show", "--stat", "--oneline", "HEAD"], {
+        cwd: ROOT,
+        encoding: "utf8",
+      }),
     );
     await button("Close").click();
     await off("Check and commit");

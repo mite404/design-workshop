@@ -80,3 +80,19 @@ issue or PR under repo policy (ADR-007, ADR-017).
 ## Drift log
 
 Record here anything built differently from this plan, and why.
+
+- Removed the review-only rules in `page.css` as well as their elements in `page.ts`, so the
+  deleted interface leaves no unused styling behind.
+- Disabled Close and Escape only while preview reads the snapshot. Otherwise the dialog could
+  close during that request and start checks invisibly when it returns. Cancel checks and the
+  server's cancellation behavior are unchanged once the run starts.
+- Kept the colour script's existing on-disk light/dark assertions. The real commit check reads
+  its saved radius from Git instead of reading a value diff or generated message in the dialog.
+- Light/dark captures show both canvas modes. The Workbench dialog itself has no dark theme;
+  its existing styling stays unchanged.
+- Implementation and review stayed in this thread, as requested. No implementation or review
+  work was delegated. The specified design was already settled, so no competing prototypes
+  were needed.
+- Removed `tools` from the commit check's dependency-copy list. It is no longer a workspace
+  directory, and a clean snapshot has no such directory. The first real-commit check failed
+  with `ENOENT` before opening its browser; the list now matches `pnpm-workspace.yaml`.

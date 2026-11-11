@@ -100,21 +100,6 @@ try {
   await edit(paper, "#17283b");
   assert.match(disk(), /:root\[data-theme="light"\] \{\n  --paper: #f1d4a7;/);
   assert.match(disk(), /:root\[data-theme="dark"\] \{\n  --paper: #17283b;/);
-  await page.getByRole("button", { name: "Check and commit", exact: true }).click();
-  const review = page.getByRole("dialog", { name: "Check and commit", exact: true });
-  await review.getByRole("button", { name: "Run checks and commit", exact: true }).waitFor();
-  const changes = await review.locator(".commit-value").allTextContents();
-  assert.ok(
-    changes.some(
-      (change) => change.includes(':root[data-theme="light"]') && change.includes("#f1d4a7"),
-    ),
-  );
-  assert.ok(
-    changes.some(
-      (change) => change.includes(':root[data-theme="dark"]') && change.includes("#17283b"),
-    ),
-  );
-  await review.getByRole("button", { name: "Close", exact: true }).click();
   await page.reload();
   await value(paper, "#17283b");
   await frame.locator('[data-wb="ChatThreadPanel"]').waitFor();

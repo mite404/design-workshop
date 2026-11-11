@@ -225,31 +225,20 @@ const checkCommit = element(
   { type: "button", className: "check-commit", disabled: true },
   "Check and commit",
 );
-const commitDiff = element("div", { className: "commit-diff" });
-const commitText = element("pre", { className: "commit-message" });
 const commitStatus = element("pre", { className: "commit-status", role: "status" });
-const commitRun = element(
-  "button",
-  { type: "button", className: "check-commit" },
-  "Run checks and commit",
-);
 const commitClose = element("button", { type: "button", className: "history-button" }, "Close");
 const commitDialog = element(
   "dialog",
   { className: "commit-dialog", ariaLabel: "Check and commit" },
-  element("h2", {}, "Review your look"),
+  element("h2", {}, "Check and commit"),
   element(
     "p",
     { className: "commit-note" },
     "Workbench commits overrides.css without pushing. Repository hooks still run and may amend the message or perform other actions, including pushing.",
   ),
-  commitDiff,
-  element("h3", {}, "Commit message"),
-  commitText,
   commitStatus,
-  element("div", { className: "commit-actions" }, commitClose, commitRun),
+  element("div", { className: "commit-actions" }, commitClose),
 );
-let reviewed: { head: string; source: string } | null = null;
 let commitController: AbortController | null = null;
 const selectorText = element("code", { className: "selector" });
 const note = element(
@@ -364,43 +353,6 @@ function historyStatus(values: unknown): void {
   storeHistory();
 }
 
-async function reviewCommit(): Promise<void> {
-  commitRun.hidden = true;
-  commitClose.textContent = "Close";
-  commitStatus.textContent = "Reading saved values…";
-  commitDiff.replaceChildren();
-  commitText.textContent = "";
-  reviewed = null;
-  commitDialog.showModal();
-  const response = await fetch("/__workbench/commit/preview", { method: "POST" });
-  const body: unknown = await response.json();
-  if (!response.ok) throw new Error(text(prop(body, "error")) ?? "Could not read the diff.");
-  const changes = readChanges(prop(body, "changes"));
-  const revision = text(prop(body, "head"));
-  const source = text(prop(body, "source"));
-  const generated = text(prop(body, "message"));
-  if (changes === null || revision === null || source === null || generated === null) {
-    commitStatus.textContent = "No design values changed.";
-    return;
-  }
-  reviewed = { head: revision, source };
-  commitDiff.replaceChildren(
-    ...changes.map((c) =>
-      element(
-        "div",
-        { className: "commit-value" },
-        element("code", {}, c.selector === ":root" ? "Design token" : c.selector),
-        element("strong", {}, c.name.replace(/^--/, "").replaceAll("-", " ")),
-        element("span", {}, `${c.before ?? "Added"} → ${c.after ?? "Removed"}`),
-      ),
-    ),
-  );
-  commitText.textContent = generated;
-  commitStatus.textContent = "Ready to run typecheck, then tests.";
-  commitRun.hidden = false;
-  commitRun.disabled = false;
-}
-
 function commitEvent(event: unknown): boolean {
   const kind = prop(event, "kind");
   switch (kind) {
@@ -442,16 +394,26 @@ async function readCommitStream(body: NonNullable<Response["body"]>): Promise<vo
 }
 
 async function runCommit(): Promise<void> {
-  if (reviewed === null) return;
-  const controller = new AbortController();
-  commitController = controller;
-  commitRun.disabled = true;
-  commitClose.textContent = "Cancel checks";
+  commitClose.textContent = "Close";
+  commitClose.disabled = true;
+  commitStatus.textContent = "Reading saved values…";
+  commitDialog.showModal();
   try {
+    const preview = await fetch("/__workbench/commit/preview", { method: "POST" });
+    const snapshot: unknown = await preview.json();
+    if (!preview.ok)
+      throw new Error(text(prop(snapshot, "error")) ?? "Could not read saved values.");
+    const revision = text(prop(snapshot, "head"));
+    const source = text(prop(snapshot, "source"));
+    if (revision === null || source === null) throw new Error("Could not read saved values.");
+    const controller = new AbortController();
+    commitController = controller;
+    commitClose.disabled = false;
+    commitClose.textContent = "Cancel checks";
     const response = await fetch("/__workbench/commit", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify(reviewed),
+      body: JSON.stringify({ head: revision, source }),
       signal: controller.signal,
     });
     if (!response.ok || response.body === null) {
@@ -463,7 +425,6 @@ async function runCommit(): Promise<void> {
     commitStatus.textContent = `Connection lost. Refresh to check the commit outcome. ${String(error)}`;
   } finally {
     commitController = null;
-    commitRun.hidden = true;
     commitClose.textContent = "Close";
     commitClose.disabled = false;
     await refreshStatus();
@@ -3207,24 +3168,15 @@ reset.addEventListener("click", () => {
 });
 undo.addEventListener("click", () => replay(-1));
 redo.addEventListener("click", () => replay(1));
-checkCommit.addEventListener("click", () =>
-  enqueue(async () => {
-    try {
-      await reviewCommit();
-    } catch (error) {
-      commitStatus.textContent = String(error);
-    }
-  }),
-);
-commitRun.addEventListener("click", () => enqueue(runCommit));
+checkCommit.addEventListener("click", () => enqueue(runCommit));
 commitClose.addEventListener("click", () => {
   if (commitController !== null) void cancelCommit();
   else commitDialog.close();
 });
 commitDialog.addEventListener("cancel", (event) => {
-  if (commitController !== null) {
+  if (commitClose.disabled || commitController !== null) {
     event.preventDefault();
-    void cancelCommit();
+    if (commitController !== null) void cancelCommit();
   }
 });
 discard.addEventListener("click", () => {
