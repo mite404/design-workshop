@@ -49,6 +49,11 @@ Both views edit the same design values, so a change made on a component shows up
 
 ## 5. Principles
 
+**Core tenet: no translation step.** The thing being designed is the running code, and a change
+made by hand lands in the repo as the same change. Nothing is ever redrawn from a picture, and no
+feature may add a step where a person or an agent has to interpret a design to produce code. The
+principles below follow from this.
+
 1. **The preview is the document.** There is no separate canvas file. The saved state is source
    files in git.
 2. **The Workbench edits values, never code.** Components say which value they use (`border-radius:

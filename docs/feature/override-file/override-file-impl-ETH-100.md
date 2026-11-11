@@ -33,9 +33,14 @@ anything, every design session produces a noisy diff. See `docs/prd.md`, section
 ## Approach
 
 One stylesheet at `packages/catalog/src/overrides.css`, loaded after the baseline tokens by the app
-and by both Storybook cascades. The Workbench is its only writer, so the format is fixed: one
-`:root` block, one `--name: value;` per line, two-space indent, names in the order they were first
-set. A file in any other shape is refused, not repaired.
+and by both Storybook cascades. The Workbench is its only writer, so the format is fixed: a
+`:root` block first, then one block per element selector in the order they were first set. Each
+block has its selector and `{` on one line, one `name: value;` per line with a two-space indent in
+the order first set, and `}` on its own line. A file in any other shape is refused, not repaired.
+
+Amended 2026-11-11, before work started: the
+[spacing story](../spacing/spacing-story.md) saves values per element, so the file holds a block
+per selector and both functions take a selector. The first version had one `:root` block only.
 
 Because the tool writes the format itself, a line-based parser is enough. Rejected: a CSS parser
 dependency. It solves a general problem this file does not have. Rejected: a JSON file of values. It
@@ -55,15 +60,18 @@ Rejected: adding the dark block now. It arrives with the first colour story.
 
 * Create `overrides.css` with a comment line and an empty `:root` block.
 * Write `parseOverrides` and `setOverride` as pure functions. Signatures are in Reference below.
-* Import the file straight after `tokens.css` in `apps/web/src/index.css`, in the same `catalog`
-  layer.
-* Include it after the tokens in both Storybook cascades.
+* Import the file last in `apps/web/src/index.css`, outside any layer. The app declares
+  `@layer theme, base, catalog, components, utilities`, and a value saved for an element (a gap
+  or a padding) has to beat the `components` and `utilities` layers. Unlayered rules beat every
+  layer. Amended 2026-11-11; the first version put the file in the `catalog` layer.
+* Include it last and unlayered in both Storybook cascades.
 
 ## Test plan
 
 * One Vitest file covers: read then write with no change returns the same bytes; set a new value;
-  replace a value; remove a value; removing the last value leaves the empty block; a malformed file
-  throws.
+  replace a value; remove a value; removing the last value leaves the empty `:root` block; set a
+  value under a new selector; removing the last value under a selector removes its block; a
+  malformed file throws.
 * Type `--window-radius: 20px` into the file by hand. A throwaway element using
   `var(--window-radius)` shows 20px in the app and in a story. Remove the line and the element
   afterwards.
@@ -96,16 +104,25 @@ After a change:
 :root {
   --window-radius: 20px;
 }
+main > section:nth-child(2) > div {
+  gap: 12px;
+  padding-top: 16px;
+}
 ```
 
 The functions, in `packages/workbench/src/overrides.ts`:
 
 ```ts
-/** The values in an override file, by custom property name. @throws on any other shape. */
-export function parseOverrides(text: string): Map<string, string>;
+/** The values in an override file, by selector then property name. @throws on any other shape. */
+export function parseOverrides(text: string): Map<string, Map<string, string>>;
 
 /** `text` with one value set, or removed when `value` is null. Every other byte is kept. */
-export function setOverride(text: string, name: string, value: string | null): string;
+export function setOverride(
+  text: string,
+  selector: string,
+  name: string,
+  value: string | null,
+): string;
 ```
 
 ## Drift log
