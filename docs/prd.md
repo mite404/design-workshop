@@ -301,4 +301,4 @@ These are Ethan's stated preferences for how the Workbench itself should look an
 
 - How does a designer learn that a change broke or moved something on a screen, a state or a
   story that is not on the canvas? Not at the press (ADR-026). It needs the Workbench to load
-  other screens and stories first (ETH-115 part B), so it has no story and no ticket yet.
+  other screens and stories first (ETH-118), so it has no story and no ticket yet.

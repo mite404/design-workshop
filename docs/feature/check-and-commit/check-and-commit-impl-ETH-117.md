@@ -1,3 +1,6 @@
+---
+linear: ETH-117
+---
 # Make Check and commit one press
 
 ## Status
@@ -9,8 +12,6 @@
 - **Risk**: LOW
 - **Category**: feature
 - **Planned at**: commit `1fec9bc`, 2026-11-11
-- **Linear**: no ticket yet. When one is made, rename this file to end in its identifier and
-  add the `linear:` front matter the other tickets have.
 - **Story**: [check-and-commit-story.md](check-and-commit-story.md).
 
 ## Why this matters

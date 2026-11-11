@@ -1,7 +1,8 @@
 # Story: work on one component in Component mode
 
 Status: confirmed by Ethan, Nov 11 2026 (draft 2). The decisions are his (ADR-023, ADR-024,
-ADR-025). Ticket: [ETH-115](component-stories-impl-ETH-115.md).
+ADR-025). Tickets: [ETH-115](component-stories-impl-ETH-115.md) for criteria 1 to 12, and
+[ETH-118](component-stories-impl-ETH-118.md) for the stories in criteria 13 to 19.
 
 **As** a designer tuning one component,
 **I want** to open it from the component tree and edit it where it sits in the app,

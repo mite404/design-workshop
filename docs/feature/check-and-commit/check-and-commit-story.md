@@ -3,7 +3,7 @@
 Status: draft 3, Nov 11 2026, confirmed by Ethan. Criteria 1 to 10 are built (ETH-112). Ethan
 changed criteria 2 and 7 on Nov 11 (ADR-026) and the build has not caught up. Tickets:
 [ETH-112](check-and-commit-impl-ETH-112.md), built, and
-[the single press](check-and-commit-impl-single-press.md), planned.
+[ETH-117](check-and-commit-impl-ETH-117.md), planned.
 
 **As** a designer who has finished tuning,
 **I want** one button that checks the look and commits it,
@@ -52,5 +52,5 @@ the decision, and it accepts everything on the canvas. ADR-020: no stored baseli
 ## Tickets
 
 1. [ETH-112](check-and-commit-impl-ETH-112.md) - built. Criteria 1 to 10 as first written.
-2. [The single press](check-and-commit-impl-single-press.md) - planned, no Linear ticket yet.
+2. [ETH-117](check-and-commit-impl-ETH-117.md) - planned. The single press.
    Criteria 2 and 7 as changed.
