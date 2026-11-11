@@ -173,8 +173,9 @@ for (const mode of ["Live", "Component"]) {
             selected,
           ),
         );
-        assert.equal(await entry.locator("#wb-gap").isEnabled(), true);
-        assert.equal(await entry.locator("#wb-padding-left").isEnabled(), true);
+        // The fields follow the selection a frame later, and the card's parent has no gap.
+        await entry.locator("#wb-gap:enabled").waitFor();
+        await entry.locator("#wb-padding-left:enabled").waitFor();
         await entry.screenshot({ path: `${out}/${mode.toLowerCase()}-editor.png` });
         await entry.locator(".tool").click();
         const other = mode === "Live" ? "Component" : "Live";
