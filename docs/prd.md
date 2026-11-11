@@ -46,7 +46,8 @@ Two modes, offered under **More actions** on the welcome:
   Canvas. The target is one component. If it is on screen, the preview stays the running app:
   the component is centred, only it and what is inside it can be selected, and its surroundings
   fade out (ADR-024). If the app is not showing it, the target is its Storybook story, framed at
-  its own URL instead of a second renderer.
+  its own URL instead of a second renderer. The story half comes after the first usable version
+  (R18).
 
 Both modes edit the same design values, so a change made on a component shows up in the shell.
 An edit to an element reaches as far as its mode says (ADR-023). In Component mode it is saved
@@ -95,7 +96,8 @@ a row selects its element and opens the component it belongs to in Component mod
 Component mode the drawer also lists the stories of components the app is not showing, with
 Storybook's labels, using its index as the source of truth. Outside the Workbench the drawer
 keeps thread history. Built so far (ETH-114): the tree, and selecting an element from a row.
-Opening Component mode from a row is ETH-115, and the story list is ETH-118.
+Opening Component mode from a row is ETH-115. The story list is ETH-118, after the first usable
+version (R18).
 
 ## 5. Principles
 
@@ -192,8 +194,9 @@ Each requirement ends with its status on Nov 11 2026, read from Linear and the s
 - R2. The Workbench opens beside the Template's normal dev servers and frames them. It is absent
   from production builds. *Built.*
 - R3. Two modes: Live mode and Component mode, offered under More actions with chat and browser
-  icons. *Partly built: both modes open, but Component mode only frames the chat panel. Focusing
-  one component in place is ETH-115, and opening a story is ETH-118.*
+  icons. For this version Component mode opens a component the app is showing, in place.
+  *Partly built: both modes open, but Component mode only frames the chat panel. Focusing one
+  component in place is ETH-115.*
 - R4. The component tree in the side drawer lists the named components on the canvas; click a
   row or the canvas to select. *Built (ETH-114).*
 - R5. Inspector shows the design values of the selection, with a control per kind: scrub field with
@@ -229,6 +232,9 @@ look in under an hour without writing a prompt.
   from a component Ethan likes elsewhere by translating its styles into the Template's value names.
   *Not started.*
 - R17. Motion: scrub a running transition, edit duration and easing curves. *Not started.*
+- R18. Open a story in Component mode: a component or a state the app is not showing opens as
+  its Storybook story, and the drawer lists those stories. *Not started (ETH-118, blocked by
+  ETH-115).*
 
 ### Not doing
 
@@ -304,6 +310,8 @@ These are Ethan's stated preferences for how the Workbench itself should look an
 - Themes come from both sources: Ethan's own tuned components, and components he likes elsewhere,
   translated by an agent.
 - Themes and presets are not in the first usable version. One look at a time is enough to start.
+- Opening a story in Component mode (R18, ETH-118) is not in the first usable version. That
+  version closes on ETH-115 and ETH-117. (Ethan: "Move ETH-118 to Next in the PRD")
 - A new project can start from the plain Template, from a saved theme, or from a previous project's
   look. No one of these is the default. Until themes ship (R16), starting from a previous look means
   copying that project's override file.

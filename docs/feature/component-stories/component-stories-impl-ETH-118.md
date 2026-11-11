@@ -18,7 +18,7 @@ linear: ETH-118
 
 ## Why this matters
 
-PRD R3 and ADR-024. A component or a state the app is not showing cannot be opened in place,
+PRD R18 and ADR-024. A component or a state the app is not showing cannot be opened in place,
 so it has no way into Component mode. Its story is that way in. "AC 14" below means criterion
 14 in `component-stories-story.md`.
 
