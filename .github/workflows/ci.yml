@@ -23,5 +23,14 @@ jobs:
       - run: pnpm format:check
       - run: pnpm fallow
       - run: pnpm test
+      # The browser levers drive the Workbench on the dev server and write overrides.css, so they
+      # run one at a time against one server that the step starts and stops itself.
+      - name: pnpm test:browser
+        run: |
+          (cd apps/web && exec node_modules/.bin/react-router dev --port 5173 --strictPort) > /tmp/web.log 2>&1 &
+          server=$!
+          trap 'kill $server' EXIT
+          timeout 120 bash -c 'until curl -sf http://localhost:5173/ > /dev/null; do sleep 1; done' || { cat /tmp/web.log; exit 1; }
+          pnpm test:browser
       - run: pnpm build
       - run: pnpm build-storybook
