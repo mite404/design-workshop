@@ -12,12 +12,12 @@ function shownPane(shell: Shell): { main: ThreadId; pane: PaneKind } | null {
   const view = viewOf(shell.doc, main);
   return {
     main,
-    pane: view.mode === "component" ? "browser" : view.pane === "canvas" ? "canvas" : "thread",
+    pane: view.mode === "component" ? "browser" : "thread",
   };
 }
 
 /**
- * Live mode, its canvas layout, or Component mode. The browser glyph selects the component
+ * Live mode or Component mode. The browser glyph selects the component
  * preview, not the legacy simulated browser pane. Nothing to switch with no tab. On a
  * phone it is the bar's second row, each view named in words, and it scrolls when they overflow
  * (ADR-116).
@@ -35,10 +35,7 @@ export function LayoutSwitch({ shell }: { shell: Shell | null }) {
           ? undefined
           : (values: unknown[]) => {
               const next = paneAfterPress(values); // → PaneKind
-              if (next === "browser") shell?.setMode(shown.main, "component");
-              else if (next === "thread" && shown.pane === "browser")
-                shell?.setMode(shown.main, "live");
-              else shell?.setPane(shown.main, next);
+              shell?.setMode(shown.main, next === "browser" ? "component" : "live");
             }
       }
       className="rounded-[var(--radius)] border border-hairline p-0.5 max-md:no-scrollbar max-md:col-span-full max-md:row-start-2 max-md:w-full max-md:justify-start max-md:gap-1 max-md:overflow-x-auto max-md:border-0 max-md:p-0"

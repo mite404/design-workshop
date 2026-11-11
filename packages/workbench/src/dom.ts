@@ -6,9 +6,9 @@ import type { Offset, Spacing } from "./spacing";
 
 const OVERRIDES = "/catalog/src/overrides.css";
 
-/** The same-origin app URL requested by `path`, or `/` for an unsafe or recursive target. */
+/** The requested app URL, the single demo chat by default, or `/` for an unsafe target. */
 export function canvasPath(search: string): string {
-  const path = new URLSearchParams(search).get("path") ?? "/";
+  const path = new URLSearchParams(search).get("path") ?? "/t/demo-brief";
   try {
     const decoded = decodeURIComponent(path);
     if (

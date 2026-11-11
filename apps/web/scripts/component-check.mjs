@@ -68,6 +68,15 @@ async function checkChildOpening() {
       '[data-wb="ChatThreadPanel"]',
       "reload restores the child component",
     );
+    await frame.getByRole("button", { name: "Live mode", exact: true }).click();
+    await page.goto(`${base}/__workbench/`);
+    await panel.waitFor();
+    assert.equal(
+      await frame.locator('[data-wb="ChatThreadPanel"]').count(),
+      1,
+      "default preview does not mount a previously saved lane layout",
+    );
+    assert.equal(await frame.getByRole("region", { name: "Compose canvas" }).count(), 0);
     assert.deepEqual(errors, [], "no child browser errors");
     console.log("ok tree opening, mode switches and reload preserve the child thread");
   } finally {
@@ -79,10 +88,14 @@ try {
   assert.deepEqual(initial.saved, {}, "the override file starts empty");
   await checkChildOpening();
   const { page, errors } = await workbenchPage(browser);
-  await page.goto(`${base}/__workbench/?path=/t/demo-brief`);
+  await page.goto(`${base}/__workbench/`);
   const frame = page.frameLocator("iframe");
   await frame.locator("[data-slot=window]").waitFor();
   await frame.locator('[data-wb="CatalogCard"]').first().waitFor();
+  assert.equal(await frame.locator('[data-wb="ChatThreadPanel"]').count(), 1);
+  assert.equal(await frame.getByRole("button", { name: "Canvas", exact: true }).count(), 0);
+  assert.equal(await frame.getByRole("region", { name: "Compose canvas" }).count(), 0);
+  console.log("ok default preview is one chat history without the legacy canvas");
   const toggle = frame.getByRole("button", { name: /sidebar/i }).first();
   if ((await toggle.getAttribute("aria-expanded")) !== "true") await toggle.click();
   const rows = frame.getByRole("tree", { name: "Components" });
@@ -111,7 +124,20 @@ try {
   const cards = frame.locator('[data-wb="CatalogCard"]');
   await cards.first().evaluate((node) => {
     window.retainedCard = node;
+    const scroll = node.closest(".thread-scroll");
+    scroll.scrollTop = scroll.scrollHeight;
   });
+  assert.equal(
+    await cards
+      .first()
+      .evaluate(
+        (node) =>
+          node.getBoundingClientRect().bottom <
+          node.closest(".thread-scroll").getBoundingClientRect().top,
+      ),
+    true,
+    "the requested component starts above the visible chat history",
+  );
   await rows
     .getByRole("treeitem", { name: "CatalogCard", exact: true })
     .first()
@@ -120,6 +146,16 @@ try {
   await page.waitForFunction(
     () => document.querySelector(".selector").textContent === '[data-wb="CatalogCard"]',
   );
+  assert.equal(
+    await cards.first().evaluate((node) => {
+      const box = node.getBoundingClientRect();
+      const view = node.closest(".thread-scroll").getBoundingClientRect();
+      return box.top >= view.top && box.bottom <= view.bottom;
+    }),
+    true,
+    "clicking the tree row scrolls its component fully into view",
+  );
+  console.log("ok a tree click scrolls to a component outside the viewport");
   assert.equal(
     await cards.first().evaluate((node) => window.retainedCard === node),
     true,

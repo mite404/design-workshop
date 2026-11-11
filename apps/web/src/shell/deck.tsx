@@ -138,7 +138,13 @@ function usePlacement(view: View) {
   useEffect(() => {
     place();
   }, [place]);
-  return { group, narrow, place };
+  return {
+    group,
+    narrow,
+    place,
+    single: view.pane === "thread" || narrow,
+    hideThread: narrow && view.pane !== "thread",
+  };
 }
 
 // One tab's panes: the main thread, then a panel holding the browser and the canvas. The
@@ -149,9 +155,9 @@ function usePlacement(view: View) {
 // close a pane by reaching its edge, and then the view's layout comes back, since the layout
 // switch alone decides what is on screen.
 function Workspace(beside: Beside) {
-  const { shell, thread, view } = beside;
-  const { group, narrow, place } = usePlacement(view);
-  const single = view.pane === "thread" || narrow;
+  const { shell, thread } = beside;
+  const view: View = beside.focus === null ? { ...beside.view, pane: "thread" } : beside.view;
+  const { group, narrow, place, single, hideThread } = usePlacement(view);
   return (
     <ResizablePanelGroup
       orientation="horizontal"
@@ -173,7 +179,7 @@ function Workspace(beside: Beside) {
         collapsedSize="0"
         collapsedThreshold={`${SPLIT.min}`}
       >
-        <MainPane thread={thread} hidden={narrow && view.pane !== "thread"} view={view} />
+        <MainPane thread={thread} hidden={hideThread} view={view} />
       </ResizablePanel>
       {/* Above the panes, so nothing positioned in them can cover its hit area. */}
       <ResizableHandle
@@ -190,7 +196,7 @@ function Workspace(beside: Beside) {
         collapsedThreshold={`${100 - SPLIT.max}`}
         className="grid"
       >
-        <SidePanes {...beside} />
+        <SidePanes {...beside} view={view} />
       </ResizablePanel>
     </ResizablePanelGroup>
   );

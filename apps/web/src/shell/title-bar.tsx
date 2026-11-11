@@ -79,7 +79,7 @@ function Lead() {
  * foot, and at the drawer's on a phone (ADR-121, ADR-144). It is green chrome, flat or painted
  * (ADR-110, ADR-115). On a phone it is two rows (ADR-116): the project's name and what never
  * scrolls on top, Collapse all among them, with a "⋯" for the thread and project; below, the
- * views, Thread, Canvas and Browser.
+ * views, Live mode and Component mode.
  */
 export function TitleBar({ chrome }: Pick<Looks, "chrome">) {
   const shell = useShell();

@@ -1,6 +1,6 @@
 // oxlint-disable no-await-in-loop, no-console -- a lever drives one step at a time and reports on stdout
 // The one shell's lever (ADR-156): drives a fresh device in headless Chromium at 1280x900 from the
-// splash through both projects, the canvas switch, a live-thread reply that survives a reload, the
+// splash through the completed chat, the mode switch, the
 // retired addresses and the deleted /new, screenshotting each stage to .artifacts/one-shell/. Exits
 // 1 when any step fails, and counts every console error as a failure except the 404 /new returns.
 //
@@ -62,46 +62,21 @@ await step("the Demo row opens the finished brief; canvas still hidden", async (
   assert.equal(await page.getByRole("region", { name: "Compose canvas" }).count(), 0);
   await page.screenshot({ path: `${out}/02-demo-brief.png` });
 });
-await step("the layout switch shows the canvas, and only then", async () => {
-  await page
-    .getByRole("group", { name: "Layout" })
-    .getByRole("radio", { name: "Canvas" })
-    .or(page.getByRole("group", { name: "Layout" }).getByRole("button", { name: "Canvas" }))
-    .first()
-    .click();
-  await page.getByRole("region", { name: "Compose canvas" }).waitFor();
-  await page.screenshot({ path: `${out}/03-canvas-opened.png` });
-});
-await step("a new Playground thread has a working compose box and keeps its reply", async () => {
-  await page.getByRole("link", { name: "Home" }).click();
-  await page.locator(".welcome").waitFor();
-  await page.getByRole("button", { name: "New thread in Live Playground" }).click();
-  await page.waitForURL(/\/t\//);
-  await page.getByRole("group", { name: "Layout" }).getByRole("button", { name: "Canvas" }).click();
-  await page.locator('[data-slot="demo-controls"]').waitFor({ state: "detached", timeout: 5000 });
-  const box = page.locator('[role="tabpanel"]:not([inert]) .compose-box textarea').first();
-  await box.fill("What can you do?");
-  await box.press("Enter");
-  await page
-    .locator('[role="tabpanel"]:not([inert]) .turn-agent')
-    .first()
-    .waitFor({ timeout: 30_000 });
-  await page.waitForFunction(
-    () => !document.querySelector('[role="tabpanel"]:not([inert]) .turn-agent[aria-busy="true"]'),
-    null,
-    { timeout: 60_000 },
+await step("the mode switch offers Live and Component, not the legacy canvas", async () => {
+  const layout = page.getByRole("group", { name: "Layout" });
+  assert.equal(await layout.getByRole("button", { name: "Canvas", exact: true }).count(), 0);
+  assert.equal(await layout.getByRole("button", { name: "Live mode", exact: true }).count(), 1);
+  assert.equal(
+    await layout.getByRole("button", { name: "Component mode", exact: true }).count(),
+    1,
   );
-  const text = await page.locator('[role="tabpanel"]:not([inert]) .turn-agent').first().innerText();
-  await page.screenshot({ path: `${out}/04-live-reply.png` });
-  return text.slice(0, 80);
+  assert.equal(await page.locator('[data-wb="ChatThreadPanel"]').count(), 1);
 });
-await step("a reload keeps the live thread's turns (persisted through the worker)", async () => {
+await step("a reload keeps the completed chat without mounting a canvas", async () => {
   await page.reload();
-  await page
-    .locator('[role="tabpanel"]:not([inert]) .turn-agent')
-    .first()
-    .waitFor({ timeout: 30_000 });
-  return `${await page.locator('[role="tabpanel"]:not([inert]) .turn-agent').count()} agent turn(s) after reload`;
+  await page.getByText("Monday support brief (draft)").first().waitFor();
+  assert.equal(await page.locator('[data-wb="ChatThreadPanel"]').count(), 1);
+  assert.equal(await page.getByRole("region", { name: "Compose canvas" }).count(), 0);
 });
 await step(
   "/playground, /demo/weekly-brief?script=returned and /demo/weekly-brief/t/demo-brief-workload redirect",

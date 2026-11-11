@@ -72,7 +72,7 @@ try {
   await context.route(/api\.fontsource\.org|cdn\.jsdelivr\.net/, (route) => route.abort());
   await page.goto(`${base}/__workbench/`);
   await frame.locator("[data-slot=window]").waitFor();
-  await frame.locator(".welcome").waitFor();
+  await frame.locator('[data-wb="ChatThreadPanel"]').waitFor();
   await mode.selectOption("light");
   await value(paper, "#f0efea");
   const before = (await history()).cursor;
@@ -117,7 +117,7 @@ try {
   await review.getByRole("button", { name: "Close", exact: true }).click();
   await page.reload();
   await value(paper, "#17283b");
-  await frame.locator(".welcome").waitFor();
+  await frame.locator('[data-wb="ChatThreadPanel"]').waitFor();
   await edit(ink, "#18293c");
   const inkRatios = ink.locator("xpath=../..").locator('.contrast [data-low="true"]');
   assert.ok((await inkRatios.count()) > 0);

@@ -2,7 +2,7 @@ import { expect, test } from "vitest";
 import { canvasPath } from "./dom";
 
 test("canvas path accepts app routes and defaults unsafe or recursive targets to root", () => {
-  expect(canvasPath("")).toBe("/");
+  expect(canvasPath("")).toBe("/t/demo-brief");
   expect(canvasPath("?path=%2Ft%2Fdemo-brief%3Fmode%3Dcomponent%23card")).toBe(
     "/t/demo-brief?mode=component#card",
   );
