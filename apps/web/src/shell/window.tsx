@@ -60,7 +60,7 @@ export function Window({
       <div data-slot="desk" aria-hidden="true" className="fixed inset-0 bg-[var(--desk)]" />
       <div
         data-slot="window"
-        className="fixed inset-0 flex flex-col overflow-hidden bg-paper md:inset-4 md:rounded-[12px] md:border md:border-hairline md:shadow-[0_8px_32px_var(--shadow)]"
+        className="fixed inset-0 flex flex-col overflow-hidden bg-paper md:inset-4 md:rounded-[var(--window-radius)] md:border md:border-hairline md:shadow-[0_8px_32px_var(--shadow)]"
       >
         <SidebarProvider
           {...(projectsGuide

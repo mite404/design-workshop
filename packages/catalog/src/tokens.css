@@ -182,6 +182,7 @@
   --seal-gold-glint: color-mix(in srgb, var(--yak-orange) 55%, var(--yak-paper-bright));
   --on-seal: var(--yak-brown-ink);
 
+  --window-radius: 12px; /* the window's corners from md up; the Workbench edits it */
   --btn-radius: 4px; /* every button's corners (.btn, Done, Skip, Submit); tokens.test.ts guards it */
   --radius-card: 14px; /* the catalog card and the thread panel; shadcn owns --radius (ADR-082) */
   /* A lane's collapse (ADR-134): its 20px fill sits --leading-space inside the lane's 1px border,
