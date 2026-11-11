@@ -1,0 +1,10 @@
+# Long-running services for orb development; `amp orb services ensure` starts them.
+services:
+  web:
+    command: pnpm dev:web
+    port: 5173
+    portal: true
+  storybook:
+    command: pnpm storybook
+    port: 6006
+    portal: true

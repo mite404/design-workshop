@@ -1,36 +1,32 @@
 {
-  "name": "interface-atlas",
+  "name": "yaklabs",
   "private": true,
-  "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
-    "lint": "oxlint",
-    "test": "playwright test",
-    "preview": "vite preview"
-  },
-  "dependencies": {
-    "@tailwindcss/vite": "^4.3.3",
-    "class-variance-authority": "^0.7.1",
-    "clsx": "^2.1.1",
-    "lucide-react": "^1.48.0",
-    "radix-ui": "^1.6.7",
-    "react": "^19.2.8",
-    "react-dom": "^19.2.8",
-    "tailwind-merge": "^3.7.0",
-    "tailwindcss": "^4.3.3"
+    "dev": "turbo run dev",
+    "dev:web": "turbo run dev --filter=web",
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "test:unit": "turbo run test:unit",
+    "test:stories": "turbo run test:stories",
+    "storybook": "pnpm --filter storybook storybook",
+    "build-storybook": "turbo run build-storybook",
+    "verify-ui-drift": "pnpm --filter verify-ui-drift cli",
+    "lint": "pnpm --filter web exec react-router typegen && oxlint --disable-nested-config",
+    "format": "oxfmt --write",
+    "format:check": "oxfmt --check",
+    "fallow": "fallow",
+    "fallow:audit": "fallow audit"
   },
   "devDependencies": {
-    "@axe-core/playwright": "^4.13.0",
-    "@playwright/test": "^1.63.0",
-    "@types/node": "^24.13.3",
-    "@types/react": "^19.2.18",
-    "@types/react-dom": "^19.2.7",
-    "@vitejs/plugin-react": "^6.1.1",
-    "oxlint": "^1.81.0",
-    "prettier": "^3.9.9",
-    "typescript": "~6.0.2",
-    "vite": "^8.3.0"
-  }
+    "@yaklabs/config": "workspace:*",
+    "fallow": "^3.28.0",
+    "oxfmt": "^0.70.0",
+    "oxlint": "^1.85.0",
+    "oxlint-tsgolint": "^7.0.2003",
+    "turbo": "^2.10.12",
+    "typescript": "catalog:"
+  },
+  "packageManager": "pnpm@10.33.0"
 }
