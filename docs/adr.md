@@ -456,3 +456,18 @@ attribute. The panel gets `side="right"` from shadcn's own Sidebar, which alread
 right-side panel. Rejected: a `side` prop threaded through every shell part, many more call sites
 for the same result; container style queries, not yet in every browser Ethan targets; and a free
 order of regions, the unlimited layout Ethan ruled out.
+
+## ADR-042 - `init` asks only what the contract cannot derive
+
+2026-11-12 - Accepted. INIT CLI plan (`docs/feature/init-cli/init-cli-story.md`). PRD section 16.
+Installing the Workbench in a host needs a few facts this repo hardcodes: which folders to scan for
+`data-slot` and `data-wb`, and where Storybook's config lives. They go in `.workbench/config.json`,
+format `design-workshop/config` version 1, beside the override file, checked by a pure validator
+with stable failure codes like the project contract's (ADR-029). The shell kind, components,
+stories, surfaces and Storybook version are not config: `manifestOf` already derives them, and
+asking a person would make a second source that can disagree. The rail side stays the override
+value `--shell-side` (ADR-041), so `init` seeds it rather than storing it. The proxy and
+`design-workshop dev`, the dev server address, the dark-mode selector and the role map wait for
+the features that read them. Rejected: an interactive questionnaire for every field, which turns
+detected facts into opinions; and agent interpretation of a host's layout, which the contract
+rules out.

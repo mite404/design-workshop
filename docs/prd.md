@@ -267,6 +267,7 @@ Each block is usable and testable before the next starts.
 | 7 | **Canvas handles and readouts** (R13) | Dragging replaces the inspector for layout work |
 | 8 | **Layout and assets** (R14, R15) | The shell can be rearranged by hand, without asking an agent |
 | 9 | **Themes, motion** (R16, R17) | A look carries into the next project in minutes, and motion is tuned by eye |
+| 10 | **Install: `design-workshop init`** (section 16). Plan: [INIT CLI story](feature/init-cli/init-cli-story.md) | The Workbench sets itself up at another app's root, asking only what the contract cannot detect |
 
 Why this order: the Template comes first because the Workbench needs a real target, and it replaces
 both the old workbook and the yaklabs calibration step. Blocks 2 and 3 are the translation layer.

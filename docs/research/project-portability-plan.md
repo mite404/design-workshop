@@ -107,13 +107,14 @@ phases 1 to 3, so it can go in whatever order serves the work.
 
 ### Phase 5. Install into any repo, like Storybook (PRD section 16)
 
-No story or tickets yet. They wait on PRD section 16's open decisions, the package name first.
+Item 3 has a story and tickets (ADR-042); the rest wait their turn.
 Candidate features, in order:
 
 1. A same-origin proxy in front of this repo's own dev server that serves the Workbench and
    injects the override stylesheet, replacing the Vite plugin path.
 2. `.workbench/` as the home of the override file and themes.
-3. `design-workshop init` in a scratch Vite app.
+3. `design-workshop init` in a scratch Vite app: planned in the
+   [INIT CLI story](../feature/init-cli/init-cli-story.md), built before item 1.
 4. The same in a scratch Next app, proving the proxy is framework-neutral.
 
 ### Later, not planned
@@ -158,3 +159,6 @@ that end in its completion check. The phases above are tickets inside these.
    instead of per render measured no change (144, 176, 168 ms before; 144, 168, 144 ms after)
    and was not kept.
 10. **Editor completion.** Reread the PRD after each commit; next smallest gap. Check per gap.
+11. **Create implementation plan for INIT CLI tool.** Plan and checklist:
+    [INIT CLI story](../feature/init-cli/init-cli-story.md) (ADR-042). Runs before the proxy,
+    which it does not need. Check: the story's completion checklist.
