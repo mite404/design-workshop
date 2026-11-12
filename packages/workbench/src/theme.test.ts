@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { expect, test } from "vitest";
 import { COLOUR_ROOT } from "./colour";
-import { parseTheme, themeValues, type Theme } from "./theme";
+import { matchRoles, parseTheme, themeValues, type Theme } from "./theme";
 
 const bundled = (name: string) =>
   readFileSync(new URL(`../themes/${name}.theme.json`, import.meta.url), "utf8");
@@ -62,4 +62,16 @@ test("a theme is refused with the reason, never applied in part", () => {
   expect(parseTheme(theme({ type: { "text-font": "x; }" } }))).toBe(
     "bad value for type role text-font",
   );
+});
+
+test("roles match Template names first, then shadcn names, and list the rest", () => {
+  const css = `:root { --bg: #fff; --background: #eee; --card: #fff; --accent-foreground: #111;
+  --font-sans: Inter; }`;
+  const byRole = new Map(matchRoles(css).map((m) => [m.role, m]));
+  expect(byRole.get("page")).toEqual({ role: "page", name: "--bg", table: "template" });
+  expect(byRole.get("surface")).toEqual({ role: "surface", name: "--card", table: "shadcn" });
+  expect(byRole.get("text-font")?.name).toBe("--font-sans");
+  // --accent-foreground is not --accent, and accent has no shadcn name.
+  expect(byRole.get("hover")?.name).toBeNull();
+  expect(byRole.get("accent")?.name).toBeNull();
 });

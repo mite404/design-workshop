@@ -9,6 +9,8 @@ import { inspect, install } from "./init.ts";
 import { exportProject, readManifest } from "./project.ts";
 import { checkValues, hostFiles, listValues, writeValues } from "./plugin.ts";
 import { parseOverrides } from "./overrides.ts";
+// oxlint-disable-next-line import/max-dependencies -- the command line dispatches one command per module
+import { matchRoles } from "./theme.ts";
 
 // The files of the host the command runs in (ADR-045), read once a command needs them.
 const files = () => hostFiles(process.cwd());
@@ -17,6 +19,7 @@ const USAGE = `Usage: pnpm workbench list [--json]
        pnpm workbench export > look.project.json
        pnpm workbench check-project <file>
        pnpm workbench check-config [.workbench/config.json]
+       pnpm workbench roles
        pnpm workbench dev --target http://localhost:5173 [--port 5180]
        pnpm workbench init <root> [--dry-run | --yes] [--side left|right]
        pnpm workbench set <selector> <name> <value>
@@ -45,10 +48,18 @@ const COMMANDS: Record<
   dev: { counts: [2, 4], run: dev },
   init: { counts: [1, 2, 3, 4], run: init },
   export: { counts: [0], run: exportFile },
-  "check-project": { counts: [1], run: ([file = ""]) => checkProjectFile(file) },
+  "check-project": {
+    counts: [1],
+    run: ([file = ""]) => {
+      checkProjectFile(file);
+    },
+  },
+  roles: { counts: [0], run: roles },
   "check-config": {
     counts: [0, 1],
-    run: ([file = ".workbench/config.json"]) => checkConfigFile(file),
+    run: ([file = ".workbench/config.json"]) => {
+      checkConfigFile(file);
+    },
   },
   check: {
     counts: [0],
@@ -98,6 +109,19 @@ function checkProjectFile(file: string): void {
   ); // → string[]
   process.stdout.write(`${lines.join("\n")}\n`);
   if (items.some((i) => i.failure)) process.exitCode = 1;
+}
+
+// Prints which variable in the app's tokens file plays each theme role, by the name table that
+// found it; exits 1 when any role is unmatched, the list an agent adapts the app from.
+function roles(): void {
+  const { tokens } = files();
+  if (tokens === null) throw new Error("Name the app's tokens file in .workbench/config.json.");
+  const matches = matchRoles(readFileSync(tokens, "utf8")); // → RoleMatch[]
+  const lines = matches.map(({ role, name, table }) =>
+    name === null ? `MISSING ${role}` : `ok      ${role.padEnd(15)} ${name} (${table})`,
+  ); // → string[]
+  process.stdout.write(`${lines.join("\n")}\n`);
+  if (matches.some((m) => m.name === null)) process.exitCode = 1;
 }
 
 // Serves the Workbench in front of the app's own dev server until stopped (ADR-043).
@@ -196,7 +220,9 @@ async function run([verb = "", ...args]: string[]): Promise<void> {
   await command.run(args);
 }
 
-run(process.argv.slice(2)).catch((error: unknown) => {
+try {
+  await run(process.argv.slice(2));
+} catch (error: unknown) {
   process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
   process.exitCode = 1;
-});
+}

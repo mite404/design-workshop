@@ -361,6 +361,11 @@ These are Ethan's stated preferences for how the Workbench itself should look an
     Component mode, which stays in the override file and theme files.
   - R14: the shell's templated regions are the title bar, the navigation rail, the drawer and
     the panel ("the most commonly used slots").
+  - Theme roles in another app (R16): the Workbench works with apps that match the Template's
+    role names, or that an agent can adapt to them without breaking changes. Roles are found by
+    a fixed name table, Template names first, then the shadcn names this repo maps
+    (`packages/ui/src/styles/globals.css`); `init` asks about the rest; an agent adapting the app
+    is the fallback. [Story](feature/role-map/role-map-story.md).
 
 ## 14. Open questions
 
@@ -435,8 +440,8 @@ serves this repo too. Plan detail:
   today) and `themes/*.theme.json`. Never the host's components, config or styles.
 - **Theme files.** A theme names roles, not the host's variables: surfaces (page, panel,
   compose), ink, accent, hover and focus colours, light and dark, and the text and display
-  fonts. The project contract maps each role to the host's CSS
-  variables and components. Applying a theme turns roles into override values by that map,
+  fonts. A role map (decided Nov 12, section 13) names the CSS variable that plays each role.
+  Applying a theme turns roles into override values by that map,
   deterministically. A palette or a type pairing is a theme with only those roles.
 - **Finding components.** A host without `data-wb` names starts with only its slots and the
   roles the contract can find. Recognising primitives under other names stays a later

@@ -127,7 +127,7 @@ export function parseTheme(text: string): Theme | string {
 /** The override values that apply `theme`, through the role maps. */
 export function themeValues(theme: Theme): ThemeValue[] {
   const colours = Object.entries(theme.colours ?? {}).flatMap(([role, modes]) =>
-    has(COLOUR_ROLES, role) && modes !== undefined
+    has(COLOUR_ROLES, role)
       ? (["light", "dark"] as const).flatMap((mode) => {
           const value = modes[mode];
           return value === undefined
@@ -137,9 +137,44 @@ export function themeValues(theme: Theme): ThemeValue[] {
       : [],
   );
   const type = Object.entries(theme.type ?? {}).flatMap(([role, value]) =>
-    has(TYPE_ROLES, role) && value !== undefined
-      ? [{ selector: ":root", name: TYPE_ROLES[role], value }]
-      : [],
+    has(TYPE_ROLES, role) ? [{ selector: ":root", name: TYPE_ROLES[role], value }] : [],
   );
   return [...colours, ...type];
+}
+
+// The shadcn names this repo maps onto its own roles (packages/ui/src/styles/globals.css), read
+// in reverse. A role without one is unmatched, never guessed (PRD section 13).
+const SHADCN_ROLES: Record<string, string> = {
+  page: "--background",
+  surface: "--card",
+  compose: "--popover",
+  hover: "--accent",
+  ink: "--foreground",
+  "ink-soft": "--muted-foreground",
+  focus: "--ring",
+  "text-font": "--font-sans",
+  "display-font": "--font-serif",
+};
+
+/** One role and the app's name for it, by the table that found it; null names are unmatched. */
+export type RoleMatch = {
+  role: string;
+  name: string | null;
+  table: "template" | "shadcn" | null;
+};
+
+/**
+ * Which CSS variable in a stylesheet plays each theme role: its Template name first, then its
+ * shadcn name. A name counts when the sheet declares it anywhere.
+ */
+export function matchRoles(css: string): RoleMatch[] {
+  // ponytail: any declaration counts, whatever its selector; parse rules if a sheet scopes them
+  const declares = (name: string) => new RegExp(`(?:^|[\\s;{])${name}\\s*:`).test(css);
+  const roles = Object.entries({ ...COLOUR_ROLES, ...TYPE_ROLES }); // → [role, Template name][]
+  return roles.map(([role, template]) => {
+    const shadcn = has(SHADCN_ROLES, role) ? SHADCN_ROLES[role] : undefined;
+    if (declares(template)) return { role, name: template, table: "template" };
+    if (shadcn !== undefined && declares(shadcn)) return { role, name: shadcn, table: "shadcn" };
+    return { role, name: null, table: null };
+  });
 }
