@@ -353,3 +353,56 @@ not retained a speculative fix, increased timeouts, added retries, or suppressed
 After removing all probes, `pnpm --filter storybook test` passed **144 tests across 28 files in
 42.76s**. `git diff --check` also passed. The earlier dependency-prebundle change remains local and
 uncommitted; it is not a proven four-flake fix.
+
+## 16. Installing into a repo, and theme files (proposed, Nov 12 2026)
+
+Ethan, Nov 12 2026: the Workbench should install into an existing repo, the way Storybook does,
+rather than every project cloning and reshaping itself to fit this one. A theme is the
+Workbench's own JSON file, a translation layer between standard primitives and their colours,
+fonts and hover colours. Neither writes the host app's code. This section is the plan; nothing
+in it is built yet. Plan detail: [portability plan](research/project-portability-plan.md).
+
+### How Storybook installs (checked Nov 12 2026)
+
+- `npm create storybook@latest` (the older `storybook init` remains) runs in the project root,
+  detects the framework and builder from its dependencies, installs devDependencies, writes a
+  `.storybook/` config and adds `storybook` scripts.
+- Storybook then runs its own dev server, which compiles the host's components with a builder
+  (Vite, Webpack, Rspack). The host's app code is not changed.
+
+### How the Workbench is tied to this repo today
+
+- It is a Vite plugin in `apps/web/vite.config.ts`, serving `/__workbench/` from the app's own
+  dev server. A host on Next or Webpack has no way to load it.
+- The override file is imported by the app (`apps/web/src/root.tsx`) and by Storybook's
+  preview. A host would have to edit its code to load it.
+- It reads the canvas through `frame.contentDocument`, so the app must be on its origin.
+- Components are found by `data-wb` names, which only this Template carries.
+
+### Plan
+
+- **One package, two commands.** `design-workshop init` adds the devDependency, a
+  `.workbench/` folder and a `workbench` script. `design-workshop dev` starts the Workbench.
+- **A proxy, not a plugin per framework.** The Workbench's server sits in front of the host's
+  own dev server, whatever framework it uses, at one origin. It serves the Workbench page at
+  `/__workbench/`, forwards everything else, and adds a `<link>` to the override stylesheet in
+  HTML responses, so the host's code needs no import. Storybook is forwarded at `/__stories/`,
+  as it is today. Rejected: one plugin per framework, several adapters to keep in step. The
+  current Vite plugin stays as this repo's path until the proxy replaces it.
+- **Files it writes, all under `.workbench/` in the host:** `overrides.css` (the live look, as
+  today) and `themes/*.theme.json`. Never the host's components, config or styles.
+- **Theme files.** A theme names roles, not the host's variables: surfaces (page, panel,
+  compose), ink, accent, hover and focus colours, light and dark, and the text and display
+  fonts. The project contract maps each role to the host's CSS
+  variables and components. Applying a theme turns roles into override values by that map,
+  deterministically. A palette or a type pairing is a theme with only those roles.
+- **Finding components.** A host without `data-wb` names starts with only its slots and the
+  roles the contract can find. Recognising primitives under other names stays a later
+  capability.
+
+### Open decisions for Ethan
+
+- The package name, and whether and where it is published. Publishing is a release and needs
+  his approval.
+- Whether a host is asked to add `data-wb` names to its components during `init`.
+- Whether the proxy replaces the Vite plugin in this repo too, or this repo keeps the plugin.
