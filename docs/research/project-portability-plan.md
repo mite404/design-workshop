@@ -139,9 +139,10 @@ that end in its completion check. The phases above are tickets inside these.
    Commits: stories for ComposeBox and the turns (ETH-123);
    pin Storybook packages to exactly 10.6.0. Check: every required component has an index entry
    whose `componentPath` is its file; Storybook tests pass.
-5. **Project contract** (ETH-122, 124). Commits: contract data and validator; manifest
-   command. Check: this repo's manifest validates to no failures; each fixture fails with its
-   own code, identically twice.
+5. **Project contract** (ETH-122, 124). Done: `3b942b8`, `df45643`.
+   Commits: contract data and validator; manifest command.
+   Check: this repo's manifest validates to no failures; each fixture fails with its own code,
+   identically twice.
 6. **Project save, export, load** (ETH-125 to 127). Commits: export; check; load.
    Check: export, check and load round-trip in the browser; invalid files cannot load.
 7. **Semantic component mapping.** Commits: contract surfaces resolve to rendered components
