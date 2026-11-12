@@ -304,7 +304,11 @@ and malformed values refuse the whole file.
 LLM participates".) `contract.json` lists required slots, components, stories and surfaces per
 shell kind. `validate` returns every failure as a stable code and path, sorted; an empty list
 is acceptance. Agents may help write the contract during development, never interpret a file
-being loaded.
+being loaded. Built in `packages/workbench/src/contract.json` and `contract.ts`: a manifest
+(`design-workshop/manifest`, version 1) names its Storybook version and index format, its shell
+kind (`app-shell` or `full-screen`), its slots, its components with their story IDs, and its
+surfaces. Failures sort by code-unit order, not `localeCompare`, so no machine locale can change
+the list. A test pins the validator's only import to its contract data.
 
 ## ADR-030 - Storybook is pinned to exactly 10.6.0
 

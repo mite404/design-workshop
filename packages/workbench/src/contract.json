@@ -1,0 +1,19 @@
+{
+  "storybook": "10.6.0",
+  "indexVersion": 5,
+  "shells": {
+    "app-shell": {
+      "slots": ["window", "title-bar", "sidebar"],
+      "components": ["ChatThreadPanel", "UserTurn", "AgentTurn", "ComposeBox"]
+    },
+    "full-screen": {
+      "slots": ["window"],
+      "components": []
+    }
+  },
+  "surfaces": {
+    "page": { "colour": "--bg" },
+    "thread": { "component": "ChatThreadPanel", "colour": "--paper" },
+    "compose": { "component": "ComposeBox", "colour": "--compose-bg" }
+  }
+}
