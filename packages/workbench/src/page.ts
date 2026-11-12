@@ -3170,6 +3170,8 @@ document.body.append(
       checkCommit,
       message,
       componentNotice,
+      selectionPanel,
+      typePanel,
       element(
         "details",
         { ariaLabel: "Window", open: true },
@@ -3178,8 +3180,6 @@ document.body.append(
       ),
       colourPanel,
       scalePanel,
-      selectionPanel,
-      typePanel,
       unmatchedPanel,
     ),
   ),
