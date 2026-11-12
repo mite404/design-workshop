@@ -359,3 +359,14 @@ Tailwind's theme and the chart folder's utilities, not its preflight, in the app
 Kay's tokens still outrank Tailwind's theme. Rejected: copying bklit into the catalog and
 rewriting its Tailwind classes as plain CSS, which forks the registry; and the full app cascade
 for catalog stories, which restyled the card header.
+
+## ADR-034 - The compose draft lives outside the thread's React state
+
+2026-11-12 - Accepted. ETH-133.
+The draft is a small store (`createDraft` in `ChatThreadPanel.tsx`) read with
+`useSyncExternalStore`: the compose box subscribes to its text, the panel only to whether it is
+empty, for the recap fold. A keystroke re-renders the compose box alone instead of every turn
+and chart in the thread. Measured at 4x CPU slowdown on the dev server, the median keystroke
+fell from about 448 ms to 160 to 176 ms. Rejected: `React.memo` on `Turn`, which needs every
+callback and object prop stabilised and fails silently when one is not; and CSS `field-sizing`
+for the box (first attempt), which measured no change because layout was 3% of a keystroke.

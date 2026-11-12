@@ -6,6 +6,8 @@ import {
   useLayoutEffect,
   useRef,
   useState,
+  useSyncExternalStore,
+  type ComponentProps,
   type Dispatch,
   type Ref,
   type RefObject,
@@ -646,9 +648,9 @@ function useRecap(input: {
   activity: ThreadActivity | undefined;
   clock: number;
   awaiting: AwaitingInput | undefined;
-  draft: string;
+  drafting: boolean;
 }): RecapState {
-  const { thread, messages, clock, awaiting, draft } = input;
+  const { thread, messages, clock, awaiting, drafting } = input;
   const activity = input.activity ?? activityOf(messages); // → the host's word, else the turns'
   const [lastInputAt, setLastInputAt] = useState(activity?.lastUserInputAt);
   const [dismissedAt, setDismissedAt] = useState<number>();
@@ -663,7 +665,7 @@ function useRecap(input: {
       clock,
       dismissedAt,
     }),
-    collapsed: draft.trim() !== "" && !peeking,
+    collapsed: drafting && !peeking,
     items,
     idleMs: clock - (lastInputAt ?? clock),
     expand: () => {
@@ -843,23 +845,40 @@ function usePointerZone(): {
   };
 }
 
-// The compose box's draft, with a read that is current between renders too, so a host can set
-// the draft and send it in one go (ThreadHandle).
-function useDraft(initial: string): {
-  draft: string;
-  setDraft: (value: string) => void;
-  latest: () => string;
-} {
-  const [draft, setState] = useState(initial);
-  const latest = useRef(initial);
+// The compose box's draft, kept outside React state so a keystroke re-renders the compose box
+// alone, not every turn and chart in the thread (ETH-133). `get` is current between renders, so
+// a host can set the draft and send it in one go (ThreadHandle).
+type Draft = {
+  get: () => string;
+  set: (value: string) => void;
+  subscribe: (listener: () => void) => () => void;
+};
+
+function createDraft(initial: string): Draft {
+  let text = initial;
+  const listeners = new Set<() => void>();
   return {
-    draft,
-    setDraft: (value) => {
-      latest.current = value;
-      setState(value);
+    get: () => text,
+    set: (value) => {
+      text = value;
+      for (const listener of listeners) listener();
     },
-    latest: () => latest.current,
+    subscribe: (listener) => {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+      };
+    },
   };
+}
+
+// The compose box reading its text from the draft, so typing re-renders this alone.
+function DraftComposeBox({
+  draft,
+  ...props
+}: { draft: Draft } & Omit<ComponentProps<typeof ComposeBox>, "draft">) {
+  const text = useSyncExternalStore(draft.subscribe, draft.get, draft.get);
+  return <ComposeBox {...props} draft={text} />;
 }
 
 // Whether the reader is more than STATUS_AWAY_PX above the end of the turns, kept current as
@@ -982,7 +1001,10 @@ export function ChatThreadPanel({
   // one back: the dock's `ask` reaches the replies through this ref, kept current below.
   const questions = useRef<(payload: unknown) => void>(() => {});
   const replies = useAgent(agent, setMessages, questions);
-  const { draft, setDraft, latest } = useDraft(initialDraft);
+  const [draft] = useState(() => createDraft(initialDraft));
+  // Whether there is a draft at all: the panel re-renders when this flips, not per keystroke.
+  const noDraft = () => draft.get().trim() === "";
+  const drafting = !useSyncExternalStore(draft.subscribe, noDraft, noDraft);
   const [dictating, setDictating] = useState(open);
   const outbox = useOutbox(thread.messages);
   const { awaiting, setAwaiting, ask } = useAwaiting(thread, replies.tell);
@@ -992,7 +1014,7 @@ export function ChatThreadPanel({
     questions.current = ask;
   });
   const clock = useClock(now); // → the time, ticking, for the recap and the latest reply's stamp
-  const recap = useRecap({ thread, messages, activity, clock, awaiting, draft });
+  const recap = useRecap({ thread, messages, activity, clock, awaiting, drafting });
   const stamped = latestReply(messages); // → the reply that carries the thread's one stamp
   const { scroller, setDockSlot } = useScroller();
   const { setRings, onFind } = useSearchMarks(scroller);
@@ -1027,8 +1049,8 @@ export function ChatThreadPanel({
   // The compose box's draft and the outbox, sent; the box empties.
   function send() {
     const { attachments, files } = outbox.take();
-    const text = latest().trim();
-    setDraft("");
+    const text = draft.get().trim();
+    draft.set("");
     post(text, attachments, files);
   }
 
@@ -1065,13 +1087,13 @@ export function ChatThreadPanel({
 
   // Editing the draft folds the recap back down once the text is gone.
   function editDraft(value: string) {
-    setDraft(value);
+    draft.set(value);
     if (!value.trim()) recap.fold();
   }
 
   // Closing dictation returns focus to the text it fed, so the user can keep editing.
   function endDictation(transcript?: string) {
-    if (transcript !== undefined) setDraft(appendDictation(latest(), transcript));
+    if (transcript !== undefined) draft.set(appendDictation(draft.get(), transcript));
     setDictating(false);
     focusComposeIn(scroller.current);
   }
@@ -1079,7 +1101,7 @@ export function ChatThreadPanel({
   useImperativeHandle(ref, () => ({
     setDraft: editDraft,
     send: () => {
-      if (latest().trim() !== "" || outbox.attachments.length > 0) send();
+      if (!noDraft() || outbox.attachments.length > 0) send();
     },
     answer: (text) => {
       setStaged(undefined);
@@ -1215,7 +1237,7 @@ export function ChatThreadPanel({
           data-footnote={footnote === undefined ? undefined : ""}
           {...pointer.compose}
         >
-          <ComposeBox
+          <DraftComposeBox
             draft={draft}
             onDraftChange={editDraft}
             onSend={send}
