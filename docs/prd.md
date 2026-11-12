@@ -223,9 +223,8 @@ look in under an hour without writing a prompt.
   around it; ETH-136 adds its current values as rendered. The agent skill file that
   section 7 and block 6 name is `.agents/skills/design-values/SKILL.md` (ETH-134).*
 - R13. Handles on the canvas for sizes, gaps, padding and radius, with measurement readouts.
-  *Partly built: radius (ETH-101), gap and padding (ETH-102) have handles and readouts. Width
-  and height are Live-mode fields in the inspector (ETH-137); their canvas handles are not
-  started.*
+  *Built: radius (ETH-101), gap and padding (ETH-102), and width and height (ETH-137 values,
+  ETH-138 handles, Live mode only, ADR-037) have handles and readouts.*
 - R14. Rearrange shell regions by drag, saved as layout values. *Not started.*
 - R15. Assets panel: drag a component from the library into an allowed slot. *Not started.*
 - R16. Themes: a theme is one override file. Save the current values as a theme, switch between

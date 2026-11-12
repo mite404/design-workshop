@@ -398,3 +398,14 @@ is a CSS transition on the settled bars' `y` and `height`, set only while the ca
 never under reduced motion. Rejected: keeping Recharts for one card, two chart libraries; and
 patching bklit's bar animation, a larger patch than one CSS rule. Safari's support for
 transitioning SVG geometry is unverified; without it the bars change at once.
+
+## ADR-037 - Size handles sit outside the box
+
+2026-11-12 - Accepted. ETH-137, ETH-138.
+Width and height are Live-mode values (Ethan, PRD section 13: "live mode"), saved per element
+like padding, hidden in Component mode and disabled on inline elements. Their canvas handles sit
+12px outside the selected box's right and bottom edges, so inside the box drags padding and
+outside drags size, and the two never stack on a box with little padding. The handles show
+while the pointer is within that 12px of the box. A drag snaps to 2px (10px with Shift) like the
+other spacing handles (ADR-010). Rejected: handles on the edge itself, which overlap the padding
+handle 5px inside; and corner handles, which the window's radius handles already use.

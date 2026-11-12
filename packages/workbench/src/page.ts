@@ -104,6 +104,7 @@ const ENDPOINT = "/__workbench/values";
 const FONTS_ENDPOINT = "/__workbench/fonts";
 const LEAST_INSET = 8;
 const PADDING_INSET = 5; // a padding handle's least distance inside its edge
+const SIZE_OUT = 12; // a size handle's distance outside its edge, clear of the padding handles
 const DRAG_START = 3; // px a press moves before it is a drag rather than a click
 const CURSOR: Record<Corner, string> = {
   nw: "nwse-resize",
@@ -193,6 +194,7 @@ const handles = CORNERS.map(() =>
 const pill = element("div", { className: "pill", ariaHidden: "true" });
 const paddingLayer = element("div");
 const gapLayer = element("div");
+const sizeLayer = element("div");
 const inplace = element("input", { className: "inplace", inputMode: "numeric", hidden: true });
 const overlay = element(
   "div",
@@ -201,6 +203,7 @@ const overlay = element(
   treeOutline,
   paddingLayer,
   gapLayer,
+  sizeLayer,
   ...handles,
   pill,
   inplace,
@@ -844,7 +847,7 @@ function setSpacing(name: Spacing, value: number): void {
 
 const readout = (bar: Bar): string => {
   const value = selection === null ? 0 : spacingOf(selection.node)[bar.name];
-  return `${bar.side === null ? "Gap" : "Padding"} ${value}`;
+  return `${bar.side === null ? LABEL[bar.name] : "Padding"} ${value}`;
 };
 
 function highlightOpposite(bar: Bar, sides: Side[]): void {
@@ -860,7 +863,7 @@ function dragBar(bar: Bar, dx: number, dy: number, event: PointerEvent): void {
   if (before === undefined) return;
   const step = event.shiftKey ? 10 : 2;
   if (bar.side === null) {
-    setSpacing("gap", dragSpace(before.gap, bar.axis === "x" ? dx : dy, step));
+    setSpacing(bar.name, dragSpace(before[bar.name], bar.axis === "x" ? dx : dy, step));
   } else {
     const value = dragSpace(before[bar.name], paddingMoved(bar.side, dx, dy), step);
     const sides = paddingSides(bar.side, event.altKey, event.shiftKey);
@@ -957,7 +960,7 @@ function wireBar(bar: Bar): void {
 }
 
 function makeBar(name: Spacing, side: Side | null, axis: "x" | "y"): Bar {
-  const aria = side === null ? "Gap" : `Padding ${side}`;
+  const aria = side === null ? LABEL[name] : `Padding ${side}`;
   const el = element("div", { className: "bar", tabIndex: 0, role: "slider", ariaLabel: aria });
   const space = element("div", { className: "space" });
   el.dataset.name = name;
@@ -971,6 +974,7 @@ const paddingBars = SIDES.map((side) =>
   makeBar(`padding-${side}`, side, side === "top" || side === "bottom" ? "y" : "x"),
 );
 const gapBars: Bar[] = [];
+const sizeBars = SIZE.map((name) => makeBar(name, null, name === "width" ? "x" : "y"));
 
 function componentAvailable(): boolean {
   return component !== null && component.closest("[inert], [hidden]") === null;
@@ -1288,6 +1292,20 @@ function trackPadding(node: Styled, border: Box, s: CSSStyleDeclaration): Box {
   };
 }
 
+// Width and height handles sit just outside the right and bottom edges, in Live mode only.
+function trackSizeBars(node: Styled, rect: Box): void {
+  const off = componentMode || style(node).display === "inline";
+  const at = {
+    x: [rect.left + rect.width + SIZE_OUT, rect.top + rect.height / 2],
+    y: [rect.left + rect.width / 2, rect.top + rect.height + SIZE_OUT],
+  } as const;
+  const v = spacingOf(node);
+  for (const bar of sizeBars) {
+    placeBar(bar, ...at[bar.axis], rect, v[bar.name]);
+    bar.el.hidden = off || selection?.locked.has(bar.name) === true;
+  }
+}
+
 function trackGaps(node: Styled, content: Box): void {
   const laidOut = laysOut(node) && selection?.locked.has("gap") !== true;
   const children = [...node.children].filter((c) => {
@@ -1350,8 +1368,15 @@ function trackSelection(): void {
   const s = style(node);
   place(outline, rect);
   outline.style.borderRadius = s.borderTopLeftRadius;
-  overlay.dataset.hover = String(inside(pointer, rect));
+  const reach = {
+    left: rect.left,
+    top: rect.top,
+    width: rect.width + 2 * SIZE_OUT,
+    height: rect.height + 2 * SIZE_OUT,
+  };
+  overlay.dataset.hover = String(inside(pointer, reach)); // reaches the size handles outside
   trackGaps(node, trackPadding(node, rect, s));
+  trackSizeBars(node, rect);
 }
 
 // Fade in the frame's own coordinates, leaving the drawer as an independent opaque layer.
@@ -3447,6 +3472,7 @@ for (const panel of document.querySelectorAll<HTMLDetailsElement>(".inspector > 
   });
 }
 paddingLayer.append(...paddingBars.flatMap((b) => [b.el, b.space]));
+sizeLayer.append(...sizeBars.map((b) => b.el));
 unmatchedPanel.hidden = true;
 
 for (const [i, handle] of handles.entries()) {
@@ -3465,18 +3491,23 @@ for (const [i, handle] of handles.entries()) {
   });
 }
 draggable(label, (dx) => dx);
+// A spacing readout's x: beside the selected box rather than on its content, and past the
+// width handle that sits outside the right edge.
+function pillBeside(name: string | null, bounds: DOMRect): number {
+  if (name === "padding-left") return Math.max(0, bounds.left - 14 - pill.offsetWidth);
+  const past = name === "width" ? SIZE_OUT + 10 : 0;
+  return Math.min(bounds.right + past + 14, overlay.clientWidth - pill.offsetWidth);
+}
 overlay.addEventListener("pointermove", (event) => {
   const spacingBar = event.target instanceof HTMLElement ? event.target.closest(".bar") : null;
   const bounds = selection?.node.getBoundingClientRect();
   const origin = overlay.getBoundingClientRect();
   const pointerX = event.clientX - origin.left;
   const pointerY = event.clientY - origin.top;
-  // Keep spacing readouts beside the selected box, rather than on top of its content.
-  const left = spacingBar?.getAttribute("data-name") === "padding-left";
-  const edge = spacingBar === null ? pointerX : (bounds?.right ?? pointerX);
-  const x = left
-    ? Math.max(0, (bounds?.left ?? pointerX) - 14 - pill.offsetWidth)
-    : Math.min(edge + 14, overlay.clientWidth - pill.offsetWidth);
+  const x =
+    spacingBar === null || bounds === undefined
+      ? Math.min(pointerX + 14, overlay.clientWidth - pill.offsetWidth)
+      : pillBeside(spacingBar.getAttribute("data-name"), bounds);
   const y = spacingBar === null ? pointerY + 14 : pointerY - pill.offsetHeight / 2;
   pill.style.translate = `${x}px ${y}px`;
 });

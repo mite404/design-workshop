@@ -349,6 +349,25 @@ await step("typing a width saves it for this element; Reset removes it", async (
   assert.equal(Math.round(await computed(card, "width")), Math.round(natural), "width returns");
 });
 
+await step("the width handle outside the right edge drags the width with a readout", async () => {
+  const natural = Math.round(await computed(card, "width"));
+  const handle = await center(bar("width"));
+  const box = await card.boundingBox();
+  assert.ok(handle.x > box.x + box.width, "outside the right edge, clear of the padding handle");
+  await page.mouse.move(handle.x - 30, handle.y);
+  await page.mouse.move(handle.x, handle.y, { steps: 4 });
+  assert.equal(await page.locator(".pill").textContent(), `Width ${natural}`);
+  await page.screenshot({ path: `${out}/04-width-hovered.png` });
+  const want = Math.round((natural - 50) / 2) * 2;
+  await dragBy(bar("width"), -50, 0);
+  await expectSpacing("width", want, [...saved.slice(1), `width: ${want}px`]);
+  await page.getByRole("button", { name: "Reset width" }).click();
+  for (let i = 0; i < 50 && readFileSync(OVERRIDES, "utf8") !== file(saved.slice(1)); i++) {
+    await page.waitForTimeout(100);
+  }
+  assert.equal(readFileSync(OVERRIDES, "utf8"), file(saved.slice(1)), "override file");
+});
+
 await step("clicking empty space deselects", async () => {
   await page.mouse.click(6, 450);
   await page.locator(".overlay[data-selected=false]").waitFor();
