@@ -7,8 +7,10 @@
 // reload, a size set on one heading in pixels holds while the steps around it move, Escape drops
 // an unsaved change or a scrub in progress, malformed or out-of-range typed values are refused,
 // a typed ratio of 1.001 saves as typed, and each Reset puts the app's own
-// value back. Last, a typed hover duration (ETH-139) reaches every button and icon button
-// in the frame, and its Reset empties the file. Screenshots go to .artifacts/scale/. Exits 1 when any step fails. It writes the
+// value back. Last, the Motion section: a typed hover duration (ETH-139) reaches every button
+// and icon button in the frame; the easing curve (ETH-140) steps, drags, types and resets; and
+// the scrub (ETH-141) holds a button part way into hover. Each Reset empties the file.
+// Screenshots go to .artifacts/scale/. Exits 1 when any step fails. It writes the
 // real override file and leaves it empty, so start from an empty one.
 //
 //   node apps/web/scripts/scale-check.mjs [--base http://localhost:5173] [--out dir]
@@ -395,6 +397,32 @@ await step("the hover easing's curve editor drags, steps, types and resets", asy
     "cubic-bezier(0.25, 0.1, 0.25, 1), cubic-bezier(0.25, 0.1, 0.25, 1)",
     "Reset brings back the baseline",
   );
+});
+
+await step("the hover scrub holds the canvas's buttons part way into hover", async () => {
+  const button = frame.locator(".btn").first();
+  // The button's background alpha: 0 at rest (transparent), 1 in hover (moss).
+  const alpha = () =>
+    button.evaluate((el) => {
+      const m = /rgba?\(([^)]+)\)/.exec(getComputedStyle(el).backgroundColor);
+      const parts = (m?.[1] ?? "0, 0, 0, 0").split(",").map(Number);
+      return parts.length === 4 ? parts[3] : 1;
+    });
+  assert.equal(await alpha(), 0, "at rest");
+  const scrub = page.locator("#wb-motion-scrub");
+  await scrub.fill("50");
+  const half = await alpha();
+  assert.ok(half > 0.05 && half < 0.99, `half way into hover: ${half}`);
+  assert.equal(await button.getAttribute("data-preview"), "hover");
+  await scrub.fill("100");
+  assert.equal(await alpha(), 1, "all the way into hover");
+  assert.equal(await page.locator("#wb-motion-scrub + output").textContent(), "100%");
+  await page.locator("details[aria-label=Motion]").screenshot({ path: `${out}/scrub.png` });
+  await scrub.blur();
+  assert.equal(await button.getAttribute("data-preview"), null, "released");
+  for (let i = 0; i < 20 && (await alpha()) !== 0; i++) await page.waitForTimeout(50);
+  assert.equal(await alpha(), 0, "back at rest");
+  assert.equal(await scrub.inputValue(), "0");
 });
 
 await browser.close();

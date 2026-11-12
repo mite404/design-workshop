@@ -433,3 +433,13 @@ the common back-out ease (y 1.56). The editor follows PRD section 9's look for c
 (dark, smooth curve, crosshair, blurred readout) in plain SVG and CSS, because bklit provides
 charts, not a bezier editor. Rejected: a plot that grows to fit any overshoot, which moves the
 point under the pointer mid-drag; and a list of named eases, a choice Ethan has not asked for.
+
+## ADR-040 - Scrubbing holds the controls' own transitions
+
+2026-11-12 - Accepted. ETH-141. Follows ADR-038 and ADR-039.
+The scrub puts every canvas control with the catalog's hover preview state into it, then pauses
+the CSS transitions the browser starts and sets their time, through the Web Animations API. So
+what Ethan scrubs is the real transition, with the shared duration and easing and each
+control's own properties, not a model of it. Motion values are shared, so one slider scrubs
+every such control at once. Rejected: an animated sample swatch in the inspector, which shows
+the curve but not the controls; and forcing `:hover`, which scripts cannot do.

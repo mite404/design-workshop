@@ -2595,6 +2595,64 @@ const easeEditor = element(
   ),
 );
 
+// The hover scrub (ETH-141): every control in the canvas with a hover preview state is put in
+// it, and the transitions that start are paused at the slider's place along the shared hover.
+const motionScrub = element("input", {
+  id: "wb-motion-scrub",
+  type: "range",
+  min: "0",
+  max: "100",
+  value: "0",
+});
+const scrubAt = element("output", {}, "0%");
+let scrubbed: [Element, string | null][] = []; // each control held in hover, and its own preview
+
+function scrubTo(percent: number): void {
+  const d = doc();
+  if (d === null) return;
+  if (scrubbed.length === 0) {
+    scrubbed = [...d.querySelectorAll(".btn, .field")].map((el) => [
+      el,
+      el.getAttribute("data-preview"),
+    ]);
+    for (const [el] of scrubbed) el.setAttribute("data-preview", "hover");
+  }
+  for (const [el] of scrubbed) {
+    for (const a of el.getAnimations()) {
+      a.pause();
+      a.currentTime = (Number(a.effect?.getComputedTiming().duration) || 0) * (percent / 100);
+    }
+  }
+  scrubAt.textContent = `${percent}%`;
+}
+// Lets every scrubbed control go back to rest, through its own transition, and the slider to 0.
+function endHoverScrub(): void {
+  for (const [el, own] of scrubbed) {
+    if (own === null) el.removeAttribute("data-preview");
+    else el.setAttribute("data-preview", own);
+  }
+  scrubbed = [];
+  motionScrub.value = "0";
+  scrubAt.textContent = "0%";
+}
+motionScrub.addEventListener("input", () => {
+  scrubTo(Number(motionScrub.value));
+});
+motionScrub.addEventListener("pointerup", endHoverScrub);
+motionScrub.addEventListener("blur", endHoverScrub);
+motionScrub.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape") return;
+  event.stopPropagation();
+  endHoverScrub();
+});
+const scrubRow = element(
+  "div",
+  { className: "row scrub-row" },
+  element("label", { htmlFor: motionScrub.id }, "Scrub hover"),
+  motionScrub,
+  scrubAt,
+);
+
 // Keeps the curve and its field on the frame's value, except while one is in hand.
 function trackEase(): void {
   if (easeBefore !== null || easeDrag !== null) return;
@@ -3734,6 +3792,7 @@ document.body.append(
         element("summary", {}, element("h2", {}, "Motion · Both modes")),
         motionField.row,
         easeEditor,
+        scrubRow,
       ),
       colourPanel,
       scalePanel,
