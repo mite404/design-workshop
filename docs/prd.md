@@ -359,6 +359,9 @@ These are Ethan's stated preferences for how the Workbench itself should look an
   - A finished look is folded into the baseline tokens once a designer commits the work to the
     real codebase. That is different from saving the editor's current state, in Live or
     Component mode, which stays in the override file and theme files.
+  - The fold is a separate step outside the Workbench: an agent in the structure lane moves the
+    override values into the baseline tokens when the work goes into the real codebase. The
+    Workbench still commits only the override file (section 6).
   - R14: the shell's templated regions are the title bar, the navigation rail, the drawer and
     the panel ("the most commonly used slots").
   - Theme roles in another app (R16): the Workbench works with apps that match the Template's
@@ -372,10 +375,6 @@ These are Ethan's stated preferences for how the Workbench itself should look an
 - How does a designer learn that a change broke or moved something on a screen, a state or a
   story that is not on the canvas? Not at the press (ADR-026). Ethan, Nov 12: unsolved; it needs
   more QA testing in practice first, so it has no story and no ticket yet.
-- Folding a finished look into the baseline (decided below, Nov 12): which step does the fold?
-  Section 6 says the Workbench never writes the baseline tokens and commits only the override
-  file, so either Check and commit changes, or the fold is a separate step outside the
-  Workbench.
 - R14: what are the title bar's and the panel's templated options, and which region is "the
   panel"? Ethan named the regions on Nov 12; no option is built until he names them.
 
