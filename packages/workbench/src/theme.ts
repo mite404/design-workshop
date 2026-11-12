@@ -124,21 +124,59 @@ export function parseTheme(text: string): Theme | string {
   };
 }
 
-/** The override values that apply `theme`, through the role maps. */
-export function themeValues(theme: Theme): ThemeValue[] {
-  const colours = Object.entries(theme.colours ?? {}).flatMap(([role, modes]) =>
-    has(COLOUR_ROLES, role)
-      ? (["light", "dark"] as const).flatMap((mode) => {
-          const value = modes[mode];
-          return value === undefined
-            ? []
-            : [{ selector: COLOUR_ROOT[mode], name: COLOUR_ROLES[role], value }];
-        })
-      : [],
-  );
-  const type = Object.entries(theme.type ?? {}).flatMap(([role, value]) =>
-    has(TYPE_ROLES, role) ? [{ selector: ":root", name: TYPE_ROLES[role], value }] : [],
-  );
+/**
+ * Where an app's theme roles live: the variable each role sets, and the selectors that hold its
+ * light and dark colours. A role without a name is not set in that app (PRD section 13).
+ */
+export type RoleMap = {
+  colours: Partial<Record<ColourRole, string>>;
+  type: Partial<Record<TypeRole, string>>;
+  light: string;
+  dark: string;
+};
+
+/** The Template's own role map, which an app without one in its config matches exactly. */
+export const TEMPLATE_MAP: RoleMap = {
+  colours: COLOUR_ROLES,
+  type: TYPE_ROLES,
+  light: COLOUR_ROOT.light,
+  dark: COLOUR_ROOT.dark,
+};
+
+/**
+ * An app's role map from its config: `roles` names only the roles the app has (all of the
+ * Template's when absent), and `selectors` its light and dark colour selectors (the Template's
+ * when absent).
+ */
+export function roleMapOf(
+  roles: Record<string, string> | null,
+  selectors: { light: string; dark: string } | null,
+): RoleMap {
+  const pick = <K extends string>(map: Record<K, string>) =>
+    roles === null
+      ? map
+      : Object.fromEntries(Object.entries(roles).filter(([role]) => has(map, role)));
+  return {
+    colours: pick(COLOUR_ROLES),
+    type: pick(TYPE_ROLES),
+    ...(selectors ?? COLOUR_ROOT),
+  };
+}
+
+/** The override values that apply `theme` through role map `map`, skipping roles it lacks. */
+export function themeValues(theme: Theme, map: RoleMap = TEMPLATE_MAP): ThemeValue[] {
+  const colours = Object.entries(theme.colours ?? {}).flatMap(([role, modes]) => {
+    const name = has(COLOUR_ROLES, role) ? map.colours[role] : undefined;
+    if (name === undefined) return [];
+    return (["light", "dark"] as const).flatMap((mode) => {
+      const value = modes[mode];
+      return value === undefined ? [] : [{ selector: map[mode], name, value }];
+    });
+  });
+  const type = Object.entries(theme.type ?? {}).flatMap(([role, value]) => {
+    const name = has(TYPE_ROLES, role) ? map.type[role] : undefined;
+    return name === undefined ? [] : [{ selector: ":root", name, value }];
+  });
   return [...colours, ...type];
 }
 

@@ -64,7 +64,7 @@ const COMMANDS: Record<
   check: {
     counts: [0],
     run: () => {
-      checkValues(readFileSync(files().overrides, "utf8"));
+      checkValues(readFileSync(files().overrides, "utf8"), files().map);
       process.stdout.write("Override file is valid.\n");
     },
   },
@@ -208,9 +208,9 @@ function checkConfigFile(file: string): void {
 }
 
 function edit(selector: string, name: string, value: string | null): void {
-  const { overrides } = files();
+  const { overrides, map } = files();
   const was = parseOverrides(readFileSync(overrides, "utf8")).get(selector)?.get(name) ?? null;
-  const reply = writeValues(overrides, { selector, name, value, was });
+  const reply = writeValues(overrides, { selector, name, value, was }, map);
   if (reply.status !== 200) throw new Error(JSON.stringify(reply.body));
 }
 

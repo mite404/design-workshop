@@ -35,7 +35,7 @@ import { SPACING } from "./spacing.ts";
 import { EASE, parseBezier } from "./motion.ts";
 import { isScale, isType, SCALE, scaleValue, TYPE, typeValue } from "./type.ts";
 import { COLOUR_ROOT, colourTokens, HEX } from "./colour.ts";
-import { parseTheme, type Theme } from "./theme.ts";
+import { parseTheme, roleMapOf, TEMPLATE_MAP, type RoleMap, type Theme } from "./theme.ts";
 import { exportProject, readSources } from "./project.ts";
 import { parseConfig } from "./config.ts";
 
@@ -48,7 +48,7 @@ const FONTS = join(CATALOG, "fonts.css");
 // The files the Workbench reads and writes: the override file, the tokens file its baselines
 // come from (null for a host, which has none, ADR-044), and its theme folders, bundled first;
 // it saves themes to the last.
-type Files = { overrides: string; tokens: string | null; themes: string[] };
+type Files = { overrides: string; tokens: string | null; themes: string[]; map: RoleMap };
 
 /**
  * A host's files: under its `.workbench/` at `root`, and the tokens file its config names, if
@@ -56,17 +56,20 @@ type Files = { overrides: string; tokens: string | null; themes: string[] };
  * @throws When `.workbench/config.json` is missing or refused.
  */
 export function hostFiles(root: string): Files {
-  const { tokens } = parseConfig(readFileSync(join(root, ".workbench", "config.json"), "utf8"));
+  const { tokens, roles, colourSelectors } = parseConfig(
+    readFileSync(join(root, ".workbench", "config.json"), "utf8"),
+  );
   return {
     overrides: join(root, ".workbench", "overrides.css"),
     tokens: tokens === null ? null : join(root, tokens),
     themes: [BUNDLED_THEMES, join(root, ".workbench", "themes")],
+    map: roleMapOf(roles, colourSelectors),
   };
 }
 const PAGE = fileURLToPath(new URL("./page.ts", import.meta.url));
 const ROOT = ":root";
 const COLOURS = colourTokens(readFileSync(TOKENS, "utf8"));
-const COLOUR_NAMES = Object.keys(COLOURS).filter((name) => COLOURS[name]?.editable);
+const COLOUR_NAMES = Object.keys(COLOURS).filter((name) => COLOURS[name]?.editable === true);
 const EDITABLE = [
   "--window-radius",
   "--shell-side",
@@ -135,9 +138,17 @@ type Write = {
 
 // `:root` takes the editable tokens; an element, by a selector of the grammar its function
 // makes, takes gap, the four paddings, a two-dimensional offset and the type properties.
-function namesOf(selector: string): readonly string[] {
-  if (selector === ROOT) return EDITABLE;
-  if (Object.values(COLOUR_ROOT).includes(selector)) return COLOUR_NAMES;
+// The app's role map adds its own names: type roles on `:root`, colour roles in its light and
+// dark selectors, which may be `:root` itself, as shadcn's light one is.
+function namesOf(selector: string, map: RoleMap = TEMPLATE_MAP): readonly string[] {
+  const colours = [...COLOUR_NAMES, ...Object.values(map.colours)];
+  const names = [
+    ...(selector === ROOT ? [...EDITABLE, ...Object.values(map.type)] : []),
+    ...([COLOUR_ROOT.light, COLOUR_ROOT.dark, map.light, map.dark].includes(selector)
+      ? colours
+      : []),
+  ];
+  if (names.length > 0) return [...new Set(names)];
   return isSelector(selector) ? [...SPACING, "translate", ...TYPE] : [];
 }
 // The keyword and motion tokens' checks: the shell's side, left or right only (ADR-041); a
@@ -147,16 +158,17 @@ const ROOT_CHECKS: Record<string, (v: string) => boolean> = {
   "--motion-hover": (v) => MS.test(v),
   [EASE]: (v) => parseBezier(v) !== null,
 };
-function isValue(v: unknown, name: string): v is string | null {
-  if (v === null) return true;
-  if (typeof v !== "string") return false;
-  if (COLOUR_NAMES.includes(name)) return HEX.test(v);
-  if (isType(name)) return typeValue(name, v);
-  if (isScale(name)) return scaleValue(name, v);
-  if (name.startsWith("--font-")) return isFamilyValue(v);
-  const check = ROOT_CHECKS[name];
-  if (check !== undefined) return check(v);
-  return (name === "translate" ? TRANSLATE : PX).test(v);
+// The check a value of `name` must pass: a hex for any colour, the Template's or the app's.
+function checkOf(name: string, map: RoleMap): (v: string) => boolean {
+  if (COLOUR_NAMES.includes(name) || Object.values(map.colours).includes(name))
+    return (v) => HEX.test(v);
+  if (isType(name)) return (v) => typeValue(name, v);
+  if (isScale(name)) return (v) => scaleValue(name, v);
+  if (name.startsWith("--font-")) return isFamilyValue;
+  return ROOT_CHECKS[name] ?? ((v) => (name === "translate" ? TRANSLATE : PX).test(v));
+}
+function isValue(v: unknown, name: string, map: RoleMap): v is string | null {
+  return v === null || (typeof v === "string" && checkOf(name, map)(v));
 }
 const isWas = (v: unknown): v is string | null => v === null || typeof v === "string";
 
@@ -171,18 +183,18 @@ function json(text: string): unknown {
 const field = (input: unknown, key: string): unknown =>
   typeof input === "object" && input !== null ? Reflect.get(input, key) : undefined;
 
-function parseWrite(input: unknown): Write | string {
+function parseWrite(input: unknown, map: RoleMap): Write | string {
   const [selector, name, value, was] = ["selector", "name", "value", "was"].map((key) =>
     field(input, key),
   );
   if (
     typeof selector !== "string" ||
     typeof name !== "string" ||
-    !namesOf(selector).includes(name)
+    !namesOf(selector, map).includes(name)
   ) {
     return `not an editable selector and name: ${JSON.stringify([selector, name])}`;
   }
-  if (!isValue(value, name)) {
+  if (!isValue(value, name, map)) {
     return `not a value ${name} takes: ${JSON.stringify(value)}`;
   }
   if (!isWas(was)) return "was must be a string or null";
@@ -191,13 +203,13 @@ function parseWrite(input: unknown): Write | string {
   return { selector, name, value, was, ...(at === undefined ? {} : { at }) };
 }
 
-function parseRelease(input: unknown): Write[] | string {
+function parseRelease(input: unknown, map: RoleMap): Write[] | string {
   const release = field(input, "changes") ?? input;
   const batch: unknown[] = Array.isArray(release) ? release : [release];
   if (batch.length === 0) return "empty release";
   const writes: Write[] = [];
   for (const item of batch) {
-    const write = parseWrite(item);
+    const write = parseWrite(item, map);
     if (typeof write === "string") return write;
     writes.push(write);
   }
@@ -221,9 +233,9 @@ const foreign = ({ origin, host }: Post): boolean =>
  * and a `was` that is not the value now on disk (409).
  * @throws When the override file cannot be read, parsed or replaced, or Git cannot read HEAD.
  */
-export function writeValue(file: string, request: Post): Reply {
+export function writeValue(file: string, request: Post, map: RoleMap = TEMPLATE_MAP): Reply {
   if (foreign(request)) return FOREIGN;
-  return writeValues(file, json(request.body));
+  return writeValues(file, json(request.body), map);
 }
 
 /**
@@ -231,12 +243,12 @@ export function writeValue(file: string, request: Post): Reply {
  * Refuses invalid input (400) and stale values or revisions (409), writing nothing.
  * @throws When the override file cannot be read, parsed or replaced, or Git cannot read HEAD.
  */
-export function writeValues(file: string, input: unknown): Reply {
+export function writeValues(file: string, input: unknown, map: RoleMap = TEMPLATE_MAP): Reply {
   const head = field(input, "head");
   if (head !== undefined && head !== revision(file)) {
     return { status: 409, body: { error: "the last commit changed; history was cleared" } };
   }
-  const writes = parseRelease(input);
+  const writes = parseRelease(input, map);
   if (typeof writes === "string") return { status: 400, body: { error: writes } };
   let text = readFileSync(file, "utf8");
   const changes: Change[] = [];
@@ -270,16 +282,16 @@ export function writeValues(file: string, input: unknown): Reply {
  * Checks file shape and the route's selector, name and value rules without writing.
  * @throws With the offending line when a block or value is not writable by the Workbench.
  */
-export function checkValues(text: string): void {
+export function checkValues(text: string, map: RoleMap = TEMPLATE_MAP): void {
   const blocks = parseOverrides(text);
   const lines = text.split("\n");
   for (const [selector, values] of blocks) {
     const open = lines.indexOf(`${selector} {`);
-    if (namesOf(selector).length === 0) {
+    if (namesOf(selector, map).length === 0) {
       throw new Error(`override file line ${open + 1}: not an editable selector: ${selector}`);
     }
     for (const [name, value] of values) {
-      const checked = parseWrite({ selector, name, value, was: null });
+      const checked = parseWrite({ selector, name, value, was: null }, map);
       if (typeof checked === "string") {
         const at = lines.indexOf(`  ${name}: ${value};`, open);
         throw new Error(`override file line ${at + 1}: ${checked}`);
@@ -506,10 +518,10 @@ async function reload(server: ViteDevServer, file: string): Promise<void> {
 
 // Each writing endpoint: what it does with a POST, and the file it changes for hot reload.
 type Writes = Record<string, { run: (post: Post) => Reply | Promise<Reply>; file: string }>;
-const writesOf = ({ overrides, themes }: Files): Writes => ({
+const writesOf = ({ overrides, themes, map }: Files): Writes => ({
   "/__workbench/values": {
     run: (post) => {
-      const reply = writeValue(overrides, post);
+      const reply = writeValue(overrides, post, map);
       return reply.status === 200
         ? {
             status: 200,
@@ -526,7 +538,7 @@ const writesOf = ({ overrides, themes }: Files): Writes => ({
 });
 
 // Each reading endpoint and the JSON it answers a GET with.
-const readsOf = ({ overrides, tokens, themes }: Files): Record<string, () => unknown> => ({
+const readsOf = ({ overrides, tokens, themes, map }: Files): Record<string, () => unknown> => ({
   // Runs `storybook index`, so it takes seconds; asynchronously, so the dev server keeps serving.
   "/__workbench/project": exportProject,
   "/__workbench/values": () => ({
@@ -535,6 +547,7 @@ const readsOf = ({ overrides, tokens, themes }: Files): Record<string, () => unk
       tokens === null ? "" : readFileSync(tokens, "utf8"),
     ),
     ...historyStatus(overrides),
+    roleMap: { roles: { ...map.colours, ...map.type }, light: map.light, dark: map.dark },
   }),
   "/__workbench/themes": () => ({ themes: listThemes(themes) }),
   "/__workbench/sources": readSources,

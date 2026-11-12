@@ -8,10 +8,11 @@ import { DRAWER, TREE_EVENT } from "./tree";
 import { COLOUR_ROOT, CONTRAST, contrast, HEX } from "./colour";
 import { checkProject, surfaceOf } from "./contract";
 import {
-  COLOUR_ROLES,
   parseTheme,
+  roleMapOf,
+  TEMPLATE_MAP,
   themeValues,
-  TYPE_ROLES,
+  type RoleMap,
   type Theme,
   type ThemeValue,
 } from "./theme";
@@ -567,6 +568,19 @@ async function load(): Promise<void> {
       name,
       { light: text(prop(t, "light")) ?? "", dark: text(prop(t, "dark")) ?? "" },
     ]),
+  );
+  const map = prop(values, "roleMap");
+  const roles = prop(map, "roles");
+  roleMap = roleMapOf(
+    typeof roles === "object" && roles !== null
+      ? Object.fromEntries(
+          entries(roles).flatMap(([r, n]) => (typeof n === "string" ? [[r, n]] : [])),
+        )
+      : null,
+    {
+      light: text(prop(map, "light")) ?? COLOUR_ROOT.light,
+      dark: text(prop(map, "dark")) ?? COLOUR_ROOT.dark,
+    },
   );
   buildColours(prop(values, "colours"));
   reset.disabled = savedRadius() === null;
@@ -3622,6 +3636,8 @@ function finishColour(accept: boolean): void {
 
 // Each colour name's baseline from tokens.css, per mode, as the plugin reads it.
 let colourBaseline = new Map<string, { light: string; dark: string }>();
+// Where the app's theme roles live (PRD section 13), as the plugin reads its config.
+let roleMap: RoleMap = TEMPLATE_MAP;
 
 // `value` with each `var(--x)` replaced by x's baseline in `mode`, so the canvas-free colour
 // probe can read it. Depth-limited: tokens.css has no cycles, but a cycle must not hang.
@@ -3639,8 +3655,17 @@ let rootBaseline = new Map<string, string>();
 
 // The value `name` has in `selector` per the override file, else its tokens.css baseline, in the
 // form a theme saves. Read from data, not the canvas, which lags each write until it reloads.
+// The colour mode `selector` holds `name` in, or undefined when it is not a colour there: the
+// Template's mode selectors or the app's, which may be `:root` itself.
+function colourMode(selector: string, name: string): "light" | "dark" | undefined {
+  if (!colourBaseline.has(name) && !Object.values(roleMap.colours).includes(name)) return undefined;
+  return (["light", "dark"] as const).find(
+    (m) => COLOUR_ROOT[m] === selector || roleMap[m] === selector,
+  );
+}
+
 function effectiveValue(selector: string, name: string): string | null {
-  const mode = (["light", "dark"] as const).find((m) => COLOUR_ROOT[m] === selector);
+  const mode = colourMode(selector, name);
   if (mode === undefined) {
     const value = was(selector, name) ?? rootBaseline.get(name) ?? null;
     return value !== null && name.startsWith("--font-") ? familyOf(value) : value;
@@ -3656,18 +3681,18 @@ const inEffect = (values: ThemeValue[]): boolean[] =>
 
 // The part of `theme` a kit applies: its colour roles or its type roles.
 const kindValues = (theme: Theme, kind: ThemeKind): ThemeValue[] =>
-  themeValues(kind === "colours" ? { ...theme, type: {} } : { ...theme, colours: {} });
+  themeValues(kind === "colours" ? { ...theme, type: {} } : { ...theme, colours: {} }, roleMap);
 const ofKind = (theme: Theme, kind: ThemeKind): boolean =>
   Object.keys(theme[kind] ?? {}).length > 0;
 
 // Every colour role's value now, light and dark.
 function currentColours(): NonNullable<Theme["colours"]> {
   return Object.fromEntries(
-    Object.entries(COLOUR_ROLES).map(([role, name]) => [
+    Object.entries(roleMap.colours).map(([role, name]) => [
       role,
       {
-        light: effectiveValue(COLOUR_ROOT.light, name) ?? undefined,
-        dark: effectiveValue(COLOUR_ROOT.dark, name) ?? undefined,
+        light: effectiveValue(roleMap.light, name) ?? undefined,
+        dark: effectiveValue(roleMap.dark, name) ?? undefined,
       },
     ]),
   );
@@ -3676,7 +3701,7 @@ function currentColours(): NonNullable<Theme["colours"]> {
 // Every type role's value now.
 const currentType = (): NonNullable<Theme["type"]> =>
   Object.fromEntries(
-    Object.entries(TYPE_ROLES).flatMap(([role, name]) => {
+    Object.entries(roleMap.type).flatMap(([role, name]) => {
       const value = effectiveValue(ROOT, name);
       return value === null ? [] : [[role, value]];
     }),
@@ -4034,7 +4059,7 @@ for (const kit of kits) {
     const values = kindValues(theme, kit.kind);
     const modes = new Set(values.map((v) => v.selector));
     for (const mode of ["light", "dark"] as const) {
-      if (modes.size === 1 && modes.has(COLOUR_ROOT[mode]) && canvasMode.value !== mode) {
+      if (modes.size === 1 && modes.has(roleMap[mode]) && canvasMode.value !== mode) {
         canvasMode.value = mode;
         canvasMode.dispatchEvent(new Event("change"));
       }

@@ -37,14 +37,15 @@ Each ticket is one commit, verified and pushed before the next starts.
    role.
 2. **Apply themes through the map** (ETH-157). `.workbench/config.json` holds the role map and
    the dark-mode selector. Loading, saving and unloading themes, and the server's write checks,
-   use them.
+   use them. Config fields: `roles` (role to variable, only the roles the app has) and
+   `colourSelectors` (`{ light, dark }`); without them an app is taken to match the Template.
 3. **`init` writes the map** (ETH-158). It detects roles with the name table and asks about
    each unmatched one. With `--yes` it lists them, so an agent can adapt the app.
 
 ## Completion checklist
 
 - [x] In this repo, `pnpm workbench roles` matches every role by its Template name (ETH-156).
-- [ ] A shadcn-style scratch app loads a palette, and its own variables change (ETH-157).
+- [x] A shadcn-style scratch app loads a palette, and its own variables change (ETH-157).
 - [ ] `init` in that app writes the detected map and asks only about the unmatched roles
       (ETH-158).
 - [ ] Gates pass at each commit; each ticket is Done in Linear with its commit linked.

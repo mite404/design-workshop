@@ -62,3 +62,16 @@ test("a folder that is not there is named, and failures sort by path the same wa
   ]);
   expect(checkConfig(text, exists).map((f) => `${f.code} ${f.path}`)).toEqual(first);
 });
+
+test("roles name known roles with variables; colour selectors are one rule each", () => {
+  expect(
+    codes({ roles: { page: "--background" }, colourSelectors: { light: ":root", dark: ".dark" } }),
+  ).toEqual([]);
+  expect(codes({ roles: { pgae: "--background", ink: "background" } })).toEqual([
+    "bad-role roles/ink",
+    "bad-role roles/pgae",
+  ]);
+  expect(codes({ colourSelectors: { light: ":root", dark: ".dark } :root {" } })).toEqual([
+    "bad-colour-selectors colourSelectors",
+  ]);
+});

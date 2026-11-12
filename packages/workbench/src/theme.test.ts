@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { expect, test } from "vitest";
 import { COLOUR_ROOT } from "./colour";
-import { matchRoles, parseTheme, themeValues, type Theme } from "./theme";
+import { matchRoles, parseTheme, roleMapOf, themeValues, type Theme } from "./theme";
 
 const bundled = (name: string) =>
   readFileSync(new URL(`../themes/${name}.theme.json`, import.meta.url), "utf8");
@@ -74,4 +74,22 @@ test("roles match Template names first, then shadcn names, and list the rest", (
   // --accent-foreground is not --accent, and accent has no shadcn name.
   expect(byRole.get("hover")?.name).toBeNull();
   expect(byRole.get("accent")?.name).toBeNull();
+});
+
+test("a theme applies through an app's role map and skips roles the app lacks", () => {
+  const map = roleMapOf(
+    { page: "--background", "text-font": "--font-sans" },
+    { light: ":root", dark: ".dark" },
+  );
+  const parsed = ok(
+    theme({
+      colours: { page: { light: "#ffffff", dark: "#101010" }, accent: { light: "#8839ef" } },
+      type: { "text-font": '"Inter", sans-serif', "display-font": '"Lora", serif' },
+    }),
+  );
+  expect(themeValues(parsed, map)).toEqual([
+    { selector: ":root", name: "--background", value: "#ffffff" },
+    { selector: ".dark", name: "--background", value: "#101010" },
+    { selector: ":root", name: "--font-sans", value: '"Inter", sans-serif' },
+  ]);
 });
