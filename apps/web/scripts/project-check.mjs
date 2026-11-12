@@ -16,6 +16,7 @@ const status = () =>
     cwd: ROOT,
     encoding: "utf8",
   });
+/** @type {string} */
 const before = status();
 const browser = await launch();
 const { page, errors } = await workbenchPage(browser, { acceptDownloads: true });
@@ -207,7 +208,7 @@ try {
         .waitFor();
       const changed = status()
         .split("\n")
-        .filter((l) => l !== "" && before.includes(l) !== true);
+        .filter((l) => l !== "" && !before.includes(l));
       assert.deepEqual(changed, [" M .workbench/overrides.css"]);
       await page.screenshot({ path: path.join(out, "loaded.png") });
       await page.getByRole("button", { name: "Undo", exact: true }).click();

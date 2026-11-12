@@ -16,7 +16,9 @@ const saved = path.join(themes, `${NAME}.theme.json`);
 const written = [NAME, "pairing-check", "pairing-wide"].map((n) =>
   path.join(themes, `${n}.theme.json`),
 );
+/** @type {string} */
 const starting = readFileSync(file, "utf8");
+/** @type {boolean} */
 const hadThemes = existsSync(themes);
 // What git reports under .workbench/, so step 1.4 sees only what this run wrote there.
 const workbenchStatus = () =>
@@ -26,6 +28,7 @@ const workbenchStatus = () =>
   })
     .split("\n")
     .filter((l) => l.includes(".workbench/"));
+/** @type {string[]} */
 const startingStatus = workbenchStatus();
 const browser = await launch();
 const { page, errors } = await workbenchPage(browser);
@@ -148,7 +151,7 @@ try {
 
   await step("1.4 saving writes only that file", () => {
     assert.equal(disk(), starting, "override file untouched");
-    const changed = workbenchStatus().filter((l) => startingStatus.includes(l) !== true);
+    const changed = workbenchStatus().filter((l) => !startingStatus.includes(l));
     assert.deepEqual(changed.toSorted(), [
       "?? .workbench/themes/pairing-wide.theme.json",
       `?? .workbench/themes/${NAME}.theme.json`,
@@ -166,7 +169,7 @@ try {
   await step("2.2 loading touches only colour values", () => {
     const added = disk()
       .split("\n")
-      .filter((line) => starting.includes(line) !== true && line.trim().startsWith("--"));
+      .filter((line) => !starting.includes(line) && line.trim().startsWith("--"));
     const names = new Set(Object.values(COLOUR_ROLES));
     for (const line of added) assert.ok(names.has(line.trim().split(":")[0]), line);
   });
@@ -242,7 +245,7 @@ try {
     const names = new Set(Object.values(TYPE_ROLES));
     const added = disk()
       .split("\n")
-      .filter((line) => starting.includes(line) !== true && line.trim().startsWith("--"));
+      .filter((line) => !starting.includes(line) && line.trim().startsWith("--"));
     assert.ok(added.length > 0);
     for (const line of added) assert.ok(names.has(line.trim().split(":")[0]), line);
     assert.equal(disk().split("{").length, starting.split("{").length, "no new selector block");
@@ -267,7 +270,7 @@ try {
 } finally {
   writeFileSync(file, starting);
   for (const f of written) rmSync(f, { force: true });
-  if (hadThemes !== true) rmSync(themes, { recursive: true, force: true });
+  if (!hadThemes) rmSync(themes, { recursive: true, force: true });
   await browser.close();
 }
 report(results, errors, out);
