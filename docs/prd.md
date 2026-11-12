@@ -275,7 +275,7 @@ Each block is usable and testable before the next starts.
 | 7 | **Canvas handles and readouts** (R13) | Dragging replaces the inspector for layout work |
 | 8 | **Layout and assets** (R14, R15) | The shell can be rearranged by hand, without asking an agent |
 | 9 | **Themes, motion** (R16, R17) | A look carries into the next project in minutes, and motion is tuned by eye |
-| 10 | **Install: `design-workshop init`** (section 16). Plan: [INIT CLI story](feature/init-cli/init-cli-story.md) | The Workbench sets itself up at another app's root, asking only what the contract cannot detect |
+| 10 | **Install: `design-workshop init`** (section 16). Plan: [INIT CLI story](done/init-cli/init-cli-story.md) | The Workbench sets itself up at another app's root, asking only what the contract cannot detect |
 | 11 | **Proxy and `design-workshop dev`** (section 16) | One path serves the Workbench in front of any host's dev server, replacing the Vite plugin |
 | 12 | **Component chat history** (R19) | A component's design conversation is still there when Ethan comes back to it |
 
@@ -391,8 +391,8 @@ Ethan, Nov 12 2026: the Workbench should install into an existing repo, the way 
 rather than every project cloning and reshaping itself to fit this one. A theme is the
 Workbench's own JSON file, a translation layer between standard primitives and their colours,
 fonts and hover colours. Neither writes the host app's code. This section is the plan. Built:
-`design-workshop init` ([INIT CLI story](feature/init-cli/init-cli-story.md), ADR-042) and
-`design-workshop dev` ([proxy story](feature/proxy/proxy-story.md), ADR-043 to ADR-045), which
+`design-workshop init` ([INIT CLI story](done/init-cli/init-cli-story.md), ADR-042) and
+`design-workshop dev` ([proxy story](done/proxy/proxy-story.md), ADR-043 to ADR-045), which
 serves this repo too. Plan detail:
 [portability plan](research/project-portability-plan.md).
 

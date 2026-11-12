@@ -14,7 +14,7 @@ linear: ETH-120
 
 ## Why this matters
 
-PRD R16: swap a palette without losing other changes. Story: `docs/feature/themes/themes-story.md`,
+PRD R16: swap a palette without losing other changes. Story: `docs/done/themes/themes-story.md`,
 feature 2. Plan: `docs/research/project-portability-plan.md`.
 
 ## Current state

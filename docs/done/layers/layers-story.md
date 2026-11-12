@@ -61,7 +61,7 @@ of the left Layers panel earlier drafts had.
 ## Not in this story
 
 - Opening a component in Component mode from its row. That is the
-  [component-stories story](../../feature/component-stories/component-stories-story.md), which
+  [component-stories story](../../done/component-stories/component-stories-story.md), which
   adds it to the click in criterion 10.
 - A Layers panel in the Workbench beside the canvas (ADR-025).
 - The Assets list: components, colours, type styles, looks (PRD R15, R16).

@@ -15,7 +15,7 @@ linear: ETH-126
 ## Why this matters
 
 A file that does not fit this Template must be refused with reasons, before any change. Story:
-`docs/feature/project-files/project-files-story.md`, feature 2. Plan:
+`docs/done/project-files/project-files-story.md`, feature 2. Plan:
 `docs/research/project-portability-plan.md`.
 
 ## Current state

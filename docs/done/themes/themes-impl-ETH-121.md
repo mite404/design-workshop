@@ -15,7 +15,7 @@ linear: ETH-121
 ## Why this matters
 
 PRD R16 names "font pairing 2" as the example of a preset. Story:
-`docs/feature/themes/themes-story.md`, feature 3. Plan: `docs/research/project-portability-plan.md`.
+`docs/done/themes/themes-story.md`, feature 3. Plan: `docs/research/project-portability-plan.md`.
 
 ## Current state
 

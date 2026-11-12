@@ -15,7 +15,7 @@ linear: ETH-124
 ## Why this matters
 
 A manifest written by hand would drift from the Template it describes. Story:
-`docs/feature/project-contract/project-contract-story.md`, feature 3. Plan:
+`docs/done/project-contract/project-contract-story.md`, feature 3. Plan:
 `docs/research/project-portability-plan.md`.
 
 ## Current state

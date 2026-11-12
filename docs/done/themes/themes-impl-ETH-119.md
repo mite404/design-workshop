@@ -16,7 +16,7 @@ linear: ETH-119
 ## Why this matters
 
 PRD R16. A tuned palette lives only in the override file today, so the next project redoes it.
-Story: `docs/feature/themes/themes-story.md`, feature 1. Plan:
+Story: `docs/done/themes/themes-story.md`, feature 1. Plan:
 `docs/research/project-portability-plan.md`.
 
 ## Current state

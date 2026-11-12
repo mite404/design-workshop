@@ -16,7 +16,7 @@ linear: ETH-122
 ## Why this matters
 
 Project files cannot be accepted or refused consistently without one definition of a valid project.
-Story: `docs/feature/project-contract/project-contract-story.md`, feature 1. Plan:
+Story: `docs/done/project-contract/project-contract-story.md`, feature 1. Plan:
 `docs/research/project-portability-plan.md`.
 
 ## Current state

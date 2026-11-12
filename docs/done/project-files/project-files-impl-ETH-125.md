@@ -15,7 +15,7 @@ linear: ETH-125
 ## Why this matters
 
 PRD section 11: start the next project from a previous look in minutes. Story:
-`docs/feature/project-files/project-files-story.md`, feature 1. Plan:
+`docs/done/project-files/project-files-story.md`, feature 1. Plan:
 `docs/research/project-portability-plan.md`.
 
 ## Current state

@@ -29,4 +29,4 @@ Each ticket is one commit, verified and pushed before the next starts.
       again after a reload (ETH-148).
 - [x] The scratch app's edits land in its `.workbench/overrides.css`, nothing else (ETH-149).
 - [x] `pnpm test:browser` passes against the proxy; the plugin is gone (ETH-150).
-- [ ] Gates pass at each commit; each ticket is Done in Linear with its commit linked.
+- [x] Gates pass at each commit; each ticket is Done in Linear with its commit linked.

@@ -6,7 +6,7 @@ import path from "node:path";
 import { COLOUR_ROLES, TYPE_ROLES } from "../../../packages/workbench/src/theme.ts";
 import { arg, launch, report, ROOT, workbenchPage } from "./harness.mjs";
 
-// Theme story (docs/feature/themes/themes-story.md) criteria, one step each.
+// Theme story (docs/done/themes/themes-story.md) criteria, one step each.
 const base = arg("--base", "http://localhost:5173");
 const out = arg("--out", path.join(ROOT, ".artifacts/theme"));
 const file = path.join(ROOT, ".workbench/overrides.css");

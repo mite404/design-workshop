@@ -16,7 +16,7 @@ linear: ETH-128
 ## Why this matters
 
 The migration must be judged by numbers (PRD section 15 names Recharts in a render slowdown). Story:
-`docs/feature/bklit-charts/bklit-charts-story.md`, feature 1. Plan:
+`docs/done/bklit-charts/bklit-charts-story.md`, feature 1. Plan:
 `docs/research/project-portability-plan.md`.
 
 ## Current state

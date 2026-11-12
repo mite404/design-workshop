@@ -459,7 +459,7 @@ order of regions, the unlimited layout Ethan ruled out.
 
 ## ADR-042 - `init` asks only what the contract cannot derive
 
-2026-11-12 - Accepted. INIT CLI plan (`docs/feature/init-cli/init-cli-story.md`). PRD section 16.
+2026-11-12 - Accepted. INIT CLI plan (`docs/done/init-cli/init-cli-story.md`). PRD section 16.
 Installing the Workbench in a host needs a few facts this repo hardcodes: which folders to scan for
 `data-slot` and `data-wb`, and where Storybook's config lives. They go in `.workbench/config.json`,
 format `design-workshop/config` version 1, beside the override file, checked by a pure validator

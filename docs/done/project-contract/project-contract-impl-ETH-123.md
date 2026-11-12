@@ -16,7 +16,7 @@ linear: ETH-123
 ## Why this matters
 
 The contract requires a story per required component; the audit found ComposeBox, UserTurn and
-AgentTurn have none. Story: `docs/feature/project-contract/project-contract-story.md`, feature 2.
+AgentTurn have none. Story: `docs/done/project-contract/project-contract-story.md`, feature 2.
 Plan: `docs/research/project-portability-plan.md`.
 
 ## Current state

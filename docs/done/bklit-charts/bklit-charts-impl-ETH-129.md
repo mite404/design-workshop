@@ -14,7 +14,7 @@ linear: ETH-129
 
 ## Why this matters
 
-PRD section 12: charts come from bklit. Story: `docs/feature/bklit-charts/bklit-charts-story.md`,
+PRD section 12: charts come from bklit. Story: `docs/done/bklit-charts/bklit-charts-story.md`,
 feature 2. Plan: `docs/research/project-portability-plan.md`.
 
 ## Current state

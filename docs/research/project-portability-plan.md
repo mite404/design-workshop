@@ -74,7 +74,7 @@ The app shell is real DOM: `data-slot="window"` (`apps/web/src/shell/window.tsx`
 
 ### Phase 1. Themes: a look becomes a swappable unit (PRD R16)
 
-Story: [themes-story.md](../feature/themes/themes-story.md).
+Story: [themes-story.md](../done/themes/themes-story.md).
 
 1. Save the current colours as a palette.
 2. Load and unload a palette.
@@ -82,7 +82,7 @@ Story: [themes-story.md](../feature/themes/themes-story.md).
 
 ### Phase 2. The project contract: one deterministic definition of a valid project
 
-Story: [project-contract-story.md](../feature/project-contract/project-contract-story.md).
+Story: [project-contract-story.md](../done/project-contract/project-contract-story.md).
 
 1. The contract and its validator.
 2. Every required component has a story.
@@ -90,7 +90,7 @@ Story: [project-contract-story.md](../feature/project-contract/project-contract-
 
 ### Phase 3. Project files: carry a look between projects (PRD section 11, third measure)
 
-Story: [project-files-story.md](../feature/project-files/project-files-story.md).
+Story: [project-files-story.md](../done/project-files/project-files-story.md).
 
 1. Export a project file.
 2. Check a project file before loading it.
@@ -98,7 +98,7 @@ Story: [project-files-story.md](../feature/project-files/project-files-story.md)
 
 ### Phase 4. Charts on bklit: one chart library, measured (PRD section 12)
 
-Story: [bklit-charts-story.md](../feature/bklit-charts/bklit-charts-story.md). Independent of
+Story: [bklit-charts-story.md](../done/bklit-charts/bklit-charts-story.md). Independent of
 phases 1 to 3, so it can go in whatever order serves the work.
 
 1. Measure the charts as they are.
@@ -108,14 +108,14 @@ phases 1 to 3, so it can go in whatever order serves the work.
 ### Phase 5. Install into any repo, like Storybook (PRD section 16)
 
 Item 3 is built (ADR-042). Item 1 has a story and tickets:
-[proxy story](../feature/proxy/proxy-story.md) (ADR-043).
+[proxy story](../done/proxy/proxy-story.md) (ADR-043).
 Candidate features, in order:
 
 1. A same-origin proxy in front of this repo's own dev server that serves the Workbench and
    injects the override stylesheet, replacing the Vite plugin path.
 2. `.workbench/` as the home of the override file and themes.
 3. `design-workshop init` in a scratch Vite app: planned in the
-   [INIT CLI story](../feature/init-cli/init-cli-story.md), built before item 1.
+   [INIT CLI story](../done/init-cli/init-cli-story.md), built before item 1.
 4. The same in a scratch Next app, proving the proxy is framework-neutral.
 
 ### Later, not planned
@@ -161,7 +161,7 @@ that end in its completion check. The phases above are tickets inside these.
    and was not kept.
 10. **Editor completion.** Reread the PRD after each commit; next smallest gap. Check per gap.
 11. **Create implementation plan for INIT CLI tool.** Plan and checklist:
-    [INIT CLI story](../feature/init-cli/init-cli-story.md) (ADR-042). Runs before the proxy,
+    [INIT CLI story](../done/init-cli/init-cli-story.md) (ADR-042). Runs before the proxy,
     which it does not need. Check: the story's completion checklist.
 12. **Ethan's Nov 12 feedback, before the rest of the proxy.** In order, after ETH-148:
     ETH-151, the radius readout hidden by the toolbar; ETH-152, a resizable inspector with a

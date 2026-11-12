@@ -6,7 +6,7 @@ import { validate } from "../../../packages/workbench/src/contract.ts";
 import { parseOverrides } from "../../../packages/workbench/src/overrides.ts";
 import { arg, launch, report, ROOT, workbenchPage } from "./harness.mjs";
 
-// Project files story (docs/feature/project-files/project-files-story.md), features 1 to 3, and
+// Project files story (docs/done/project-files/project-files-story.md), features 1 to 3, and
 // the contract's semantic surfaces (ETH-132).
 const base = arg("--base", "http://localhost:5173");
 const out = arg("--out", path.join(ROOT, ".artifacts/project"));

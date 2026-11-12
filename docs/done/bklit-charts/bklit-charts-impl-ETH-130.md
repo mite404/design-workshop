@@ -15,7 +15,7 @@ linear: ETH-130
 ## Why this matters
 
 One chart library, one way to draw a chart. Story:
-`docs/feature/bklit-charts/bklit-charts-story.md`, feature 3. Plan:
+`docs/done/bklit-charts/bklit-charts-story.md`, feature 3. Plan:
 `docs/research/project-portability-plan.md`.
 
 ## Current state

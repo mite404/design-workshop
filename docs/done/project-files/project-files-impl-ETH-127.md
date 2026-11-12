@@ -15,7 +15,7 @@ linear: ETH-127
 ## Why this matters
 
 Loading is the last step of starting a project from an old look. Story:
-`docs/feature/project-files/project-files-story.md`, feature 3. Plan:
+`docs/done/project-files/project-files-story.md`, feature 3. Plan:
 `docs/research/project-portability-plan.md`.
 
 ## Current state
