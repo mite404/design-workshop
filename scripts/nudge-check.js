@@ -36,9 +36,15 @@ const selects = async (locator) =>
   );
 // The handles and fields follow the selection on the next frame; a click before it lands on a
 // stale handle.
-const frameDone = () => page.evaluate(() => new Promise((done) => requestAnimationFrame(done)));
+const frameDone = () =>
+  page.evaluate(
+    () =>
+      new Promise((done) => {
+        requestAnimationFrame(done);
+      }),
+  );
 const select = async (locator) => {
-  for (let i = 0; i < 30 && !(await selects(locator)); i++) {
+  for (let i = 0; i < 30 && (await selects(locator)) !== true; i++) {
     await frameDone();
     const at = await center(locator);
     await page.mouse.click(at.x, at.y);
@@ -63,7 +69,7 @@ const expectOffset = async (x, y) => {
     );
     if (
       (saved[selector]?.translate ?? null) === value &&
-      (await heading.evaluate((el) => el.style.translate === ""))
+      (await heading.evaluate((el) => el.style.translate === "")) === true
     )
       break;
     await page.waitForTimeout(50);
@@ -108,10 +114,10 @@ try {
   await page.locator(".tool").click();
   await frame.locator("[data-slot=demo-controls], section.card.state").first().waitFor();
   const welcome = frame.locator("[data-slot=welcome]");
-  if (await welcome.count())
+  if ((await welcome.count()) > 0)
     await welcome.getByRole("button", { name: "Live mode", exact: true }).click();
   const toolbar = frame.getByRole("toolbar", { name: "Scripted demo" });
-  if (await toolbar.count()) {
+  if ((await toolbar.count()) > 0) {
     await toolbar.getByRole("button", { name: "Fast forward, 2x" }).click();
     await toolbar.getByRole("button", { name: "Play", exact: true }).click();
     await frame
@@ -167,10 +173,12 @@ try {
     const p = el.parentElement;
     const b = p.getBoundingClientRect();
     const s = getComputedStyle(p);
+    // oxlint-disable unicorn/prefer-number-coercion -- "1px" needs parseFloat; Number gives NaN
     return {
       right: b.right - parseFloat(s.borderRightWidth),
       bottom: b.bottom - parseFloat(s.borderBottomWidth),
     };
+    // oxlint-enable unicorn/prefer-number-coercion
   });
   assert.ok(bounded.x + bounded.width <= parent.right + 0.01);
   assert.ok(bounded.y + bounded.height <= parent.bottom + 0.01);
