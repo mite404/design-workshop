@@ -1,5 +1,13 @@
 import { expect, test } from "vitest";
-import { historyDirection, move, push, readChanges, readHistory, type History } from "./history";
+import {
+  historyDirection,
+  move,
+  push,
+  readChanges,
+  readHistory,
+  replaceLook,
+  type History,
+} from "./history";
 
 test("releases stay grouped, undo reaches the start, and a new edit drops redo", () => {
   const first = [{ selector: ":root", name: "--window-radius", before: null, after: "18px" }];
@@ -46,3 +54,20 @@ test.each([
     expect(historyDirection({ key, metaKey, ctrlKey, altKey, shiftKey })).toBe(direction);
   },
 );
+
+const look = (o: Record<string, Record<string, string>>) =>
+  new Map(Object.entries(o).map(([s, r]) => [s, new Map(Object.entries(r))]));
+
+test("loading a look removes what it lacks, keeps what matches and sets the rest", () => {
+  const from = look({
+    ":root": { "--a": "1px", "--b": "2px" },
+    "[data-slot=card]": { gap: "4px" },
+  });
+  const to = look({ ":root": { "--b": "2px", "--c": "3px" }, "[data-slot=card]": { gap: "8px" } });
+  expect(replaceLook(from, to)).toEqual([
+    { selector: ":root", name: "--a", before: "1px", after: null },
+    { selector: ":root", name: "--c", before: null, after: "3px" },
+    { selector: "[data-slot=card]", name: "gap", before: "4px", after: "8px" },
+  ]);
+  expect(replaceLook(to, to)).toEqual([]);
+});

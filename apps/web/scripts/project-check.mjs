@@ -6,7 +6,7 @@ import { validate } from "../../../packages/workbench/src/contract.ts";
 import { parseOverrides } from "../../../packages/workbench/src/overrides.ts";
 import { arg, launch, report, ROOT, workbenchPage } from "./harness.mjs";
 
-// Project files story (docs/feature/project-files/project-files-story.md), features 1 and 2.
+// Project files story (docs/feature/project-files/project-files-story.md), features 1 to 3.
 const base = arg("--base", "http://localhost:5173");
 const out = arg("--out", path.join(ROOT, ".artifacts/project"));
 const status = () =>
@@ -154,6 +154,67 @@ try {
   await step("2.1 checking writes nothing", () => {
     assert.equal(readFileSync(overrides, "utf8"), startingOverrides);
   });
+
+  const dialog = page.getByRole("dialog", { name: "Project file" });
+  const loadButton = dialog.getByRole("button", { name: "Load", exact: true });
+  await step("3.1 a file that fails the check cannot be loaded", async () => {
+    await uiList(fixtures.slot);
+    assert.ok(await loadButton.isDisabled());
+    await page.getByRole("button", { name: "Close", exact: true }).click();
+    assert.equal(readFileSync(overrides, "utf8"), startingOverrides);
+  });
+
+  await step(
+    "3.2-3.4 loading writes the file's look as one undo step, listing unmatched",
+    async () => {
+      const look = path.join(out, "look.project.json");
+      const lookOverrides = {
+        ":root": { "--window-radius": "23px" },
+        '[data-wb="NoSuchPart"]': { gap: "3px" },
+      };
+      writeFileSync(look, JSON.stringify({ ...project, overrides: lookOverrides }));
+      await uiList(look);
+      assert.ok(await loadButton.isEnabled());
+      await loadButton.click();
+      await page.getByText("Loaded look.project.json.").waitFor();
+      const written = Object.fromEntries(
+        [...parseOverrides(readFileSync(overrides, "utf8"))].map(([sel, rule]) => [
+          sel,
+          Object.fromEntries(rule),
+        ]),
+      );
+      assert.deepEqual(written, lookOverrides);
+      await page
+        .frameLocator("iframe")
+        .locator("html")
+        .evaluate(
+          (html) =>
+            new Promise((resolve, reject) => {
+              const end = Date.now() + 5000;
+              const poll = () =>
+                getComputedStyle(html).getPropertyValue("--window-radius").trim() === "23px"
+                  ? resolve()
+                  : Date.now() > end
+                    ? reject(new Error("canvas did not take on the loaded radius"))
+                    : requestAnimationFrame(poll);
+              poll();
+            }),
+        );
+      await page
+        .locator(".unmatched")
+        .getByText('[data-wb="NoSuchPart"]', { exact: true })
+        .waitFor();
+      const changed = status()
+        .split("\n")
+        .filter((l) => l && !before.includes(l));
+      assert.deepEqual(changed, [" M packages/catalog/src/overrides.css"]);
+      await page.screenshot({ path: path.join(out, "loaded.png") });
+      await page.getByRole("button", { name: "Undo", exact: true }).click();
+      await page.waitForFunction(() => document.querySelectorAll(".unmatched li").length === 0);
+      assert.equal(readFileSync(overrides, "utf8"), startingOverrides);
+      assert.equal(status(), before);
+    },
+  );
 } finally {
   await browser.close();
 }

@@ -9,6 +9,7 @@ The CLI edits allowed values offline. Colour controls edit light and dark tokens
 - CLI writes hot reload while an open inspector refuses unseen conflicting edits.
 - Project export: the Workbench's Export and `pnpm workbench export`, which write nothing.
 - Project check: Open shows a file's checklist; `pnpm workbench check-project <file>` prints it.
+- Project load: Load, enabled only on a passing check, writes the file's overrides as one undo.
 - Themes: save the colours as a theme file, refuse a taken name, apply a theme as one undo step.
 
 ## How to get to it (user POV)

@@ -311,6 +311,11 @@ surfaces. Failures sort by code-unit order, not `localeCompare`, so no machine l
 the list. A test pins the validator's only import to its contract data. A project file
 (`design-workshop/project`, version 1) is that manifest plus the override file's values by
 selector; export refuses a manifest with failures and writes nothing in the repo.
+Loading (ETH-127) is enabled only on an empty checklist. It replaces the override values with
+the file's as one release through the existing values route: removals of what the file lacks,
+then its values, so one undo restores the old look and the route's `was` check refuses a file
+changed underneath. Rejected: a dedicated load route that rewrites the file, which would bypass
+history, conflict checks and per-value validation.
 
 ## ADR-030 - Storybook is pinned to exactly 10.6.0
 

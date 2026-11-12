@@ -21,6 +21,7 @@ import {
   push,
   readChanges,
   readHistory,
+  replaceLook,
   type Change,
   type History,
 } from "./history";
@@ -257,13 +258,22 @@ const projectList = element("ul", {
 });
 const projectVerdict = element("p", { className: "commit-note", role: "status" });
 const projectClose = element("button", { type: "button", className: "history-button" }, "Close");
+const projectLoad = element(
+  "button",
+  {
+    type: "button",
+    className: "check-commit",
+    title: "Replace the override values with this file's",
+  },
+  "Load",
+);
 const projectDialog = element(
   "dialog",
   { className: "commit-dialog", ariaLabel: "Project file" },
   element("h2", {}, "Project file"),
   projectVerdict,
   projectList,
-  element("div", { className: "commit-actions" }, projectClose),
+  element("div", { className: "commit-actions" }, projectClose, projectLoad),
 );
 const commitStatus = element("pre", { className: "commit-status", role: "status" });
 const commitClose = element("button", { type: "button", className: "history-button" }, "Close");
@@ -308,6 +318,7 @@ let bodyPress: BodyPress | null = null;
 let pointer = { x: -1, y: -1 }; // in the canvas's coordinates
 let unmatchedKey = "";
 let queue = Promise.resolve();
+let projectLook: { name: string; overrides: Map<string, Map<string, string>> } | null = null;
 const HISTORY_KEY = "workbench-history";
 const stored = readHistory(sessionStorage.getItem(HISTORY_KEY));
 let history: History = stored?.history ?? { steps: [], cursor: 0 };
@@ -3582,8 +3593,27 @@ projectFile.addEventListener("change", () => {
   projectFile.value = "";
   if (file === undefined) return;
   void (async () => {
-    const items = checkProject(await file.text());
+    const source = await file.text();
+    const items = checkProject(source);
     const failed = items.filter((i) => i.failure !== undefined).length;
+    const data: unknown = failed === 0 ? JSON.parse(source) : null;
+    projectLook =
+      data === null
+        ? null
+        : {
+            name: file.name,
+            overrides: new Map(
+              entries(prop(data, "overrides")).map(
+                ([selector, rule]): [string, Map<string, string>] => [
+                  selector,
+                  new Map(
+                    entries(rule).flatMap(([n, v]) => (typeof v === "string" ? [[n, v]] : [])),
+                  ),
+                ],
+              ),
+            ),
+          };
+    projectLoad.disabled = projectLook === null;
     projectVerdict.textContent =
       failed === 0
         ? `${file.name} fits this Template.`
@@ -3609,6 +3639,26 @@ projectFile.addEventListener("change", () => {
   })();
 });
 projectClose.addEventListener("click", () => projectDialog.close());
+// Loads a checked file as one release through the save path, so one undo restores the old look
+// (ETH-127). Values whose selectors match nothing stay listed by trackUnmatched (ADR-012).
+projectLoad.addEventListener("click", () => {
+  const look = projectLook;
+  if (look === null) return;
+  projectDialog.close();
+  enqueue(async () => {
+    await load();
+    const changes = replaceLook(files, look.overrides);
+    if (changes.length === 0) {
+      showMessage(`${look.name} is already the current look.`);
+      return;
+    }
+    if (!(await writeChanges(changes))) return;
+    settleChanges(changes);
+    storeHistory();
+    await load();
+    showMessage(`Loaded ${look.name}.`);
+  });
+});
 undo.addEventListener("click", () => replay(-1));
 redo.addEventListener("click", () => replay(1));
 checkCommit.addEventListener("click", () => enqueue(runCommit));

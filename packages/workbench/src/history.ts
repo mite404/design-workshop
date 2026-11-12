@@ -42,6 +42,26 @@ export function push(history: History, changes: Change[]): History {
     : { steps: [...history.steps.slice(0, history.cursor), step], cursor: history.cursor + 1 };
 }
 
+type Look = Map<string, Map<string, string>>; // selector → property → value
+
+/** The one release that turns override values `from` into `to`: removals first, then values. */
+export function replaceLook(from: Look, to: Look): Change[] {
+  const removals = [...from].flatMap(([selector, rule]) =>
+    [...rule]
+      .filter(([name]) => !to.get(selector)?.has(name))
+      .map(([name, before]) => ({ selector, name, before, after: null })),
+  );
+  const values = [...to].flatMap(([selector, rule]) =>
+    [...rule].map(([name, after]) => ({
+      selector,
+      name,
+      before: from.get(selector)?.get(name) ?? null,
+      after,
+    })),
+  );
+  return [...removals, ...values].filter((c) => c.before !== c.after);
+}
+
 /** Moves the cursor only after a successful replay. */
 export function move(history: History, direction: -1 | 1): History {
   return {
