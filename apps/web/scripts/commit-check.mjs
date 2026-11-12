@@ -75,7 +75,7 @@ async function disposableCommit() {
   const folder = mkdtempSync(path.join(tmpdir(), "workbench-browser-"));
   const clone = path.join(folder, "repo");
   const sourceHead = execFileSync("git", ["rev-parse", "HEAD"], { cwd: ROOT, encoding: "utf8" });
-  const sourceFile = path.join(ROOT, "packages/catalog/src/overrides.css");
+  const sourceFile = path.join(ROOT, ".workbench/overrides.css");
   const sourceBytes = readFileSync(sourceFile, "utf8");
   let server;
   const stop = () => {
@@ -161,7 +161,7 @@ if (process.argv.includes("--commit") && process.env.WORKBENCH_COMMIT_CLONE !== 
 
 const base = arg("--base", "http://localhost:5173");
 const out = arg("--out", path.join(ROOT, ".artifacts/commit"));
-const file = path.join(ROOT, "packages/catalog/src/overrides.css");
+const file = path.join(ROOT, ".workbench/overrides.css");
 const starting = readFileSync(file, "utf8");
 const head = execFileSync("git", ["rev-parse", "HEAD"], { cwd: ROOT, encoding: "utf8" }).trim();
 const browser = await launch();
@@ -321,9 +321,9 @@ try {
         cwd: ROOT,
         encoding: "utf8",
       }).trim(),
-      "packages/catalog/src/overrides.css",
+      ".workbench/overrides.css",
     );
-    const committed = execFileSync("git", ["show", "HEAD:packages/catalog/src/overrides.css"], {
+    const committed = execFileSync("git", ["show", "HEAD:.workbench/overrides.css"], {
       cwd: ROOT,
       encoding: "utf8",
     });

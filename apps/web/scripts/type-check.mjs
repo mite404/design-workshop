@@ -19,7 +19,7 @@ import { arg, launch, report, ROOT, workbenchPage } from "./harness.mjs";
 
 const base = arg("--base", "http://localhost:5173");
 const out = arg("--out", path.join(ROOT, ".artifacts/type"));
-const OVERRIDES = path.join(ROOT, "packages/catalog/src/overrides.css");
+const OVERRIDES = path.join(ROOT, ".workbench/overrides.css");
 const EMPTY =
   "/* Written by the Workbench. One design value per line. Do not edit by hand. */\n:root {\n}\n";
 mkdirSync(out, { recursive: true });
@@ -149,10 +149,7 @@ await step("Up in Size moves one step live; the list picks a larger step", async
   await expectType(["font-size: var(--text-lg)"], "font-size", "20px");
   await expectControl("font-size", "20");
   assert.equal(await page.locator("#wb-font-size + .unit").textContent(), "lg");
-  assert.deepEqual(
-    changed(),
-    sorted([...new Set([...before, "packages/catalog/src/overrides.css"])]),
-  );
+  assert.deepEqual(changed(), sorted([...new Set([...before, ".workbench/overrides.css"])]));
 });
 
 await step("typing 15 saves pixels and marks the size off the scale", async () => {
@@ -352,10 +349,7 @@ await step("Enter picks the font and saves it; the styles follow it", async () =
   assert.equal(await family.textContent(), "Newsreader Variable");
   const styles = await control("style").locator("option").allTextContents();
   assert.ok(styles.includes("ExtraLight") && !styles.includes("Thin"), styles.join());
-  assert.deepEqual(
-    changed(),
-    sorted([...new Set([...before, "packages/catalog/src/overrides.css"])]),
-  );
+  assert.deepEqual(changed(), sorted([...new Set([...before, ".workbench/overrides.css"])]));
 });
 
 await step("reset puts the heading's own font back", async () => {
@@ -572,10 +566,7 @@ await step("Up three times in paragraph spacing adds 6px", async () => {
   await page.waitForTimeout(200);
   await page.screenshot({ path: `${out}/15-basics-applied.png` });
   await para.screenshot({ path: `${out}/16-paragraph-applied.png` });
-  assert.deepEqual(
-    changed(),
-    sorted([...new Set([...before, "packages/catalog/src/overrides.css"])]),
-  );
+  assert.deepEqual(changed(), sorted([...new Set([...before, ".workbench/overrides.css"])]));
 });
 await step("Escape closes the popover, keeps the selection, and focus returns", async () => {
   await inBasics("Justify").focus();

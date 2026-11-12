@@ -4,7 +4,7 @@ import type { Box } from "./radius";
 import { selectorFor, type Step } from "./selector";
 import type { Offset, Spacing } from "./spacing";
 
-const OVERRIDES = "/catalog/src/overrides.css";
+const OVERRIDES = "/.workbench/overrides.css";
 
 /** The requested app URL, the single demo chat by default, or `/` for an unsafe target. */
 export function canvasPath(search: string): string {

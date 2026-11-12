@@ -21,8 +21,7 @@
     "./threadShare": "./src/threadShare.ts",
     "./transcript": "./src/transcript.ts",
     "./tokens.css": "./src/tokens.css",
-    "./fonts.css": "./src/fonts.css",
-    "./overrides.css": "./src/overrides.css"
+    "./fonts.css": "./src/fonts.css"
   },
   "scripts": {
     "test": "vitest run",

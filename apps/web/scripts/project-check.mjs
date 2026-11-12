@@ -66,9 +66,7 @@ try {
     assert.equal(project.format, "design-workshop/project");
     assert.equal(project.version, 1);
     assert.equal(project.manifest.storybook.version, "10.6.0");
-    const saved = parseOverrides(
-      readFileSync(path.join(ROOT, "packages/catalog/src/overrides.css"), "utf8"),
-    );
+    const saved = parseOverrides(readFileSync(path.join(ROOT, ".workbench/overrides.css"), "utf8"));
     assert.deepEqual(
       project.overrides,
       Object.fromEntries([...saved].map(([s, values]) => [s, Object.fromEntries(values)])),
@@ -82,7 +80,7 @@ try {
   await step("1.3 exporting writes nothing in the repo", () => {
     assert.equal(status(), before);
   });
-  const overrides = path.join(ROOT, "packages/catalog/src/overrides.css");
+  const overrides = path.join(ROOT, ".workbench/overrides.css");
   const startingOverrides = readFileSync(overrides, "utf8");
   const uiList = async (file) => {
     await page.locator('input[type="file"][aria-label="Project file"]').setInputFiles(file);
@@ -208,7 +206,7 @@ try {
       const changed = status()
         .split("\n")
         .filter((l) => l && !before.includes(l));
-      assert.deepEqual(changed, [" M packages/catalog/src/overrides.css"]);
+      assert.deepEqual(changed, [" M .workbench/overrides.css"]);
       await page.screenshot({ path: path.join(out, "loaded.png") });
       await page.getByRole("button", { name: "Undo", exact: true }).click();
       await page.waitForFunction(() => document.querySelectorAll(".unmatched li").length === 0);

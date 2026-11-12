@@ -225,9 +225,7 @@ try {
     ].every((n) => getComputedStyle(n).paddingLeft === "38px"),
   );
   assert.ok(
-    readFileSync(`${ROOT}/packages/catalog/src/overrides.css`, "utf8").includes(
-      '[data-wb="CatalogCard"] {',
-    ),
+    readFileSync(`${ROOT}/.workbench/overrides.css`, "utf8").includes('[data-wb="CatalogCard"] {'),
     "one shared rule is saved",
   );
   console.log("ok root padding reaches repeated instances and root cannot nudge");
@@ -339,7 +337,7 @@ try {
   );
   await page.locator(".unmatched").getByText('[data-wb="CatalogCard"]', { exact: true }).waitFor();
   assert.ok(
-    readFileSync(`${ROOT}/packages/catalog/src/overrides.css`, "utf8").includes("24px"),
+    readFileSync(`${ROOT}/.workbench/overrides.css`, "utf8").includes("24px"),
     "unmatched values stay saved",
   );
   await page.locator(".unmatched button").click();

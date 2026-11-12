@@ -104,7 +104,7 @@ try {
       { timeout: 10000 },
     );
     assert.ok(
-      readFileSync(`${ROOT}/packages/catalog/src/overrides.css`, "utf8").includes(
+      readFileSync(`${ROOT}/.workbench/overrides.css`, "utf8").includes(
         '[data-wb="CatalogCard"] {',
       ),
     );

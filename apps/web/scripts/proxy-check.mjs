@@ -12,7 +12,7 @@ import { arg, launch, report, ROOT, workbenchPage } from "./harness.mjs";
 const out = path.resolve(arg("--out", path.join(ROOT, ".artifacts/proxy")));
 const APP_PORT = 5191;
 const PROXY_PORT = 5181;
-const TEMPLATE_OVERRIDES = path.join(ROOT, "packages/catalog/src/overrides.css");
+const TEMPLATE_OVERRIDES = path.join(ROOT, ".workbench/overrides.css");
 const { createServer } = await import(
   createRequire(path.join(ROOT, "packages/workbench/package.json")).resolve("vite")
 );

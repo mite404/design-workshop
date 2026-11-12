@@ -223,11 +223,11 @@ describe("the faint ink (ADR-129)", () => {
 // They take their corners from --btn-radius, so no two of them can drift apart again.
 const BUTTON_SELECTORS = [".btn", ".dictation-footer button:not(.btn)", ".awaiting-action"];
 
-// Baseline rules only; saved overrides belong to the designer, not this token contract.
+// Baseline rules only; saved overrides live in .workbench/, outside this token contract.
 function rules(): { selector: string; body: string }[] {
   const dir = new URL(".", import.meta.url);
   return readdirSync(dir)
-    .filter((file) => file.endsWith(".css") && file !== "overrides.css")
+    .filter((file) => file.endsWith(".css"))
     .flatMap((file) => {
       const css = readFileSync(new URL(file, dir), "utf8").replaceAll(/\/\*[\s\S]*?\*\//g, "");
       return [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map((match) => ({
@@ -257,7 +257,7 @@ describe("the button radius", () => {
 const TEMPLATE_CSS = ["../../../apps/web/src/", "./", "../../ui/src/"].flatMap((folder) => {
   const dir = new URL(folder, import.meta.url);
   return readdirSync(dir, { recursive: true, encoding: "utf8" })
-    .filter((file) => file.endsWith(".css") && !file.endsWith("overrides.css"))
+    .filter((file) => file.endsWith(".css"))
     .map((file) => ({ file: folder + file, css: readFileSync(new URL(file, dir), "utf8") }));
 });
 

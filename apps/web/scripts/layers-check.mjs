@@ -6,7 +6,7 @@ import { arg, launch, ROOT, workbenchPage } from "./harness.mjs";
 
 const base = arg("--base", "http://localhost:5173");
 const out = arg("--out", path.join(ROOT, ".artifacts/layers"));
-const overrides = path.join(ROOT, "packages/catalog/src/overrides.css");
+const overrides = path.join(ROOT, ".workbench/overrides.css");
 const starting = readFileSync(overrides, "utf8");
 mkdirSync(out, { recursive: true });
 const browser = await launch();

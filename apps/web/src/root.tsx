@@ -15,7 +15,7 @@ import "./index.css";
 // The Google fonts the Workbench copied into the repo (ADR-021), before the values that name them.
 import "@yaklabs/catalog/fonts.css";
 // After index.css and outside every layer, so a saved value beats the app's own (ADR-002).
-import "@yaklabs/catalog/overrides.css";
+import "../../../.workbench/overrides.css";
 import type { Route } from "./+types/root";
 import { CHROME_BOOT } from "./chrome";
 import { Providers } from "./providers";

@@ -7,7 +7,7 @@ import { arg, launch, ROOT } from "../apps/web/scripts/harness.mjs";
 
 const base = arg("--base", "http://localhost:5173");
 const out = arg("--out", path.join(ROOT, ".artifacts/nudge"));
-const file = path.join(ROOT, "packages/catalog/src/overrides.css");
+const file = path.join(ROOT, ".workbench/overrides.css");
 const original = readFileSync(file, "utf8");
 const browser = await launch();
 const context = await browser.newContext({

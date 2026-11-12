@@ -9,7 +9,7 @@ import { arg, launch, report, ROOT, workbenchPage } from "./harness.mjs";
 // Theme story (docs/feature/themes/themes-story.md) criteria, one step each.
 const base = arg("--base", "http://localhost:5173");
 const out = arg("--out", path.join(ROOT, ".artifacts/theme"));
-const file = path.join(ROOT, "packages/catalog/src/overrides.css");
+const file = path.join(ROOT, ".workbench/overrides.css");
 const themes = path.join(ROOT, ".workbench/themes");
 const NAME = "theme-check";
 const saved = path.join(themes, `${NAME}.theme.json`);

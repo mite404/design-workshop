@@ -1,4 +1,4 @@
-// The override file (packages/catalog/src/overrides.css, ADR-002): the one stylesheet the
+// The override file (.workbench/overrides.css, ADR-002, ADR-045): the one stylesheet the
 // Workbench writes. It writes the shape itself, so it reads it back line by line and refuses any
 // other shape rather than repairing it: comment lines, then a `:root` block, then one block per
 // selector, each value on its own line with a two-space indent.

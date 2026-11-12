@@ -12,7 +12,7 @@ import { manifestOf, validate, type Failure } from "./contract.ts";
 import { parseOverrides } from "./overrides.ts";
 
 const REPO = fileURLToPath(new URL("../../../", import.meta.url));
-const OVERRIDES = join(REPO, "packages/catalog/src/overrides.css");
+const OVERRIDES = join(REPO, ".workbench/overrides.css");
 
 // Each `data-<attribute>` value the source folders declare: [value, root-relative path, line].
 async function declared(

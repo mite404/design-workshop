@@ -7,7 +7,7 @@ import { arg, launch, ROOT, workbenchPage } from "./harness.mjs";
 const base = arg("--base", "http://localhost:5173");
 const storybook = arg("--storybook", "");
 const out = arg("--out", path.join(ROOT, ".artifacts/colour"));
-const file = path.join(ROOT, "packages/catalog/src/overrides.css");
+const file = path.join(ROOT, ".workbench/overrides.css");
 const starting = readFileSync(file, "utf8");
 const browser = await launch();
 const { page, context, errors } = await workbenchPage(browser);

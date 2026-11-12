@@ -2,7 +2,7 @@
 import type { Decorator, Preview } from "@storybook/react-vite";
 import { trackInputModality } from "@yaklabs/catalog/inputModality";
 import fontsCss from "@yaklabs/catalog/fonts.css?inline";
-import overridesCss from "@yaklabs/catalog/overrides.css?inline";
+import overridesCss from "../../../.workbench/overrides.css?inline";
 import catalogCss from "@yaklabs/catalog/tokens.css?inline";
 import appCss from "./app-cascade.css?inline";
 import chartsCss from "./charts.css?inline";

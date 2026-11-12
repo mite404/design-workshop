@@ -13,12 +13,12 @@ The designer changes values in the Workbench. You change structure. Neither does
 
 | Lane | Who | Changes |
 | --- | --- | --- |
-| Values | The designer, in the Workbench | `packages/catalog/src/overrides.css` only |
+| Values | The designer, in the Workbench | `.workbench/overrides.css` only |
 | Structure | You | Components, stories, new regions, new design values |
 
 ## Never touch the override file
 
-`packages/catalog/src/overrides.css` is the Workbench's alone (ADR-002). It holds the designer's
+`.workbench/overrides.css` is the Workbench's alone (ADR-002). It holds the designer's
 look, one value per line. Do not edit, reformat or "clean up" it, and do not stage it in your
 commits. To change a value the designer already set, ask them, or use the command line below
 when they ask you to.

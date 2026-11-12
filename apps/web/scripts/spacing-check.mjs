@@ -15,7 +15,7 @@ import { arg, launch, report, ROOT, workbenchPage } from "./harness.mjs";
 const base = arg("--base", "http://localhost:5173");
 const out = arg("--out", path.join(ROOT, ".artifacts/spacing"));
 const video = arg("--video", undefined);
-const OVERRIDES = path.join(ROOT, "packages/catalog/src/overrides.css");
+const OVERRIDES = path.join(ROOT, ".workbench/overrides.css");
 const EMPTY =
   "/* Written by the Workbench. One design value per line. Do not edit by hand. */\n:root {\n}\n";
 mkdirSync(out, { recursive: true });

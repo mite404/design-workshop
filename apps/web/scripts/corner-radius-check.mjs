@@ -13,7 +13,7 @@ import { arg, launch, report, ROOT, workbenchPage } from "./harness.mjs";
 
 const base = arg("--base", "http://localhost:5173");
 const out = arg("--out", path.join(ROOT, ".artifacts/corner-radius"));
-const OVERRIDES = path.join(ROOT, "packages/catalog/src/overrides.css");
+const OVERRIDES = path.join(ROOT, ".workbench/overrides.css");
 const EMPTY =
   "/* Written by the Workbench. One design value per line. Do not edit by hand. */\n:root {\n}\n";
 const saved = (px) => EMPTY.replace(":root {\n", `:root {\n  --window-radius: ${px}px;\n`);

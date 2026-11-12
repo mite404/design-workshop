@@ -9,7 +9,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, expect, test } from "vitest";
 import { writeValues } from "./plugin.ts";
@@ -29,7 +29,18 @@ function checkout() {
     join(catalog, "tokens.css"),
   );
   writeFileSync(join(root, "package.json"), '{"type":"module"}\n');
-  const file = join(catalog, "overrides.css");
+  mkdirSync(join(root, ".workbench"));
+  writeFileSync(
+    join(root, ".workbench/config.json"),
+    JSON.stringify({
+      format: "design-workshop/config",
+      version: 1,
+      sources: ["packages"],
+      storybook: null,
+      tokens: "packages/catalog/src/tokens.css",
+    }),
+  );
+  const file = join(root, ".workbench/overrides.css");
   writeFileSync(file, EMPTY);
   return {
     file,
@@ -83,7 +94,8 @@ test("commands list, save and remove values without a server or changes to other
   );
   expect(run("unset", selector, "gap").status).toBe(0);
   expect(readFileSync(file, "utf8")).toBe(EMPTY);
-  expect(readdirSync(catalog).toSorted()).toEqual(["overrides.css", "tokens.css"]);
+  expect(readdirSync(catalog)).toEqual(["tokens.css"]);
+  expect(readdirSync(dirname(file)).toSorted()).toEqual(["config.json", "overrides.css"]);
 });
 
 test("refused arguments and values exit nonzero and write nothing", () => {

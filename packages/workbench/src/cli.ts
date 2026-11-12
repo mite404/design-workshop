@@ -3,16 +3,15 @@ import { existsSync, readFileSync, statSync } from "node:fs";
 import { createInterface } from "node:readline";
 import { parseArgs } from "node:util";
 import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 import { checkConfig } from "./config.ts";
 import { checkProject, validate } from "./contract.ts";
 import { inspect, install } from "./init.ts";
 import { exportProject, readManifest } from "./project.ts";
-import { checkValues, listValues, writeValues } from "./plugin.ts";
+import { checkValues, hostFiles, listValues, writeValues } from "./plugin.ts";
 import { parseOverrides } from "./overrides.ts";
 
-const OVERRIDES = fileURLToPath(new URL("../../catalog/src/overrides.css", import.meta.url));
-const TOKENS = fileURLToPath(new URL("../../catalog/src/tokens.css", import.meta.url));
+// The files of the host the command runs in (ADR-045), read once a command needs them.
+const files = () => hostFiles(process.cwd());
 const USAGE = `Usage: pnpm workbench list [--json]
        pnpm workbench manifest
        pnpm workbench export > look.project.json
@@ -54,7 +53,7 @@ const COMMANDS: Record<
   check: {
     counts: [0],
     run: () => {
-      checkValues(readFileSync(OVERRIDES, "utf8"));
+      checkValues(readFileSync(files().overrides, "utf8"));
       process.stdout.write("Override file is valid.\n");
     },
   },
@@ -62,8 +61,9 @@ const COMMANDS: Record<
 
 function list(args: string[]): void {
   if (args.length === 1 && args[0] !== "--json") throw new Error(USAGE);
-  const text = readFileSync(OVERRIDES, "utf8");
-  const rows = listValues(text, readFileSync(TOKENS, "utf8"));
+  const { overrides, tokens } = files();
+  const text = readFileSync(overrides, "utf8");
+  const rows = listValues(text, tokens === null ? "" : readFileSync(tokens, "utf8"));
   process.stdout.write(
     args[0] === "--json"
       ? `${JSON.stringify(rows, null, 2)}\n`
@@ -184,8 +184,9 @@ function checkConfigFile(file: string): void {
 }
 
 function edit(selector: string, name: string, value: string | null): void {
-  const was = parseOverrides(readFileSync(OVERRIDES, "utf8")).get(selector)?.get(name) ?? null;
-  const reply = writeValues(OVERRIDES, { selector, name, value, was });
+  const { overrides } = files();
+  const was = parseOverrides(readFileSync(overrides, "utf8")).get(selector)?.get(name) ?? null;
+  const reply = writeValues(overrides, { selector, name, value, was });
   if (reply.status !== 200) throw new Error(JSON.stringify(reply.body));
 }
 

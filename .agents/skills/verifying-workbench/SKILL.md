@@ -51,7 +51,7 @@ git diff HEAD --binary | git -C "$RUN" apply --allow-empty
 git ls-files --others --exclude-standard -z | tar --null -T - -cf - | tar -xf - -C "$RUN"
 git rev-parse HEAD > "$OUT/source-head.txt"
 git diff HEAD --binary > "$OUT/source.patch"
-cp "$RUN/packages/catalog/src/overrides.css" "$OUT/candidate-overrides.css"
+cp "$RUN/.workbench/overrides.css" "$OUT/candidate-overrides.css"
 pnpm --dir "$RUN" install --offline --frozen-lockfile
 ```
 
@@ -99,7 +99,7 @@ For the baseline browser suite only, initialize the **disposable copy's** overri
 ```sh
 printf '%s\n' '/* Written by the Workbench. One design value per line. Do not edit by hand. */' \
   ':root {' '}' \
-  > "$RUN/packages/catalog/src/overrides.css"
+  > "$RUN/.workbench/overrides.css"
 ```
 
 For a radius change, for example, run from `$RUN`:

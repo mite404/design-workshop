@@ -40,6 +40,7 @@ import { exportProject, readSources } from "./project.ts";
 import { parseConfig } from "./config.ts";
 
 const BUNDLED_THEMES = fileURLToPath(new URL("../themes/", import.meta.url));
+const REPO = fileURLToPath(new URL("../../../", import.meta.url));
 const TOKENS = fileURLToPath(new URL("../../catalog/src/tokens.css", import.meta.url));
 const CATALOG = fileURLToPath(new URL("../../catalog/src/", import.meta.url));
 const FONTS = join(CATALOG, "fonts.css");
@@ -48,13 +49,6 @@ const FONTS = join(CATALOG, "fonts.css");
 // come from (null for a host, which has none, ADR-044), and its theme folders, bundled first;
 // it saves themes to the last.
 type Files = { overrides: string; tokens: string | null; themes: string[] };
-
-// This repo's Template: its catalog's files and its saved themes (ADR-028).
-const TEMPLATE: Files = {
-  overrides: fileURLToPath(new URL("../../catalog/src/overrides.css", import.meta.url)),
-  tokens: TOKENS,
-  themes: [BUNDLED_THEMES, fileURLToPath(new URL("../../../.workbench/themes/", import.meta.url))],
-};
 
 /**
  * A host's files: under its `.workbench/` at `root`, and the tokens file its config names, if
@@ -672,10 +666,10 @@ async function route(
 }
 
 /**
- * The Workbench page and its endpoints, on the dev server only, editing `files`: this repo's
- * Template by default, or a host's from `hostFiles`.
+ * The Workbench page and its endpoints, on the dev server only, editing `files`: this repo's own
+ * by default, or another host's from `hostFiles`.
  */
-export function workbench(files = TEMPLATE): Plugin {
+export function workbench(files = hostFiles(REPO)): Plugin {
   let watcher: ReturnType<typeof watch> | undefined;
   const active = { controller: null as AbortController | null, file: files.overrides };
   const routes = { reads: readsOf(files), writes: writesOf(files), file: files.overrides };
