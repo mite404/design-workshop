@@ -471,3 +471,16 @@ value `--shell-side` (ADR-041), so `init` seeds it rather than storing it. The p
 the features that read them. Rejected: an interactive questionnaire for every field, which turns
 detected facts into opinions; and agent interpretation of a host's layout, which the contract
 rules out.
+
+## ADR-043 - The proxy runs the Workbench's own Vite under `/__workbench/`
+
+2026-11-12 - Accepted. ETH-147. PRD section 16, block 11.
+The Workbench page is TypeScript that Vite compiles, and today the host's Vite does it through
+the plugin. A host on Next or Webpack has no Vite, so `design-workshop dev` starts the
+Workbench's own Vite in middleware mode. Its base is `/__workbench/`, so its module, client and
+websocket paths never collide with a host that also runs Vite (`/@vite/client`, `/@fs/`). The
+server answers the Workbench endpoints and its Vite under that prefix and forwards every other
+request and websocket upgrade to the host, so the app and the Workbench share one origin and the
+canvas can read the frame. The endpoint code is shared with the plugin until the plugin goes
+(ETH-150). Rejected: a plugin per framework, several adapters to keep in step; and a prebuilt
+Workbench bundle, a build step for every change while the Workbench is developed.

@@ -107,7 +107,8 @@ phases 1 to 3, so it can go in whatever order serves the work.
 
 ### Phase 5. Install into any repo, like Storybook (PRD section 16)
 
-Item 3 has a story and tickets (ADR-042); the rest wait their turn.
+Item 3 is built (ADR-042). Item 1 has a story and tickets:
+[proxy story](../feature/proxy/proxy-story.md) (ADR-043).
 Candidate features, in order:
 
 1. A same-origin proxy in front of this repo's own dev server that serves the Workbench and
