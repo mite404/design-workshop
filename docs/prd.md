@@ -400,9 +400,12 @@ in it is built yet. Plan detail: [portability plan](research/project-portability
   roles the contract can find. Recognising primitives under other names stays a later
   capability.
 
-### Open decisions for Ethan
+### Decided (Ethan, Nov 12 2026)
 
-- The package name, and whether and where it is published. Publishing is a release and needs
-  his approval.
-- Whether a host is asked to add `data-wb` names to its components during `init`.
-- Whether the proxy replaces the Vite plugin in this repo too, or this repo keeps the plugin.
+- Storybook stays at the version installed in the orb, 10.6.0. Project files pin exactly that.
+- Nothing is published to npm. The package is named `design-workshop`, with commands
+  `design-workshop init` and `design-workshop dev`, used from a local path or workspace.
+- `init` never edits the host's components. A host without `data-wb` names gets slots and roles
+  only; adding names is the host's own change, made by an agent in the structure lane.
+- The proxy replaces the Vite plugin in this repo too once it passes the same browser checks,
+  so there is one path, not two.

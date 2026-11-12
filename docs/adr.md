@@ -271,3 +271,51 @@ looked at, and it waited for a second press. A check is worth having only for sc
 and stories that are not on the canvas. That is an open question in PRD section 14, with no
 story and no ticket. The cost: something an edit moved below the fold of the current screen is
 not reported.
+
+## ADR-027 - A Live-mode tree pick selects in place
+
+2026-11-12 - Accepted. Commits `81be6da`, `583cc1b`. Amends ETH-115 criterion 1.
+(Ethan: the drawer should list components as groups, and a Live-mode click should scroll a
+component into view only if it is not visible and highlight it.) The tree opens with nested
+components folded. In Live mode a row selects its component without switching modes, scrolling
+only when it is not fully on screen; the pick is still recorded, so Component mode focuses it.
+Rejected: switching to Component mode on every row click, which made Live mode unreachable from
+the drawer.
+
+## ADR-028 - Theme files are role-keyed JSON, applied through the override file
+
+2026-11-12 - Accepted. Amends ADR-002 and R10.
+(Ethan: "a proprietary JSON or YAML for the app as a translation layer between common
+primitive components and reskinning the colors and fonts and hover colors. this wouldn't be
+overwriting the code of the app".) A theme names roles (surfaces, inks, accent, hover, focus,
+fonts, type scale), not CSS variables. A role map turns roles into a host's design values.
+Applying a theme writes those values into the override file through the normal save path, so
+undo, Discard and Check and commit are unchanged and the override file stays the only live
+look. The Workbench may also create new files in `.workbench/themes/`. JSON over YAML: both
+the browser and Node parse it with no dependency. Rejected: CSS theme files, which tie a theme
+to one app's variable names.
+
+## ADR-029 - A project is accepted by a JSON contract and a pure validator, never an agent
+
+2026-11-12 - Accepted.
+(Ethan: checking a project file "must be entirely programmatic and deterministic. No agent or
+LLM participates".) `contract.json` lists required slots, components, stories and surfaces per
+shell kind. `validate` returns every failure as a stable code and path, sorted; an empty list
+is acceptance. Agents may help write the contract during development, never interpret a file
+being loaded.
+
+## ADR-030 - Storybook is pinned to exactly 10.6.0
+
+2026-11-12 - Accepted. (Ethan: "stay at the version of storybook that's installed".)
+Project files record the Storybook version and are refused unless it equals 10.6.0. No ranges
+and no support for older versions. Upgrading is one deliberate change to the pin, the lockfile
+and the contract together.
+
+## ADR-031 - Install into a host repo through a same-origin proxy
+
+2026-11-12 - Accepted, not built. PRD section 16.
+(Ethan: install "like how storybook works".) One unpublished package, `design-workshop`, with
+`init` and `dev`. Its server sits in front of the host's dev server on one origin, serves the
+Workbench, forwards Storybook and adds the override stylesheet to HTML, so the host's code is
+never edited. It writes only under `.workbench/`. Rejected: one plugin per framework. Nothing
+is published to npm.
