@@ -331,3 +331,22 @@ These are Ethan's stated preferences for how the Workbench itself should look an
   what fills a slot becomes a design value the override file can hold, or the drop writes a
   request for an agent in the structure lane (section 7), or R15 is dropped. Undecided, so R15
   gets no story until it is.
+
+## 15. OPEN ISSUES
+
+### Four Storybook/browser flakes: deferred, revisit later (2026-11-12)
+
+- **Both thinking timeouts reproduce under artificial CPU slowdown.** Profiling shows repeated
+  input rendering spending time in React and Recharts. That explains these synthetic timeouts,
+  but does not establish what slowed the original run.
+- **Timed-out story plays continue into subsequent tests.** I captured an old play clicking its
+  disclosure 2.5 seconds after Highlight Grab started. However, further runs with this overlap,
+  including the complete thread story file, still passed Highlight Grab and produced none of its
+  original 172 act warnings.
+
+The original missing `data-grab` attribute and component-tree timeout remain unreproduced. I have
+not retained a speculative fix, increased timeouts, added retries, or suppressed warnings.
+
+After removing all probes, `pnpm --filter storybook test` passed **144 tests across 28 files in
+42.76s**. `git diff --check` also passed. The earlier dependency-prebundle change remains local and
+uncommitted; it is not a proven four-flake fix.
