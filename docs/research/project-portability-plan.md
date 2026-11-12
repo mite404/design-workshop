@@ -163,3 +163,8 @@ that end in its completion check. The phases above are tickets inside these.
 11. **Create implementation plan for INIT CLI tool.** Plan and checklist:
     [INIT CLI story](../feature/init-cli/init-cli-story.md) (ADR-042). Runs before the proxy,
     which it does not need. Check: the story's completion checklist.
+12. **Ethan's Nov 12 feedback, before the rest of the proxy.** In order, after ETH-148:
+    ETH-151, the radius readout hidden by the toolbar; ETH-152, a resizable inspector with a
+    maximum width; ETH-153, the selection's values in fixed sections (size, padding, spacing,
+    position, border, typography) that never appear, disappear or reorder. Then ETH-149 and
+    ETH-150 finish the proxy.
