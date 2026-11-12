@@ -610,6 +610,23 @@ body {
 
 .note,
 .commit-note,
+.surface-note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: -4px 0 10px;
+  color: var(--wb-soft-ink);
+  font-size: 11px;
+}
+
+.surface-swatch {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.15);
+}
+
 .mode-note,
 .offset-note,
 .type-note {

@@ -6,7 +6,8 @@ import { validate } from "../../../packages/workbench/src/contract.ts";
 import { parseOverrides } from "../../../packages/workbench/src/overrides.ts";
 import { arg, launch, report, ROOT, workbenchPage } from "./harness.mjs";
 
-// Project files story (docs/feature/project-files/project-files-story.md), features 1 to 3.
+// Project files story (docs/feature/project-files/project-files-story.md), features 1 to 3, and
+// the contract's semantic surfaces (ETH-132).
 const base = arg("--base", "http://localhost:5173");
 const out = arg("--out", path.join(ROOT, ".artifacts/project"));
 const status = () =>
@@ -215,6 +216,37 @@ try {
       assert.equal(status(), before);
     },
   );
+
+  // Clicks `locator` until the Workbench selects exactly it, as a designer drills in.
+  const select = async (locator) => {
+    const selected = () =>
+      page
+        .locator(".selector")
+        .textContent()
+        .then((sel) =>
+          locator.evaluate((el, s) => s !== "" && el.ownerDocument.querySelector(s) === el, sel),
+        );
+    for (let i = 0; i < 20 && !(await selected()); i++) {
+      const b = await locator.boundingBox();
+      await page.mouse.click(b.x + 30, b.y + b.height / 2);
+      await page.waitForTimeout(50);
+    }
+    assert.ok(await selected(), "clicks select the element");
+  };
+  const app = page.frameLocator("iframe");
+  const surface = page.locator("details[aria-label=Selection] .surface-note");
+  await step("7 selecting the compose box names the compose surface and its colour", async () => {
+    await select(app.locator('[data-wb="ComposeBox"]').first());
+    assert.match(await surface.textContent(), /^Compose surface · --compose-bg$/);
+    assert.match(await surface.locator(".surface-swatch").getAttribute("title"), /^#[0-9a-f]{6}$/);
+    await page
+      .locator("details[aria-label=Selection]")
+      .screenshot({ path: path.join(out, "surface-compose.png") });
+  });
+  await step("7 a part inside the thread names the thread surface", async () => {
+    await select(app.locator('[data-wb="AgentTurn"] p').last());
+    assert.match(await surface.textContent(), /^Thread surface · --paper$/);
+  });
 } finally {
   await browser.close();
 }

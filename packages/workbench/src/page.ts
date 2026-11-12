@@ -6,7 +6,7 @@
 import "./page.css";
 import { DRAWER, TREE_EVENT } from "./tree";
 import { COLOUR_ROOT, CONTRAST, contrast, HEX } from "./colour";
-import { checkProject } from "./contract";
+import { checkProject, surfaceOf } from "./contract";
 import {
   COLOUR_ROLES,
   parseTheme,
@@ -291,6 +291,9 @@ const commitDialog = element(
 );
 let commitController: AbortController | null = null;
 const selectorText = element("code", { className: "selector" });
+const surfaceSwatch = element("span", { className: "surface-swatch" });
+const surfaceLabel = element("span", {});
+const surfaceNote = element("p", { className: "surface-note" }, surfaceSwatch, surfaceLabel);
 const note = element(
   "p",
   { className: "note" },
@@ -2976,6 +2979,7 @@ const selectionPanel = element(
   { ariaLabel: "Selection", open: true },
   element("summary", {}, element("h2", {}, "Selection")),
   selectorText,
+  surfaceNote,
   reachNote,
   ...rows.map((r) => r.row),
   note,
@@ -2989,10 +2993,30 @@ const unmatchedPanel = element(
   unmatchedList,
 );
 
+// Names the contract surface the selection draws and that surface's colour role now (ETH-132).
+function trackSurface(node: Element): void {
+  const names: string[] = [];
+  for (
+    let at = node.closest("[data-wb]");
+    at !== null;
+    at = at.parentElement?.closest("[data-wb]") ?? null
+  )
+    names.push(at.getAttribute("data-wb") ?? "");
+  const found = surfaceOf(names); // → { surface, colour } | null
+  surfaceNote.hidden = found === null;
+  if (found === null) return;
+  const mode = doc()?.documentElement.dataset.theme === "dark" ? "dark" : "light";
+  const value = effectiveValue(COLOUR_ROOT[mode], found.colour) ?? "";
+  surfaceLabel.textContent = `${found.surface.charAt(0).toUpperCase()}${found.surface.slice(1)} surface · ${found.colour}`;
+  surfaceSwatch.title = value;
+  surfaceSwatch.style.background = value;
+}
+
 function trackFields(): void {
   selectionPanel.hidden = selection === null;
   if (selection === null) return;
   const { node, selector, locked } = selection;
+  trackSurface(node);
   const v = spacingOf(node);
   const laidOut = laysOut(node);
   for (const { name, input, clear } of rows) {

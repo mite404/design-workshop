@@ -316,6 +316,9 @@ the file's as one release through the existing values route: removals of what th
 then its values, so one undo restores the old look and the route's `was` check refuses a file
 changed underneath. Rejected: a dedicated load route that rewrites the file, which would bypass
 history, conflict checks and per-value validation.
+A selection's surface (ETH-132) is the nearest `data-wb` ancestor, itself included, that a
+contract surface names as its component, else the page; the inspector reads it from
+`contract.json`, so the contract stays the one map of surfaces to colour roles.
 
 ## ADR-030 - Storybook is pinned to exactly 10.6.0
 

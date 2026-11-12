@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { expect, test } from "vitest";
-import { checkProject, manifestOf, validate } from "./contract";
+import { checkProject, manifestOf, surfaceOf, validate } from "./contract";
 
 const VALID = {
   format: "design-workshop/manifest",
@@ -149,4 +149,16 @@ test("a project file is refused with each item's own code", () => {
   const text = project({}, { surfaces: ["dock"] });
   expect(failed(text)).toEqual(["unknown-surface surfaces/dock"]);
   expect(checkProject(text)).toEqual(checkProject(text));
+});
+
+test("a selection's surface is its nearest surface component, else the page", () => {
+  expect(surfaceOf(["ComposeBox", "ChatThreadPanel"])).toEqual({
+    surface: "compose",
+    colour: "--compose-bg",
+  });
+  expect(surfaceOf(["AgentTurn", "ChatThreadPanel"])).toEqual({
+    surface: "thread",
+    colour: "--paper",
+  });
+  expect(surfaceOf([])).toEqual({ surface: "page", colour: "--bg" });
 });

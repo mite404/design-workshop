@@ -91,6 +91,23 @@ function checkShell(
 }
 
 /**
+ * The contract surface a selection draws: the first of its `data-wb` names, nearest first, that a
+ * surface names as its component, else the surface with no component (the page).
+ */
+export function surfaceOf(
+  names: string[],
+  contract: Contract = CONTRACT,
+): { surface: string; colour: string } | null {
+  const specs: [string, { component?: string; colour: string }][] = Object.entries(
+    contract.surfaces,
+  );
+  const found =
+    names.flatMap((name) => specs.filter(([, spec]) => spec.component === name))[0] ??
+    specs.find(([, spec]) => spec.component === undefined);
+  return found === undefined ? null : { surface: found[0], colour: found[1].colour };
+}
+
+/**
  * What a manifest is read from: the installed Storybook version, Storybook's index, the slots the
  * source declares, and each `data-wb` name with the file that declares it.
  */
