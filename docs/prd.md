@@ -91,8 +91,11 @@ Storybook-backed Component mode. Mode changes must not discard its saved lanes, 
 
 While the app runs inside the Workbench, the drawer that rolls out for chat history lists the
 components on the canvas instead of threads, in both modes (ADR-025). Each component is named
-as it is in code. The tree is read from the page, so it lists only what is rendered. Clicking
-a row selects its element and opens the component it belongs to in Component mode. In
+as it is in code. The tree is read from the page, so it lists only what is rendered. It opens
+on the top-level groups, the panel and its turns, with nested components folded. In Live mode,
+clicking a row selects its component in place: it scrolls only if the component is not fully on
+screen, and its bounds show an outline with a light fill. Switching to Component mode then
+focuses that component in place. In Component mode, clicking a row opens its component. In
 Component mode the drawer also lists the stories of components the app is not showing, with
 Storybook's labels, using its index as the source of truth. Outside the Workbench the drawer
 keeps thread history. Built so far (ETH-114): the tree, and selecting an element from a row.

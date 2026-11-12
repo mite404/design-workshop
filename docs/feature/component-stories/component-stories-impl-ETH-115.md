@@ -150,3 +150,9 @@ issue or PR under repo policy (ADR-007, ADR-017).
   button is removed; saved lane layouts remain available through their existing routes, not
   the default preview. The tree excludes CSS-hidden components and refreshes when their
   visibility changes. Components below the fold remain listed so a row can scroll to them.
+* Ethan, Nov 12 2026, overriding criterion 1 for Live mode: a row click in Live mode stays in
+  Live mode. It selects the component, scrolls only when it is not fully on screen, and
+  highlights its bounds with an outline and a light fill. The component is still recorded as
+  the open one, so pressing Component mode focuses it in place. In Component mode, a row click
+  opens its component as before. The tree also opens with nested components folded, showing
+  the panel and its turns.
