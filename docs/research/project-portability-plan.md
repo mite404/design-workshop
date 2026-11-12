@@ -135,7 +135,8 @@ that end in its completion check. The phases above are tickets inside these.
    palette; load and unload a palette; save, load and unload a type pairing.
    Check: `theme-check.mjs` saves a palette, loads it (colours change, radius does not), undoes
    in one step, unloads to the baseline, and does the same for a type pairing.
-4. **Storybook and primitives audit.** Commits: stories for ComposeBox and the turns (ETH-123);
+4. **Storybook and primitives audit.** Done: `bb5102b` (ETH-123), `ab78148` (ETH-131).
+   Commits: stories for ComposeBox and the turns (ETH-123);
    pin Storybook packages to exactly 10.6.0. Check: every required component has an index entry
    whose `componentPath` is its file; Storybook tests pass.
 5. **Project contract** (ETH-122, 124). Commits: contract data and validator; manifest
