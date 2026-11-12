@@ -2,13 +2,14 @@
 // above it, and whose arrow button alone starts choosing an element of the framed app to reference.
 // While choosing, a filled highlight glides between the visible units under the pointer; a click
 // or Enter selects the element it shows, never activating it, and Add to chat puts a removable
-// reference in the draft. A sent message keeps each reference's selector (ADR-012) and preview.
+// reference in the draft. A sent message keeps each reference's selector (ADR-012), preview, and
+// the file and line of the component it sits in (R12).
 // Nothing leaves the page: no model is called.
 import { chain, element, place, selectorOf, style, type Styled } from "./dom";
-import { holds, labelOf } from "./reference";
+import { holds, labelOf, sourceOf } from "./reference";
 
 // One element a draft or message refers to: the element, and its identity when it was chosen.
-type Ref = { node: Styled; label: string; selector: string; preview: string };
+type Ref = { node: Styled; label: string; selector: string; preview: string; source: string };
 type Point = { x: number; y: number };
 
 const GLIDE = 160; // ms the highlight eases between targets, a little longer than its transition
@@ -92,6 +93,7 @@ let replacing: Ref | null = null; // the unresolved reference a new choice repla
 let glideTimer = 0;
 const references: Ref[] = []; // the draft's
 const shown = new Map<HTMLElement, Ref>(); // every reference on screen, to mark unresolved
+let sources: Promise<unknown> = Promise.resolve(null); // JSON: data-wb name → path:line
 
 /** Whether an element is being chosen, so the page's own selection stands aside. */
 export const referencing = (): boolean => choosing;
@@ -146,6 +148,10 @@ function aim(point: Point): void {
 }
 
 function start(): void {
+  // Read afresh each time, so lines follow edits; a reference then waits for it (R12).
+  sources = fetch("/__workbench/sources")
+    .then((r): Promise<unknown> | null => (r.ok ? r.json() : null))
+    .catch(() => null);
   choosing = true;
   arrow.ariaPressed = "true";
   hint.hidden = false;
@@ -206,7 +212,10 @@ const resolved = (ref: Ref): boolean =>
   ref.node.isConnected && ref.node.ownerDocument === doc() && selectorOf(ref.node) === ref.selector;
 
 function refItem(ref: Ref, removable: boolean): HTMLLIElement {
-  const item = element("li", { className: "chip", title: `${ref.preview}\n${ref.selector}` });
+  const item = element("li", {
+    className: "chip",
+    title: `${ref.preview}\n${ref.source}\n${ref.selector}`,
+  });
   item.dataset.selector = ref.selector;
   item.dataset.preview = ref.preview;
   item.append(element("span", { className: "chip-label" }, ref.label));
@@ -229,7 +238,7 @@ function refItem(ref: Ref, removable: boolean): HTMLLIElement {
     });
     item.append(remove);
   } else {
-    item.append(element("code", {}, ref.preview));
+    item.append(element("code", {}, ref.preview), element("code", {}, ref.source));
   }
   shown.set(item, ref);
   return item;
@@ -248,15 +257,19 @@ function open(isOpen: boolean): void {
   if (isOpen) draft.focus();
 }
 
-function attach(): void {
+async function attach(): Promise<void> {
   if (picked === null) return;
+  const [node, old] = [picked, replacing];
+  const known = await sources; // → { ComposeBox: "packages/catalog/src/ComposeBox.tsx:193", … }
+  if (!choosing) return; // cancelled while the sources loaded
   const ref = {
-    node: picked,
-    label: name(picked),
-    selector: selectorOf(picked),
-    preview: previewOf(picked),
+    node,
+    label: name(node),
+    selector: selectorOf(node),
+    preview: previewOf(node),
+    source: sourceOf(node.closest<HTMLElement>("[data-wb]")?.dataset.wb ?? null, known),
   };
-  const at = replacing === null ? -1 : references.indexOf(replacing);
+  const at = old === null ? -1 : references.indexOf(old);
   if (at !== -1) references[at] = ref;
   else if (!references.some((r) => r.node === ref.node)) references.push(ref);
   stop();
@@ -424,7 +437,7 @@ arrow.addEventListener("click", () => {
 chatButton.addEventListener("click", () => {
   open(panel.dataset.open !== "true");
 });
-add.addEventListener("click", attach);
+add.addEventListener("click", () => void attach());
 cancel.addEventListener("click", () => {
   stop();
   arrow.focus();

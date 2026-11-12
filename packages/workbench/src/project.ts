@@ -14,8 +14,8 @@ const REPO = fileURLToPath(new URL("../../../", import.meta.url));
 const OVERRIDES = join(REPO, "packages/catalog/src/overrides.css");
 const SOURCE_DIRS = ["packages/catalog/src", "packages/ui/src", "apps/web/src"];
 
-// Each `data-<attribute>` value the Template's source declares, with the file declaring it.
-async function declared(attribute: string): Promise<[string, string][]> {
+// Each `data-<attribute>` value the Template's source declares: [value, repo path, line].
+async function declared(attribute: string): Promise<[string, string, number][]> {
   const pattern = new RegExp(`data-${attribute}="([A-Za-z][\\w-]*)"`, "g");
   const found = await Promise.all(
     SOURCE_DIRS.map(async (dir) => {
@@ -24,14 +24,24 @@ async function declared(attribute: string): Promise<[string, string][]> {
       );
       const texts = await Promise.all(files.map((file) => readFile(join(REPO, dir, file), "utf8")));
       return texts.flatMap((text, i) =>
-        [...text.matchAll(pattern)].map((m): [string, string] => [
+        [...text.matchAll(pattern)].map((m): [string, string, number] => [
           m[1] ?? "",
-          basename(files[i] ?? ""),
+          `${dir}/${files[i] ?? ""}`,
+          text.slice(0, m.index).split("\n").length, // offset → 1-based line
         ]),
       );
     }),
   );
   return found.flat();
+}
+
+/**
+ * Where each `data-wb` name is declared, as `path:line` from the repo root (R12): what a chat
+ * reference tells an agent about the component it points into.
+ */
+export async function readSources(): Promise<Record<string, string>> {
+  const names = await declared("wb"); // → [name, path, line][]
+  return Object.fromEntries(names.map(([name, file, line]) => [name, `${file}:${line}`]));
 }
 
 /**
@@ -56,7 +66,7 @@ export async function readManifest(): Promise<ReturnType<typeof manifestOf>> {
       version: String(typeof pkg === "object" && pkg !== null ? Reflect.get(pkg, "version") : ""),
       index,
       slots: slots.map(([slot]) => slot),
-      names: new Map(names),
+      names: new Map(names.map(([name, file]) => [name, basename(file)])),
     });
   } finally {
     await rm(out, { recursive: true, force: true });

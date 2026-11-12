@@ -7,14 +7,15 @@
 // while the highlight is still gliding there selects it, highlighted where it is, without
 // clicking it. Add to chat adds a chip to the open panel beside the typed draft, removal keeps
 // the draft, Escape leaves it untouched, and Send puts the button's own selector and preview in
-// the message without any request. Removing the button marks the reference unresolved; its
-// Reselect adds a new draft reference and the message keeps the old one. Screenshots go to
+// the message, with the file and line declaring its component, without any request to a model.
+// Removing the button marks the reference unresolved; its Reselect adds a new draft reference
+// and the message keeps the old one. Screenshots go to
 // .artifacts/reference/; `--video dir` records the run with a drawn pointer. Exits 1 when any
 // step fails.
 //
 //   node apps/web/scripts/reference-check.mjs [--base http://localhost:5173] [--out dir]
 import assert from "node:assert/strict";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { arg, launch, report, ROOT, workbenchPage } from "./harness.mjs";
 
@@ -234,6 +235,13 @@ await step("send keeps the reference's identity in the message", async () => {
   assert.equal(await ref.count(), 1);
   assert.equal(await chat.locator(".chat-message p").textContent(), DRAFT);
   assert.equal(await ref.getAttribute("data-preview"), "Live · /t/demo-brief");
+  // R12: the component around the button, and the source line that names it.
+  const owner = String(await button.evaluate((el) => el.closest("[data-wb]")?.dataset.wb));
+  const source = (await ref.locator("code").nth(1).textContent()) ?? "";
+  const [, file = "", line = "0", named = ""] = /^(\S+):(\d+) ·\s(\S+)$/u.exec(source) ?? [];
+  assert.equal(named, owner, `${source} names the button's component`);
+  const declared = readFileSync(path.join(ROOT, file), "utf8").split("\n")[Number(line) - 1];
+  assert.match(declared, new RegExp(`data-wb="${owner}"`, "u"), `${source} declares it`);
   sent = (await ref.getAttribute("data-selector")) ?? "";
   assert.equal(
     await button.evaluate((el, s) => {

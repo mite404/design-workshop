@@ -35,7 +35,7 @@ import { SPACING } from "./spacing.ts";
 import { isScale, isType, SCALE, scaleValue, TYPE, typeValue } from "./type.ts";
 import { COLOUR_ROOT, colourTokens, HEX } from "./colour.ts";
 import { parseTheme, type Theme } from "./theme.ts";
-import { exportProject } from "./project.ts";
+import { exportProject, readSources } from "./project.ts";
 
 const OVERRIDES = fileURLToPath(new URL("../../catalog/src/overrides.css", import.meta.url));
 const TOKENS = fileURLToPath(new URL("../../catalog/src/tokens.css", import.meta.url));
@@ -497,6 +497,7 @@ const READS: Record<string, () => unknown> = {
     ...historyStatus(),
   }),
   "/__workbench/themes": () => ({ themes: listThemes(THEME_FOLDERS) }),
+  "/__workbench/sources": readSources,
 };
 
 async function answer(server: ViteDevServer, req: IncomingMessage): Promise<Reply> {
