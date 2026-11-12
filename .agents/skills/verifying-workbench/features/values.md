@@ -7,6 +7,7 @@ The CLI edits allowed values offline. Colour controls edit light and dark tokens
 - CLI listing, setting, removing, validation and refusal without mutation.
 - Colour editing, light/dark separation, reset and persistence.
 - CLI writes hot reload while an open inspector refuses unseen conflicting edits.
+- Themes: save the colours as a theme file, refuse a taken name, apply a theme as one undo step.
 
 ## How to get to it (user POV)
 
@@ -22,7 +23,11 @@ pnpm --filter @yaklabs/workbench test
 pnpm --silent workbench list --json
 pnpm workbench check
 node apps/web/scripts/colour-check.mjs --base http://localhost:5173 --out "$OUT/colour"
+node apps/web/scripts/theme-check.mjs --base http://localhost:5173 --out "$OUT/theme"
 ```
+
+The theme check names each step after its criterion in `docs/feature/themes/themes-story.md`. It
+creates `.workbench/themes/theme-check.theme.json` in the snapshot and removes it afterwards.
 
 The Workbench tests include real CLI subprocesses in temporary copies. For a CLI change, also
 exercise the integration in the isolated browser: leave the radius inspector open, run

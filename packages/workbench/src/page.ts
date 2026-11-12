@@ -3045,26 +3045,28 @@ function finishColour(accept: boolean): void {
   colourKey = "";
 }
 
-// Every colour role's value in both modes, read by flipping the canvas root's mode within one
-// task, so nothing paints in between.
+// The value `name` has now under `selector`, override or baseline. A colour mode is read by
+// flipping the canvas root's mode within one task, so nothing paints in between.
+function effective(root: HTMLElement, selector: string, name: string): string {
+  const mode = (["light", "dark"] as const).find((m) => COLOUR_ROOT[m] === selector);
+  if (mode === undefined) return style(root).getPropertyValue(name).trim();
+  const showing = root.dataset.theme;
+  root.dataset.theme = mode;
+  const value = colourHex(style(root).getPropertyValue(name));
+  if (showing === undefined) delete root.dataset.theme;
+  else root.dataset.theme = showing;
+  return value;
+}
+
+// Every colour role's value now, light and dark.
 function currentColours(root: HTMLElement): NonNullable<Theme["colours"]> {
-  const mode = root.dataset.theme;
-  const read = (each: "light" | "dark") => {
-    root.dataset.theme = each;
-    return new Map(
-      Object.values(COLOUR_ROLES).map((name) => [
-        name,
-        colourHex(style(root).getPropertyValue(name)),
-      ]),
-    );
-  };
-  const [light, dark] = [read("light"), read("dark")];
-  if (mode === undefined) delete root.dataset.theme;
-  else root.dataset.theme = mode;
   return Object.fromEntries(
     Object.entries(COLOUR_ROLES).map(([role, name]) => [
       role,
-      { light: light.get(name), dark: dark.get(name) },
+      {
+        light: effective(root, COLOUR_ROOT.light, name),
+        dark: effective(root, COLOUR_ROOT.dark, name),
+      },
     ]),
   );
 }
@@ -3332,9 +3334,11 @@ themePicker.addEventListener("change", () => {
     }
   }
   enqueue(async () => {
+    const root = doc()?.documentElement;
+    // A value already in effect, even as the baseline, is not written as an override.
     const changes = values
-      .map((v) => ({ ...v, before: was(v.selector, v.name), after: v.value }))
-      .filter((c) => c.before !== c.after);
+      .filter((v) => root === undefined || effective(root, v.selector, v.name) !== v.value)
+      .map((v) => ({ ...v, before: was(v.selector, v.name), after: v.value }));
     if (changes.length === 0 || !(await writeChanges(changes))) return;
     settleChanges(changes);
     await load();
