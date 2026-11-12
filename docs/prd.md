@@ -323,6 +323,12 @@ These are Ethan's stated preferences for how the Workbench itself should look an
 - Stories live at `docs/feature/<name>/<name>-story.md` and tickets at
   `docs/feature/<name>/<name>-impl-<Linear ID>.md`. Each ticket ends in a drift log. A folder
   moves to `docs/done/<name>/` once every ticket in it is Done in Linear.
+- Nov 12 2026, Ethan:
+  - R12: a request's current value is the property currently rendered in Live mode ("the
+    property currently being rendered in live mode").
+  - R13: size handles are a Live-mode edit ("live mode").
+  - R14: every shell region can be rearranged ("all shell regions").
+  - R17: motion values are shared tokens, not per-element transitions ("shared").
 
 ## 14. Open questions
 
