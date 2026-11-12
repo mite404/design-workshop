@@ -145,5 +145,40 @@ await step("Reset empties the file and the rail returns to the left", async () =
   );
 });
 
+// ETH-152: the inspector's left edge resizes it between 240 and 480px, and the width survives a
+// reload.
+const inspectorWidth = async () =>
+  Math.round((await page.locator(".inspector").boundingBox()).width);
+await step("dragging the inspector's left edge resizes it within its limits", async () => {
+  const edge = page.getByRole("separator", { name: "Inspector width" });
+  const from = await edge.boundingBox();
+  const x = from.x + from.width / 2;
+  const y = from.y + 200;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x - 100, y, { steps: 5 });
+  assert.equal(await inspectorWidth(), 340, "100px wider");
+  await page.mouse.move(x - 900, y, { steps: 5 });
+  assert.equal(await inspectorWidth(), 480, "stops at the maximum");
+  await page.mouse.move(x + 300, y, { steps: 5 });
+  assert.equal(await inspectorWidth(), 240, "stops at the minimum");
+  await page.mouse.move(x - 60, y, { steps: 3 });
+  await page.mouse.up();
+  assert.equal(await inspectorWidth(), 300);
+  await page.screenshot({ path: path.join(out, "inspector-wide.png") });
+});
+
+await step("arrows resize it from the keyboard, and the width survives a reload", async () => {
+  const edge = page.getByRole("separator", { name: "Inspector width" });
+  await edge.focus();
+  await page.keyboard.press("ArrowLeft");
+  await page.keyboard.press("Shift+ArrowLeft");
+  assert.equal(await inspectorWidth(), 340, "8 then 32 wider");
+  await page.reload();
+  await page.locator(".inspector").waitFor();
+  assert.equal(await inspectorWidth(), 340);
+  await page.evaluate(() => localStorage.removeItem("workbench-inspector-width"));
+});
+
 await browser.close();
 report(results, errors, out);

@@ -193,6 +193,19 @@ const handles = CORNERS.map(() =>
   element("div", { className: "handle", tabIndex: 0, ariaLabel: "Corner radius" }),
 );
 const pill = element("div", { className: "pill", ariaHidden: "true" });
+// The inspector's width limits, in px: the narrowest that fits a row, and a cap so the canvas
+// keeps most of the window (Ethan).
+const INSPECTOR_MIN = 240;
+const INSPECTOR_MAX = 480;
+const inspectorEdge = element("div", {
+  className: "inspector-edge",
+  role: "separator",
+  tabIndex: 0,
+  ariaLabel: "Inspector width",
+  ariaOrientation: "vertical",
+  ariaValueMin: String(INSPECTOR_MIN),
+  ariaValueMax: String(INSPECTOR_MAX),
+});
 const paddingLayer = element("div");
 const gapLayer = element("div");
 const sizeLayer = element("div");
@@ -3784,6 +3797,7 @@ document.body.append(
     "main",
     { className: "workbench" },
     element("div", { className: "canvas" }, frame, overlay, ...chatLayer),
+    inspectorEdge,
     element(
       "aside",
       { className: "inspector", ariaLabel: "Inspector" },
@@ -3841,6 +3855,35 @@ document.body.append(
   ),
 );
 document.body.append(stepList, fontPicker, basics, commitDialog);
+// The inspector's width (ETH-152): dragged or arrowed on its left edge, within fixed limits, and
+// kept across reloads.
+const workbenchRoot = document.querySelector<HTMLElement>(".workbench");
+function setInspectorWidth(wanted: number): void {
+  const width = Math.round(Math.min(INSPECTOR_MAX, Math.max(INSPECTOR_MIN, wanted)));
+  workbenchRoot?.style.setProperty("--inspector-width", `${width}px`);
+  inspectorEdge.ariaValueNow = String(width);
+  localStorage.setItem("workbench-inspector-width", String(width));
+}
+setInspectorWidth(Number(localStorage.getItem("workbench-inspector-width") ?? INSPECTOR_MIN));
+inspectorEdge.addEventListener("pointerdown", (event) => {
+  inspectorEdge.setPointerCapture(event.pointerId);
+  inspectorEdge.dataset.dragging = "";
+});
+inspectorEdge.addEventListener("pointermove", (event) => {
+  if (inspectorEdge.hasPointerCapture(event.pointerId))
+    setInspectorWidth(window.innerWidth - event.clientX);
+});
+inspectorEdge.addEventListener("lostpointercapture", () => {
+  delete inspectorEdge.dataset.dragging;
+});
+inspectorEdge.addEventListener("keydown", (event) => {
+  const step =
+    (event.shiftKey ? 32 : 8) *
+    (event.key === "ArrowLeft" ? 1 : event.key === "ArrowRight" ? -1 : 0);
+  if (step === 0) return;
+  event.preventDefault();
+  setInspectorWidth(Number(inspectorEdge.ariaValueNow) + step);
+});
 // Each category folds away to save space, and stays folded across reloads.
 const folded = new Set(localStorage.getItem("workbench-folded")?.split("|"));
 for (const panel of document.querySelectorAll<HTMLDetailsElement>(".inspector > details")) {
