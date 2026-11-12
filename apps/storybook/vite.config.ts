@@ -29,6 +29,10 @@ export default defineConfig({
       },
       {
         extends: true,
+        optimizeDeps: {
+          // Shell imports can outgrow a cached scan; bundle them before browser tests start.
+          include: ["web > @workos-inc/authkit-react", "web > react-router", "web > sonner"],
+        },
         test: {
           name: "browser",
           include: [
