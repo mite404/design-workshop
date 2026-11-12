@@ -4,6 +4,7 @@ import { useChrome } from "../chrome";
 import type { ThemeChoice } from "../theme";
 import { useMatch } from "react-router";
 import { Rail } from "./rail";
+import { useShellSide } from "./shell-side";
 import { SharePermissions } from "./share-permissions";
 import { AppSidebar } from "./sidebar";
 import { sidebarVars, useSidebarOpen, useSidebarWidth } from "./sidebar-choice";
@@ -20,6 +21,7 @@ function Workspace({ children }: { children: ReactNode }) {
     <div
       // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- a main element cannot drop its role on /lab
       role={onLab ? undefined : "main"}
+      data-slot="workspace"
       // Pushed aside by the phone's drawer, it shows at the edge but takes no focus (ADR-121).
       inert={isMobile && openMobile}
       className="relative grid min-h-0 w-full min-w-0 flex-1 overflow-hidden bg-background *:[grid-area:1/1] md:rounded-tl-(--workspace-radius) md:border-t md:border-l md:border-hairline"
@@ -42,6 +44,7 @@ export function Window({ theme, children }: { theme: ThemeChoice; children: Reac
   const sized = useSidebarWidth();
   const chrome = useChrome();
   const rail = useRef<HTMLDivElement>(null);
+  const side = useShellSide();
   return (
     <>
       <div data-slot="desk" aria-hidden="true" className="fixed inset-0 bg-[var(--desk)]" />
@@ -65,7 +68,7 @@ export function Window({ theme, children }: { theme: ThemeChoice; children: Reac
               data-slot="stage"
               className="relative flex min-h-0 min-w-0 flex-1 md:overflow-clip"
             >
-              <AppSidebar theme={theme} chrome={chrome} rail={rail} {...sized} />
+              <AppSidebar theme={theme} chrome={chrome} rail={rail} side={side} {...sized} />
               <Workspace>{children}</Workspace>
             </div>
           </div>

@@ -13,13 +13,22 @@ import {
 // A drag in progress: where the pointer and the width started, the width reached since (null
 // until the pointer moves), and the wrapper whose `--sidebar-width` the sidebar and the title
 // bar both read.
-type Drag = { x: number; from: number; reached: number | null; wrapper: HTMLElement };
+// `sign`: 1 when the panel's free edge is its right, -1 on a right-side shell (ETH-142).
+type Drag = { x: number; from: number; reached: number | null; wrapper: HTMLElement; sign: 1 | -1 };
+
+const MIRRORED: Partial<Record<string, string>> = {
+  ArrowLeft: "ArrowRight",
+  ArrowRight: "ArrowLeft",
+};
 
 // A press that drags: the main button of the first pointer only, since a second finger
 // joining in would make the width jump to it.
 function isMainPress(event: PointerEvent<HTMLDivElement>): boolean {
   return event.button === 0 && event.isPrimary;
 }
+
+// Which way a pointer moving right changes the width: wider, unless the panel is on the right.
+const signOf = (panel: Element): 1 | -1 => (panel.getAttribute("data-side") === "right" ? -1 : 1);
 
 // The drag a press on the handle starts, or null for a press that does not drag.
 function dragFrom(event: PointerEvent<HTMLDivElement>): Drag | null {
@@ -28,7 +37,7 @@ function dragFrom(event: PointerEvent<HTMLDivElement>): Drag | null {
   const panel = handle.closest('[data-slot="sidebar-container"]');
   if (!isMainPress(event) || wrapper === null || panel === null) return null;
   const from = Math.round(panel.getBoundingClientRect().width); // → the width on screen now
-  return { x: event.clientX, from, reached: null, wrapper };
+  return { x: event.clientX, from, reached: null, wrapper, sign: signOf(panel) };
 }
 
 // Dragging the handle. The width follows the pointer by writing `--sidebar-width` straight on
@@ -63,7 +72,7 @@ function useWidthDrag(keep: (px: number) => void) {
       trackHintLine(event);
       const now = drag.current;
       if (now === null) return;
-      now.reached = clampWidth(now.from + event.clientX - now.x, window.innerWidth);
+      now.reached = clampWidth(now.from + now.sign * (event.clientX - now.x), window.innerWidth);
       now.wrapper.style.setProperty("--sidebar-width", widthValue(now.reached));
     },
     onPointerUp: end,
@@ -97,7 +106,10 @@ export function SidebarResizeHandle({
   const widest = widestFor(window.innerWidth);
   const shown = Math.min(width, widest); // → the width on screen, as 40% of the window caps it
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    const px = widthForKey(event.key, event.shiftKey, shown, window.innerWidth);
+    // On a right-side shell the free edge is the left one, so Left widens and Right narrows.
+    const right = event.currentTarget.closest("[data-side=right]") !== null;
+    const key = right ? (MIRRORED[event.key] ?? event.key) : event.key;
+    const px = widthForKey(key, event.shiftKey, shown, window.innerWidth);
     if (px === null) return;
     event.preventDefault();
     instantly(() => {

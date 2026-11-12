@@ -2953,6 +2953,34 @@ function segmented(
 }
 type Segmented = ReturnType<typeof segmented>;
 
+// The shell's side (ETH-142, ADR-041): where the rail and its drawer sit, left or right only.
+const SIDE = "--shell-side";
+function pickSide(value: string): void {
+  const root = doc()?.documentElement;
+  if (root === undefined || style(root).getPropertyValue(SIDE).trim() === value) return;
+  root.style.setProperty(SIDE, value);
+  saveValue(root, ROOT, SIDE, value);
+}
+const shellSide = segmented(
+  "Shell side",
+  {
+    left: ["Rail on the left", element("span", {}, "Left")],
+    right: ["Rail on the right", element("span", {}, "Right")],
+  },
+  pickSide,
+  () => {
+    const root = doc()?.documentElement;
+    if (root !== undefined && was(ROOT, SIDE) !== null) saveValue(root, ROOT, SIDE, null);
+  },
+);
+function trackSide(): void {
+  const root = doc()?.documentElement;
+  if (root === undefined) return;
+  const side = style(root).getPropertyValue(SIDE).trim() || "left";
+  for (const b of shellSide.buttons) b.ariaPressed = String(b.dataset.value === side);
+  shellSide.clear.disabled = was(ROOT, SIDE) === null;
+}
+
 // A row that sets one property: a pick saves the option's value, its reset removes it.
 const one = (name: TypeName) =>
   [
@@ -3745,6 +3773,7 @@ function track(): void {
   trackRootFonts();
   trackScale();
   trackEase();
+  trackSide();
   trackUnmatched();
   trackChat();
   requestAnimationFrame(track);
@@ -3785,6 +3814,17 @@ document.body.append(
         { ariaLabel: "Window", open: true },
         element("summary", {}, element("h2", {}, "Window · Both modes")),
         element("div", { className: "row" }, label, field, reset),
+      ),
+      element(
+        "details",
+        { ariaLabel: "Layout", open: true },
+        element("summary", {}, element("h2", {}, "Layout · Both modes")),
+        element(
+          "div",
+          { className: "row layout-row" },
+          element("span", {}, "Rail side"),
+          shellSide.cell,
+        ),
       ),
       element(
         "details",

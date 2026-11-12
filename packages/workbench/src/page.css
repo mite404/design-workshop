@@ -1826,3 +1826,14 @@ body[data-referencing] .overlay,
   font-variant-numeric: tabular-nums;
   text-align: right;
 }
+
+/* The shell's side (ETH-142): a label, then the Left/Right choice and its reset. */
+.layout-row {
+  grid-template-columns: 1fr 140px;
+}
+
+/* The choice holds words, not the type panel's icons, so its buttons take padding. */
+.layout-row .segmented button {
+  padding: 0 8px;
+  font-size: 12px;
+}

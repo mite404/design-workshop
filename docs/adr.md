@@ -443,3 +443,16 @@ what Ethan scrubs is the real transition, with the shared duration and easing an
 control's own properties, not a model of it. Motion values are shared, so one slider scrubs
 every such control at once. Rejected: an animated sample swatch in the inspector, which shows
 the curve but not the controls; and forcing `:hover`, which scripts cannot do.
+
+## ADR-041 - The shell's side is one keyword value the app mirrors in CSS
+
+2026-11-12 - Accepted. ETH-142. PRD R14.
+Ethan allows the rail and its drawer on the left or the right only, as a templated choice. So the
+side is one `:root` value, `--shell-side`, saved in the override file like any design value; the
+endpoint takes `left` or `right` and nothing else. CSS cannot branch on a custom property's value
+everywhere yet, so `shell-side.ts` reads it into `data-shell-side` on the root, again on each
+stylesheet change and root style change, and `index.css` mirrors the left shell's rules under that
+attribute. The panel gets `side="right"` from shadcn's own Sidebar, which already positions a
+right-side panel. Rejected: a `side` prop threaded through every shell part, many more call sites
+for the same result; container style queries, not yet in every browser Ethan targets; and a free
+order of regions, the unlimited layout Ethan ruled out.

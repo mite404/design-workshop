@@ -292,6 +292,9 @@
      pencil under the figure and never as ground */
   --splash-line: color-mix(in srgb, var(--ink) 12%, transparent);
 
+  /* the side the shell's rail and drawer sit on: left or right only (ETH-142, Ethan); the
+     Workbench edits it */
+  --shell-side: left;
   --window-radius: 12px; /* the window's corners from md up; the Workbench edits it */
   /* every control's hover feedback, one shared value (Ethan: motion values are "shared");
      the Workbench edits it */

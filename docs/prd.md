@@ -225,7 +225,8 @@ look in under an hour without writing a prompt.
 - R13. Handles on the canvas for sizes, gaps, padding and radius, with measurement readouts.
   *Built: radius (ETH-101), gap and padding (ETH-102), and width and height (ETH-137 values,
   ETH-138 handles, Live mode only, ADR-037) have handles and readouts.*
-- R14. Rearrange shell regions by drag, saved as layout values. *Not started.*
+- R14. Rearrange shell regions by drag, saved as layout values. *Partly built: the rail and its
+  drawer sit on the left or the right, one layout value the Workbench sets (ETH-142, ADR-041).*
 - R15. Assets panel: drag a component from the library into an allowed slot. *Not started.*
 - R16. Themes: a theme is one override file. Save the current values as a theme, switch between
   themes, start a project from one. A preset is a partial theme covering one group of values, such
@@ -332,6 +333,11 @@ These are Ethan's stated preferences for how the Workbench itself should look an
   - R13: size handles are a Live-mode edit ("live mode").
   - R14: every shell region can be rearranged ("all shell regions").
   - R17: motion values are shared tokens, not per-element transitions ("shared").
+- Nov 12 2026, Ethan, on R14 and verification:
+  - The navigation rail sits on the left or the right side of the shell, never elsewhere. The
+    drawer slides in from the left or the right, for now. Layouts stay a short list of templated
+    choices, not unlimited bespoke options ("we DONT want unlimited bespoke options").
+  - Safari is not verified for now; Ethan checks it later.
 
 ## 14. Open questions
 

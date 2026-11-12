@@ -53,6 +53,7 @@ const COLOURS = colourTokens(readFileSync(TOKENS, "utf8"));
 const COLOUR_NAMES = Object.keys(COLOURS).filter((name) => COLOURS[name]?.editable);
 const EDITABLE = [
   "--window-radius",
+  "--shell-side",
   "--motion-hover",
   EASE,
   "--font-text",
@@ -123,8 +124,10 @@ function namesOf(selector: string): readonly string[] {
   if (Object.values(COLOUR_ROOT).includes(selector)) return COLOUR_NAMES;
   return isSelector(selector) ? [...SPACING, "translate", ...TYPE] : [];
 }
-// The motion tokens' checks (ADR-038): a duration in whole ms, an easing as a cubic-bezier.
-const MOTION_CHECKS: Record<string, (v: string) => boolean> = {
+// The keyword and motion tokens' checks: the shell's side, left or right only (ADR-041); a
+// duration in whole ms and an easing as a cubic-bezier (ADR-038, ADR-039).
+const ROOT_CHECKS: Record<string, (v: string) => boolean> = {
+  "--shell-side": (v) => v === "left" || v === "right",
   "--motion-hover": (v) => MS.test(v),
   [EASE]: (v) => parseBezier(v) !== null,
 };
@@ -135,8 +138,8 @@ function isValue(v: unknown, name: string): v is string | null {
   if (isType(name)) return typeValue(name, v);
   if (isScale(name)) return scaleValue(name, v);
   if (name.startsWith("--font-")) return isFamilyValue(v);
-  const motion = MOTION_CHECKS[name];
-  if (motion !== undefined) return motion(v);
+  const check = ROOT_CHECKS[name];
+  if (check !== undefined) return check(v);
   return (name === "translate" ? TRANSLATE : PX).test(v);
 }
 const isWas = (v: unknown): v is string | null => v === null || typeof v === "string";

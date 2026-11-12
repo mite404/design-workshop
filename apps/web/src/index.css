@@ -762,3 +762,57 @@ html[data-dragging="sidebar"] * {
     }
   }
 }
+
+/* The shell on the right (ETH-142, ADR-041): the rail and its drawer sit on the window's right
+   edge, the only other side Ethan allows. `data-shell-side` mirrors the root's `--shell-side`
+   (shell-side.ts). Every rule here is the left shell's own, mirrored: the rail's hairline, the
+   workspace's inset corner and border, the peek's slide, edge and shadow, the strip that peeks
+   it and the resize handle. The title bar keeps its lights and toggle at its left, so its lead no
+   longer spans the panel. A phone has no rail and keeps its drawer on the left. Outside every
+   layer, to outrank the shell's utilities. */
+:root[data-shell-side="right"] :is([data-slot="window-body"], [data-slot="stage"]) {
+  flex-direction: row-reverse;
+}
+:root[data-shell-side="right"]
+  [data-slot="sidebar-wrapper"]:has([data-slot="sidebar"][data-state="expanded"])
+  [data-slot="rail"] {
+  box-shadow: inset 1px 0 0 var(--hairline);
+}
+:root[data-shell-side="right"] [data-slot="sidebar-hot-zone"] {
+  right: 0;
+  left: auto;
+}
+:root[data-shell-side="right"] [data-slot="sidebar-resize"] {
+  right: 100%;
+  left: auto;
+}
+:root[data-shell-side="right"] [data-slot="sidebar"][data-peek] > [data-slot="sidebar-container"] {
+  border-radius: var(--workspace-radius) 0 0 var(--workspace-radius);
+  box-shadow:
+    -1px 0 0 var(--hairline),
+    -8px 0 24px -12px var(--shadow);
+  clip-path: inset(0 0 0 -40px);
+}
+:root[data-shell-side="right"]
+  [data-slot="sidebar"]:is([data-peek="entering"], [data-peek="leaving"])
+  > [data-slot="sidebar-container"] {
+  transform: translateX(100%);
+}
+@media (min-width: 48rem) {
+  :root[data-shell-side="right"] [data-slot="workspace"] {
+    border-left-width: 0;
+    border-right-width: 1px;
+    border-top-left-radius: 0;
+    border-top-right-radius: var(--workspace-radius);
+  }
+  :root[data-shell-side="right"] [data-slot="title-lead"] {
+    min-width: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  :root[data-shell-side="right"]
+    [data-slot="sidebar"][data-peek]
+    > [data-slot="sidebar-container"] {
+    transform: none;
+  }
+}

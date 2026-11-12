@@ -50,6 +50,7 @@ const REFUSALS: [string, Record<string, unknown>, string | undefined, number][] 
   ["a value that is not px", { value: "8em" }, ORIGIN, 400],
   ["a value that escapes", { value: "8px;}" }, ORIGIN, 400],
   ["a negative value", { value: "-8px" }, ORIGIN, 400],
+  ["a shell side off the list", { name: "--shell-side", value: "top", was: null }, ORIGIN, 400],
   ["a duration in px", { name: "--motion-hover", value: "150px", was: null }, ORIGIN, 400],
   ["an easing keyword", { name: "--motion-hover-ease", value: "ease", was: null }, ORIGIN, 400],
   ["a stale was", { was: "12px" }, ORIGIN, 409],
@@ -272,6 +273,7 @@ test("readValues reads each token's baseline and override, and each element's va
     colours: {},
     tokens: {
       "--window-radius": { baseline: "12px", override: "20px" },
+      "--shell-side": { baseline: null, override: null },
       "--motion-hover": { baseline: null, override: null },
       "--motion-hover-ease": { baseline: null, override: null },
       "--font-text": { baseline: null, override: null },

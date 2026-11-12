@@ -6,6 +6,7 @@ import { ProjectTree } from "./project-tree";
 import { RailPlaces } from "./rail-places";
 import { PeekHotZone, peekProps, useSidebarPeek, type SidebarPeek } from "./sidebar-peek";
 import { SidebarResizeHandle } from "./sidebar-resize";
+import type { ShellSide } from "./shell-side";
 
 const DrawerTree =
   import.meta.env.DEV && typeof window !== "undefined" && window.self !== window.top
@@ -52,6 +53,7 @@ export type SidebarWidth = { width: number; onWidth: (px: number) => void };
  * the page aside (ADR-121), listing the places as rows above the tree, with the account at its
  * foot, outside the landmark.
  * @param rail The desktop's rail, where the pointer may rest for the panel to peek.
+ * @param side The shell's side (ETH-142): the desktop panel docks and peeks from it.
  */
 export function AppSidebar({
   theme,
@@ -59,8 +61,10 @@ export function AppSidebar({
   width,
   onWidth,
   rail,
-}: Looks & SidebarWidth & { rail: RefObject<HTMLDivElement | null> }) {
+  side,
+}: Looks & SidebarWidth & { rail: RefObject<HTMLDivElement | null>; side: ShellSide }) {
   const container = useRef<HTMLDivElement>(null);
+  const { isMobile } = useSidebar();
   const peek = useSidebarPeek(container, rail);
   useSheetClosesOnArrival();
   return (
@@ -68,9 +72,10 @@ export function AppSidebar({
       <Sidebar
         ref={container}
         collapsible="offcanvas"
+        side={isMobile ? "left" : side} // a phone has no rail; its drawer stays on the left
         mobile="push"
         {...peekProps(peek)}
-        className="absolute h-full border-r-0 group-data-[side=left]:border-r-0"
+        className="absolute h-full border-r-0 group-data-[side=left]:border-r-0 group-data-[side=right]:border-l-0"
       >
         <div
           id={SIDEBAR_ID}
