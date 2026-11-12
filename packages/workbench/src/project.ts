@@ -4,25 +4,29 @@
 import { execFile } from "node:child_process";
 import { mkdtemp, readdir, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { basename, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
+import { parseConfig } from "./config.ts";
 import { manifestOf, validate, type Failure } from "./contract.ts";
 import { parseOverrides } from "./overrides.ts";
 
 const REPO = fileURLToPath(new URL("../../../", import.meta.url));
 const OVERRIDES = join(REPO, "packages/catalog/src/overrides.css");
-const SOURCE_DIRS = ["packages/catalog/src", "packages/ui/src", "apps/web/src"];
 
-// Each `data-<attribute>` value the Template's source declares: [value, repo path, line].
-async function declared(attribute: string): Promise<[string, string, number][]> {
+// Each `data-<attribute>` value the source folders declare: [value, root-relative path, line].
+async function declared(
+  attribute: string,
+  root: string,
+  sources: string[],
+): Promise<[string, string, number][]> {
   const pattern = new RegExp(`data-${attribute}="([A-Za-z][\\w-]*)"`, "g");
   const found = await Promise.all(
-    SOURCE_DIRS.map(async (dir) => {
-      const files = (await readdir(join(REPO, dir), { recursive: true, encoding: "utf8" })).filter(
+    sources.map(async (dir) => {
+      const files = (await readdir(join(root, dir), { recursive: true, encoding: "utf8" })).filter(
         (file) => file.endsWith(".tsx") && !file.includes(".stories.") && !file.includes(".test."),
       );
-      const texts = await Promise.all(files.map((file) => readFile(join(REPO, dir, file), "utf8")));
+      const texts = await Promise.all(files.map((file) => readFile(join(root, dir, file), "utf8")));
       return texts.flatMap((text, i) =>
         [...text.matchAll(pattern)].map((m): [string, string, number] => [
           m[1] ?? "",
@@ -39,38 +43,57 @@ async function declared(attribute: string): Promise<[string, string, number][]> 
  * Where each `data-wb` name is declared, as `path:line` from the repo root (R12): what a chat
  * reference tells an agent about the component it points into.
  */
-export async function readSources(): Promise<Record<string, string>> {
-  const names = await declared("wb"); // → [name, path, line][]
+export async function readSources(root = REPO): Promise<Record<string, string>> {
+  const { sources } = parseConfig(await readFile(join(root, ".workbench/config.json"), "utf8"));
+  const names = await declared("wb", root, sources); // → [name, path, line][]
   return Object.fromEntries(names.map(([name, file, line]) => [name, `${file}:${line}`]));
 }
 
-/**
- * This repo's manifest, from the installed Storybook, its index and the source's declarations.
- * @throws When `storybook index` fails or Storybook is not installed.
- */
-export async function readManifest(): Promise<ReturnType<typeof manifestOf>> {
+// The installed Storybook's version and its index, from the project beside its config folder.
+// With no Storybook both are empty, which the contract refuses as a version failure.
+async function readStorybook(root: string, configDir: string | null) {
+  if (configDir === null) return { version: "", index: {} };
+  const project = join(root, dirname(configDir)); // the folder whose node_modules hold Storybook
   const out = await mkdtemp(join(tmpdir(), "manifest-"));
   try {
     const indexFile = join(out, "index.json");
     await promisify(execFile)(
-      "pnpm",
-      ["--filter", "storybook", "exec", "storybook", "index", "-o", indexFile],
-      { cwd: REPO },
+      join(project, "node_modules/.bin/storybook"),
+      ["index", "-o", indexFile, "-c", join(root, configDir)],
+      { cwd: project },
     );
     const pkg: unknown = JSON.parse(
-      await readFile(join(REPO, "apps/storybook/node_modules/storybook/package.json"), "utf8"),
+      await readFile(join(project, "node_modules/storybook/package.json"), "utf8"),
     );
-    const index: unknown = JSON.parse(await readFile(indexFile, "utf8"));
-    const [slots, names] = await Promise.all([declared("slot"), declared("wb")]);
-    return manifestOf({
+    return {
       version: String(typeof pkg === "object" && pkg !== null ? Reflect.get(pkg, "version") : ""),
-      index,
-      slots: slots.map(([slot]) => slot),
-      names: new Map(names.map(([name, file]) => [name, basename(file)])),
-    });
+      index: JSON.parse(await readFile(indexFile, "utf8")) as unknown,
+    };
   } finally {
     await rm(out, { recursive: true, force: true });
   }
+}
+
+/**
+ * A root's manifest, from its config's folders: the installed Storybook, its index and the
+ * source's declarations. The root defaults to this repo.
+ * @throws When the config is missing or refused, or `storybook index` fails.
+ */
+export async function readManifest(root = REPO): Promise<ReturnType<typeof manifestOf>> {
+  const { sources, storybook } = parseConfig(
+    await readFile(join(root, ".workbench/config.json"), "utf8"),
+  );
+  const [{ version, index }, slots, names] = await Promise.all([
+    readStorybook(root, storybook?.configDir ?? null),
+    declared("slot", root, sources),
+    declared("wb", root, sources),
+  ]);
+  return manifestOf({
+    version,
+    index,
+    slots: slots.map(([slot]) => slot),
+    names: new Map(names.map(([name, file]) => [name, basename(file)])),
+  });
 }
 
 /**

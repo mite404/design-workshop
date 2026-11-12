@@ -262,7 +262,7 @@ try {
 } finally {
   writeFileSync(file, starting);
   for (const f of written) rmSync(f, { force: true });
-  if (!hadThemes) rmSync(path.join(ROOT, ".workbench"), { recursive: true, force: true });
+  if (!hadThemes) rmSync(themes, { recursive: true, force: true });
   await browser.close();
 }
 report(results, errors, out);

@@ -79,3 +79,24 @@ export function checkConfig(
     key(a) < key(b) ? -1 : key(a) > key(b) ? 1 : 0,
   );
 }
+
+/**
+ * The folders config `text` names, once `checkConfig` accepts it.
+ * @throws With the first failure's path and message when it is refused.
+ */
+export function parseConfig(text: string): {
+  sources: string[];
+  storybook: { configDir: string } | null;
+} {
+  const [failure] = checkConfig(text); // → Failure | undefined
+  if (failure !== undefined) throw new Error(`${failure.path}: ${failure.message}`);
+  const data: unknown = JSON.parse(text);
+  const fields = record(data) ? data : {};
+  const storybook = record(fields.storybook) ? fields.storybook : {};
+  return {
+    sources: Array.isArray(fields.sources)
+      ? fields.sources.filter((s): s is string => typeof s === "string")
+      : [],
+    storybook: typeof storybook.configDir === "string" ? { configDir: storybook.configDir } : null,
+  };
+}
