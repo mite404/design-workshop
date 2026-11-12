@@ -143,7 +143,8 @@ that end in its completion check. The phases above are tickets inside these.
    Commits: contract data and validator; manifest command.
    Check: this repo's manifest validates to no failures; each fixture fails with its own code,
    identically twice.
-6. **Project save, export, load** (ETH-125 to 127). Commits: export; check; load.
+6. **Project save, export, load** (ETH-125 to 127). Done: `c6ada6e`, `89a9b6d`, `74902cf`,
+   `74cd9e4`. Commits: export; check; load.
    Check: export, check and load round-trip in the browser; invalid files cannot load.
 7. **Semantic component mapping.** Commits: contract surfaces resolve to rendered components
    and their colour roles; inspector names a selection's surface. Check: selecting the compose
