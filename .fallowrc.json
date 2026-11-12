@@ -39,10 +39,7 @@
   },
   // bklit's charts are installed as-is from its shadcn registry (PRD section 12, ADR-033), so a
   // later `shadcn add` stays a clean diff: their own findings are not ours to fix.
-  "ignoreFindings": [
-    "packages/ui/src/components/charts/**",
-    "packages/ui/src/components/shimmering-text.tsx"
-  ],
+  "ignoreFindings": ["packages/ui/src/components/charts/**"],
   // React Router's default server entry imports isbot at build time; the app never does.
   "ignoreDependencies": ["isbot"],
   "rules": {

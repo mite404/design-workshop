@@ -881,21 +881,15 @@ h1 span {
 .chart > [style*="aspect-ratio"] {
   height: 100%;
 }
-/* The axis labels' size, set here because an SVG attribute cannot read a variable. */
-.chart .recharts-cartesian-axis-tick-value {
-  font-size: var(--text-xs);
-  line-height: var(--text-xs--line-height);
-}
-/* Recharts learns a resized box a frame late (its ResizeObserver sets state, React draws after
-   the paint) and holds the drawing at the old width in the meantime, so dragging a pane or a
-   lane narrower clipped the bars at the card's edge on every frame of the drag (Ethan). Its
-   SVG already fills its parent and carries a viewBox, so its wrappers fill the chart instead
-   of keeping the old width inline, and the last drawing scales to the box until the redraw
-   lands. The !important beats the sizes Recharts writes inline. */
-.chart .recharts-responsive-container > div,
-.chart .recharts-wrapper {
-  width: 100% !important;
-  height: 100% !important;
+/* The slider card's bars ease from one stop to the next (InteractiveCard's useMorphing sets
+   data-animate for TRANSITION_MS, 300ms), so the eye can follow where the money went. bklit
+   draws a settled bar as a plain rect and writes an inline opacity transition on it; the
+   !important adds its geometry. */
+.chart[data-animate] svg rect {
+  transition:
+    y 300ms var(--ease-out, ease-out),
+    height 300ms var(--ease-out, ease-out),
+    opacity 150ms ease-in-out !important;
 }
 .muted {
   color: var(--soft-ink);

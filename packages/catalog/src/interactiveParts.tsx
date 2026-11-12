@@ -1,5 +1,10 @@
 import { useState, type CSSProperties } from "react";
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar } from "@yaklabs/ui/components/charts/bar";
+import { BarChart } from "@yaklabs/ui/components/charts/bar-chart";
+import { BarXAxis } from "@yaklabs/ui/components/charts/bar-x-axis";
+import { Grid } from "@yaklabs/ui/components/charts/grid";
+import { ChartTooltip } from "@yaklabs/ui/components/charts/tooltip/chart-tooltip";
+import { YAxis } from "@yaklabs/ui/components/charts/y-axis";
 import { BAR_RADIUS } from "./CatalogCard";
 import { formatUsd, stopPlace, type SentencePart, type Stop } from "./interactive";
 
@@ -26,43 +31,32 @@ export function LiveSentence({ parts }: { parts: SentencePart[] }) {
 }
 
 // The shown stop's bars on the axis every stop shares, easing only while `animate` says so.
+// bklit's bar chart (ADR-036) on a fixed [0, max] axis; tokens.css eases the bars' geometry
+// while `data-animate` is set.
 export function StopChart({ stop, max, animate }: { stop: Stop; max: number; animate: boolean }) {
   return (
-    <div className="chart">
-      <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-        <BarChart
-          data={stop.rows}
-          margin={{ top: 12, right: 16, bottom: 4, left: 0 }}
-          accessibilityLayer
-        >
-          <CartesianGrid vertical={false} stroke="var(--hairline)" />
-          <XAxis
-            dataKey="label"
-            tickLine={false}
-            axisLine={false}
-            tick={{ fill: "var(--soft-ink)" }}
-          />
-          <YAxis
-            domain={[0, max]}
-            tickFormatter={formatUsd}
-            tickLine={false}
-            axisLine={false}
-            width={52}
-            tick={{ fill: "var(--soft-ink)" }}
-          />
-          <Tooltip
-            formatter={(value) => [formatUsd(Number(value)), stop.label]}
-            cursor={{ fill: "var(--paper-deep)" }}
-          />
-          <Bar
-            dataKey="value"
-            fill="var(--data)"
-            radius={[BAR_RADIUS, BAR_RADIUS, 0, 0]}
-            isAnimationActive={animate}
-            animationDuration={TRANSITION_MS}
-          />
-        </BarChart>
-      </ResponsiveContainer>
+    <div className="chart" data-animate={animate || undefined}>
+      <BarChart
+        data={stop.rows}
+        xDataKey="label"
+        aspectRatio="auto"
+        valueDomainMax={max}
+        margin={{ top: 12, right: 16, bottom: 32, left: 52 }}
+      >
+        <Grid horizontal stroke="var(--hairline)" strokeOpacity={1} />
+        <Bar dataKey="value" fill="var(--data)" lineCap={BAR_RADIUS} animate={false} />
+        <YAxis formatValue={formatUsd} />
+        <BarXAxis />
+        <ChartTooltip
+          rows={(point) => [
+            {
+              color: "var(--data)",
+              label: stop.label,
+              value: typeof point.value === "number" ? formatUsd(point.value) : "Not recorded",
+            },
+          ]}
+        />
+      </BarChart>
     </div>
   );
 }

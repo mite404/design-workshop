@@ -18,7 +18,7 @@ import { LiveSentence, ShowWork, StepSlider, StopChart, TRANSITION_MS } from "./
 import { prefersReducedMotion } from "./reducedMotion";
 
 // Whether the bars are easing from one stop to another: true from the moment the stop changes,
-// and as the card first draws, for TRANSITION_MS. Only then may Recharts animate. It animates any
+// and as the card first draws, for TRANSITION_MS. Only then do the bars ease. They ease any
 // change of the bars' geometry, so a pane dragged narrower restarted a 300ms slide on every frame
 // of the drag and left the last bar cut off at the chart's edge (Ethan); a resize now redraws at
 // once, as the cards without a slider always did.

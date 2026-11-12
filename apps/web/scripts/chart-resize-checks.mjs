@@ -13,9 +13,7 @@ function sampleOverrun(shown) {
   let sampling = true;
   const tick = () => {
     for (const chart of document.querySelectorAll(`${shown} .chart`)) {
-      const bars = [
-        ...chart.querySelectorAll('.recharts-bar-rectangle path, rect[fill="var(--data)"]'),
-      ];
+      const bars = [...chart.querySelectorAll('rect[fill="var(--data)"]')];
       if (bars.length === 0) continue;
       const right = Math.max(...bars.map((bar) => bar.getBoundingClientRect().right));
       overruns.push(Math.round(right - chart.getBoundingClientRect().right));
@@ -35,9 +33,7 @@ const sampleHeights = ({ shown, ms }) =>
     const heights = [];
     const until = performance.now() + ms;
     const tick = () => {
-      const bars = document.querySelectorAll(
-        `${shown} .interactive-card .recharts-bar-rectangle path`,
-      );
+      const bars = document.querySelectorAll(`${shown} .interactive-card rect[fill="var(--data)"]`);
       heights.push(
         Math.round([...bars].reduce((sum, bar) => sum + bar.getBoundingClientRect().height, 0)),
       );
@@ -74,7 +70,7 @@ async function openInvoices(browser) {
   await page.goto(`${BASE}/`, { waitUntil: "load" });
   const side = page.locator('[data-slot="sidebar"]');
   await side.getByRole("link", { name: "September invoices", exact: true }).click();
-  await page.locator(`${SHOWN} .interactive-card .recharts-bar-rectangle`).first().waitFor();
+  await page.locator(`${SHOWN} .interactive-card rect[fill="var(--data)"]`).first().waitFor();
   await side.locator('[data-thread="child"]', { hasText: "Central depot" }).click();
   await page.waitForTimeout(800);
   return page;

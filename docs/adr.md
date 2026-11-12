@@ -385,3 +385,16 @@ that file. `shimmering-text.tsx`, which the line chart's loading label imports, 
 shipped like the charts folder. Rejected: categorical x by forking the time-series shell, a far
 larger patch for weekday labels that are days anyway; and dropping rows with no value, which
 would draw a line straight across the gap.
+
+## ADR-036 - The slider card's bars use bklit on a fixed axis; Recharts is gone
+
+2026-11-12 - Accepted. ETH-130. Amends ADR-033.
+The slider card needs one value axis that every stop shares, so a smaller stop reads as smaller.
+bklit's bar chart always fits its axis to the data, so `bar-chart.tsx` carries a marked patch
+(`design-workshop patch`): a `valueDomainMax` prop that fixes the axis at `[0, max]`, the bar
+twin of the line chart's documented `yScaleDomainMax`. Re-apply it after any `shadcn add` that
+touches that file. bklit animates bars only as they first appear, so the 300ms ease between stops
+is a CSS transition on the settled bars' `y` and `height`, set only while the card is easing and
+never under reduced motion. Rejected: keeping Recharts for one card, two chart libraries; and
+patching bklit's bar animation, a larger patch than one CSS rule. Safari's support for
+transitioning SVG geometry is unverified; without it the bars change at once.

@@ -91,6 +91,8 @@ export interface BarChartProps {
   stackGap?: number;
   /** When set, tooltip Y positions snap to the top square center (shape variant). */
   squareSnap?: { squareGap: number; groupGap?: number; fit?: boolean };
+  /** A fixed value axis, [0, valueDomainMax], instead of one from the data (design-workshop patch, ADR-036). */
+  valueDomainMax?: number;
   /** Child components (Bar, Grid, ChartTooltip, etc.). Optional — omit for a
    * pure `status="loading"` skeleton. */
   children?: ReactNode;
@@ -179,6 +181,7 @@ interface ChartInnerProps {
   stacked: boolean;
   stackGap: number;
   squareSnap?: { squareGap: number; groupGap?: number; fit?: boolean };
+  valueDomainMax?: number; // design-workshop patch (ADR-036)
   children: ReactNode;
   containerRef: React.RefObject<HTMLDivElement | null>;
   onPhaseChange?: (phase: ChartPhase) => void;
@@ -210,6 +213,7 @@ const ChartCore = memo(function ChartCore({
   stacked,
   stackGap,
   squareSnap,
+  valueDomainMax, // design-workshop patch (ADR-036)
   children,
   containerRef,
   onPhaseChange,
@@ -287,10 +291,10 @@ const ChartCore = memo(function ChartCore({
   const valueScale = useMemo(() => {
     const range = isHorizontal ? [0, innerWidth] : [innerHeight, 0];
     return scaleLinear()
-      .domain(resolveBarValueDomain(valueExtents))
+      .domain(valueDomainMax ? [0, valueDomainMax] : resolveBarValueDomain(valueExtents)) // design-workshop patch (ADR-036)
       .nice()
       .range(range);
-  }, [innerWidth, innerHeight, valueExtents, isHorizontal]);
+  }, [innerWidth, innerHeight, valueExtents, isHorizontal, valueDomainMax]);
 
   const yScales = useMemo(() => {
     if (isHorizontal) {
@@ -301,9 +305,10 @@ const ChartCore = memo(function ChartCore({
       data,
       innerHeight,
       resolveDomain: (dataKeys) =>
+        valueDomainMax ? [0, valueDomainMax] : // design-workshop patch (ADR-036)
         resolveBarValueDomain(collectBarValueExtents(data, dataKeys, stacked)),
     });
-  }, [data, innerHeight, isHorizontal, lines, stacked, valueScale]);
+  }, [data, innerHeight, isHorizontal, lines, stacked, valueScale, valueDomainMax]);
 
   const primaryYScale = getPrimaryYScale(yScales, valueScale);
 
@@ -697,6 +702,7 @@ export function BarChart({
   stacked = false,
   stackGap = 0,
   squareSnap,
+  valueDomainMax, // design-workshop patch (ADR-036)
   children,
   onPhaseChange,
   status = "ready",
@@ -729,6 +735,8 @@ export function BarChart({
               orientation={orientation}
               revealSignature={revealSignature}
               squareSnap={squareSnap}
+              // design-workshop patch (ADR-036)
+              valueDomainMax={valueDomainMax}
               stacked={stacked}
               stackGap={stackGap}
               status={status}

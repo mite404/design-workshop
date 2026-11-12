@@ -83,3 +83,18 @@ Criterion 1 done: line cards draw with bklit's `line-chart` (ADR-035). Rows carr
 day; a missing value leaves a gap (checked: the missing-Wednesday story's line is two subpaths,
 with no marker at Wednesday). Recharts remains for the slider card's `StopChart`, so criteria 2
 and 3 wait for its move.
+
+### Slider card on bklit and Recharts removed, Nov 12 2026 (ETH-130, second commit)
+
+Criteria 2 and 3 done (ADR-036): `recharts` is gone from every `package.json` and the lockfile.
+One `chart-measure.mjs` run (`verify-eth-130-measure-20261112-150838`, 5 runs at 4x CPU):
+
+| Measure | Recharts only (ETH-129 run, round 1) | Both (ETH-129 run, round 1) | bklit only |
+| --- | --- | --- | --- |
+| Chart code, gzip | 125,149 B | 212,447 B | 121,472 B |
+| Weekly brief, median (range) | 4152 (3943-5065) | 3741 (3378-4207) | 3096 (2916-3490) |
+| Interactive Profit, median (range) | 2963 (2939-3140) | 3381 (3205-4968) | 3208 (2775-3265) |
+
+Bytes are deterministic. The render times come from separate runs on separate dev servers, not
+an alternating comparison (the earlier state needs `recharts` installed), so they show no
+regression rather than a speedup. None of these are production numbers.

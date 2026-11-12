@@ -57,3 +57,8 @@ One chart library, one way to draw a chart. Story:
   Ethan's go-ahead.
 
 ## Drift log
+
+* bklit's line chart is time-only, so line rows gained a `date` (Ethan chose this, option 2,
+  with a fork as fallback). Gaps needed a two-line patch (ADR-035).
+* The slider card needed a fixed value axis bklit lacks: a marked `valueDomainMax` patch, and a
+  CSS ease in place of Recharts' animation (ADR-036).
