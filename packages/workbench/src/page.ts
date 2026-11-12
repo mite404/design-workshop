@@ -36,6 +36,7 @@ import {
   type Box,
   type Corner,
 } from "./radius";
+import { type Bezier, EASE, formatBezier, parseBezier, progressAt } from "./motion";
 import {
   applied,
   canvasPath,
@@ -2348,6 +2349,261 @@ function rootField(name: RootName) {
 const scaleFields = SCALE.map(rootField);
 const motionField = rootField(MOTION);
 
+// The hover easing's curve editor (ETH-140), in bklit's look (PRD section 9): a dark plot of
+// time against progress, a crosshair with a blurred readout, and two control points to drag.
+const SVG = "http://www.w3.org/2000/svg";
+const PLOT_W = 200; // time 0..1 across
+const PLOT_H = 100; // progress 0..1 up
+const PLOT_PAD = 60; // room above and below: progress -0.6..1.6, every curve the endpoint takes
+const STEP_EASE = 0.01; // an arrow press; 0.1 with Shift
+function svgOf(tag: string, attrs: Record<string, string>): SVGElement {
+  const node = document.createElementNS(SVG, tag) as SVGElement;
+  for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v);
+  return node;
+}
+const plotX = (t: number): number => t * PLOT_W;
+const plotY = (p: number): number => PLOT_PAD + (1 - p) * PLOT_H;
+const curveLine = svgOf("path", { class: "curve-line" });
+const curveArms = [0, 1].map(() => svgOf("line", { class: "curve-arm" }));
+const crossTime = svgOf("line", { class: "cross" });
+const crossProgress = svgOf("line", { class: "cross" });
+const curvePoints = (["First", "Second"] as const).map((which) =>
+  svgOf("circle", {
+    class: "curve-point",
+    r: "6",
+    tabindex: "0",
+    role: "slider",
+    "aria-label": `${which} control point`,
+  }),
+);
+const curveSvg = svgOf("svg", {
+  class: "curve",
+  viewBox: `-8 0 ${PLOT_W + 16} ${PLOT_H + 2 * PLOT_PAD}`,
+  "aria-label": "Hover easing curve",
+});
+curveSvg.append(
+  ...[0, 0.25, 0.5, 0.75, 1].map((t) =>
+    svgOf("line", {
+      class: "grid",
+      x1: `${plotX(t)}`,
+      x2: `${plotX(t)}`,
+      y1: "0",
+      y2: `${PLOT_H + 2 * PLOT_PAD}`,
+    }),
+  ),
+  ...[0, 1].map((p) =>
+    svgOf("line", {
+      class: "grid",
+      x1: "0",
+      x2: `${PLOT_W}`,
+      y1: `${plotY(p)}`,
+      y2: `${plotY(p)}`,
+    }),
+  ),
+  crossTime,
+  crossProgress,
+  ...curveArms,
+  curveLine,
+  ...curvePoints,
+);
+const curveTip = element("div", { className: "curve-tip", hidden: true });
+const easeInput = element("input", {
+  id: "wb-motion-hover-ease",
+  autocomplete: "off",
+  placeholder: "x1, y1, x2, y2",
+});
+// A curve as its field shows it: the four numbers, without the cubic-bezier() around them.
+const easeText = (curve: Bezier): string => formatBezier(curve).slice("cubic-bezier(".length, -1);
+easeInput.spellcheck = false;
+const easeReset = element(
+  "button",
+  { type: "button", className: "reset", ariaLabel: "Reset hover easing" },
+  "Reset",
+);
+let easeBefore: string | null = null; // the saved curve while one is in hand
+let easeDrag: number | null = null; // the control point being dragged
+let crossAt: number | null = null; // the crosshair's time while the pointer is on the plot
+
+const easeNow = (): Bezier =>
+  parseBezier(style(doc()?.documentElement ?? document.documentElement).getPropertyValue(EASE)) ?? [
+    0.25, 0.1, 0.25, 1,
+  ];
+
+function drawCurve(curve: Bezier): void {
+  const [x1, y1, x2, y2] = curve;
+  if (crossAt !== null) placeCross(curve, crossAt); // keeps the readout on the curve shown
+  const [ax, ay, bx, by] = [plotX(x1), plotY(y1), plotX(x2), plotY(y2)];
+  curveLine.setAttribute("d", `M0,${plotY(0)} C${ax},${ay} ${bx},${by} ${PLOT_W},${plotY(1)}`);
+  const ends = [
+    [0, plotY(0), ax, ay],
+    [PLOT_W, plotY(1), bx, by],
+  ];
+  for (const [i, arm] of curveArms.entries()) {
+    const [ex1, ey1, ex2, ey2] = ends[i] ?? [0, 0, 0, 0];
+    arm.setAttribute("x1", `${ex1}`);
+    arm.setAttribute("y1", `${ey1}`);
+    arm.setAttribute("x2", `${ex2}`);
+    arm.setAttribute("y2", `${ey2}`);
+  }
+  for (const [i, point] of curvePoints.entries()) {
+    point.setAttribute("cx", `${i === 0 ? ax : bx}`);
+    point.setAttribute("cy", `${i === 0 ? ay : by}`);
+  }
+}
+
+// Shows `curve` on the frame's root, unsaved, remembering the saved value to commit against.
+function previewEase(curve: Bezier): void {
+  const root = doc()?.documentElement;
+  if (root === undefined) return;
+  easeBefore ??= style(root).getPropertyValue(EASE).trim();
+  root.style.setProperty(EASE, formatBezier(curve));
+  drawCurve(curve);
+}
+function commitEase(): void {
+  const root = doc()?.documentElement;
+  const before = easeBefore;
+  easeBefore = null;
+  easeDrag = null;
+  if (root === undefined || before === null) return;
+  const value = root.style.getPropertyValue(EASE);
+  if (value === before) root.style.removeProperty(EASE);
+  else saveValue(root, ROOT, EASE, value);
+}
+function revertEase(): void {
+  easeDrag = null;
+  if (easeBefore === null) return;
+  easeBefore = null;
+  doc()?.documentElement.style.removeProperty(EASE);
+}
+
+// The plot coordinates under a pointer, as time and progress.
+function plotAt(event: PointerEvent): [number, number] {
+  const plot = curveSvg.getBoundingClientRect();
+  const scale = (PLOT_W + 16) / plot.width;
+  const x = (event.clientX - plot.left) * scale - 8;
+  const y = (event.clientY - plot.top) * scale;
+  return [x / PLOT_W, 1 - (y - PLOT_PAD) / PLOT_H];
+}
+
+function setLine(line: SVGElement, x1: number, y1: number, x2: number, y2: number): void {
+  for (const [k, v] of Object.entries({ x1, y1, x2, y2 })) line.setAttribute(k, `${v}`);
+}
+
+// The crosshair at `time` on `curve`, with the progress there in the readout.
+function placeCross(curve: Bezier, time: number): void {
+  const progress = progressAt(curve, time);
+  setLine(crossTime, plotX(time), 0, plotX(time), PLOT_H + 2 * PLOT_PAD);
+  setLine(crossProgress, 0, plotY(progress), PLOT_W, plotY(progress));
+  curveTip.textContent = `${Math.round(time * 100)}% time · ${Math.round(progress * 100)}% done`;
+}
+
+// Moves the crosshair to the pointer's time and shows the curve's progress there.
+function showCross(event: PointerEvent): void {
+  crossAt = Math.min(Math.max(plotAt(event)[0], 0), 1);
+  placeCross(easeNow(), crossAt);
+  const plot = curveSvg.getBoundingClientRect();
+  curveTip.style.translate = `${event.clientX - plot.left + 12}px ${event.clientY - plot.top + 12}px`;
+  curveTip.hidden = false;
+}
+
+// `curve` with control point `i` (0 or 1) moved to x, y, kept to what CSS and the endpoint take.
+function setPoint(curve: Bezier, i: number, x: number, y: number): Bezier {
+  const [x1, y1, x2, y2] = curve;
+  const next: Bezier = i === 0 ? [x, y, x2, y2] : [x1, y1, x, y];
+  return parseBezier(formatBezier(next)) ?? curve;
+}
+
+const EASE_KEYS: Record<string, [number, number]> = {
+  ArrowLeft: [-1, 0],
+  ArrowRight: [1, 0],
+  ArrowUp: [0, 1],
+  ArrowDown: [0, -1],
+};
+// Moves control point `i` one arrow press: 0.01, or 0.1 with Shift.
+function stepEase(i: number, event: KeyboardEvent): void {
+  const dir = EASE_KEYS[event.key];
+  if (dir === undefined) return;
+  event.preventDefault();
+  const step = event.shiftKey ? STEP_EASE * 10 : STEP_EASE;
+  const curve = easeNow();
+  const [x, y] = i === 0 ? [curve[0], curve[1]] : [curve[2], curve[3]];
+  previewEase(setPoint(curve, i, x + dir[0] * step, y + dir[1] * step));
+}
+
+for (const [i, point] of curvePoints.entries()) {
+  point.addEventListener("pointerdown", (event) => {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    point.setPointerCapture(event.pointerId);
+    easeDrag = i;
+  });
+  point.addEventListener("pointermove", (event) => {
+    if (easeDrag === i) previewEase(setPoint(easeNow(), i, ...plotAt(event)));
+  });
+  point.addEventListener("pointerup", () => {
+    if (easeDrag === i) commitEase();
+  });
+  point.addEventListener("pointercancel", revertEase);
+  point.addEventListener("keydown", (event) => {
+    stepEase(i, event);
+    if (event.key === "Enter") commitEase();
+    if (event.key !== "Escape") return;
+    event.stopPropagation();
+    revertEase();
+  });
+  point.addEventListener("blur", commitEase);
+}
+curveSvg.addEventListener("pointermove", showCross);
+curveSvg.addEventListener("pointerleave", () => {
+  crossAt = null;
+  curveTip.hidden = true;
+});
+easeInput.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") easeInput.blur();
+  if (event.key === "Escape") {
+    event.stopPropagation();
+    easeInput.value = easeText(easeNow());
+    easeInput.blur();
+  }
+});
+easeInput.addEventListener("change", () => {
+  const raw = easeInput.value.trim();
+  const typed = parseBezier(raw.startsWith("cubic-bezier") ? raw : `cubic-bezier(${raw})`);
+  if (typed === null) {
+    showMessage(`Not a curve: ${raw}. Type four numbers: x1, y1, x2, y2.`, true);
+    return;
+  }
+  showMessage("");
+  previewEase(typed);
+  commitEase();
+});
+easeReset.addEventListener("click", () => {
+  revertEase();
+  const root = doc()?.documentElement;
+  if (root !== undefined && was(ROOT, EASE) !== null) saveValue(root, ROOT, EASE, null);
+});
+const easeEditor = element(
+  "div",
+  { className: "ease" },
+  element("div", { className: "curve-box" }, curveSvg, curveTip),
+  element(
+    "div",
+    { className: "row" },
+    element("label", { htmlFor: easeInput.id }, "Hover easing"),
+    easeInput,
+    easeReset,
+  ),
+);
+
+// Keeps the curve and its field on the frame's value, except while one is in hand.
+function trackEase(): void {
+  if (easeBefore !== null || easeDrag !== null) return;
+  const curve = easeNow();
+  drawCurve(curve);
+  if (document.activeElement !== easeInput) easeInput.value = easeText(curve);
+  easeReset.disabled = was(ROOT, EASE) === null;
+}
+
 // The nine steps as the frame works them out: each one's size and line height in px.
 const stepReadouts = STEPS.map((step) => {
   const size = element("span");
@@ -3430,6 +3686,7 @@ function track(): void {
   trackType();
   trackRootFonts();
   trackScale();
+  trackEase();
   trackUnmatched();
   trackChat();
   requestAnimationFrame(track);
@@ -3476,6 +3733,7 @@ document.body.append(
         { ariaLabel: "Motion", open: true },
         element("summary", {}, element("h2", {}, "Motion · Both modes")),
         motionField.row,
+        easeEditor,
       ),
       colourPanel,
       scalePanel,

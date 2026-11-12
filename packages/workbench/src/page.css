@@ -1677,3 +1677,96 @@ body[data-referencing] .overlay,
     monospace;
   overflow-wrap: anywhere;
 }
+
+/* The hover easing's curve editor (ETH-140), in bklit's look: a dark plot, a soft grid, a
+   crosshair and a blurred readout. */
+.ease {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.curve-box {
+  position: relative;
+  border-radius: 10px;
+  background: #0d0d0e;
+  overflow: hidden;
+}
+
+.curve {
+  display: block;
+  width: 100%;
+  touch-action: none;
+}
+
+.curve .grid {
+  stroke: rgb(255 255 255 / 0.06);
+}
+
+.curve .cross {
+  stroke: rgb(255 255 255 / 0.28);
+  stroke-dasharray: 3 3;
+  opacity: 0;
+}
+
+.curve:hover .cross {
+  opacity: 1;
+}
+
+.curve-line {
+  fill: none;
+  stroke: #f4f4f5;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.curve-arm {
+  stroke: rgb(255 255 255 / 0.32);
+}
+
+.curve-point {
+  fill: #f4f4f5;
+  stroke: #0d0d0e;
+  stroke-width: 2;
+  cursor: grab;
+  outline: none;
+}
+
+.curve-point:active {
+  cursor: grabbing;
+}
+
+.curve-point:is(:hover, :focus-visible) {
+  stroke: var(--wb-accent);
+}
+
+.curve-tip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: rgb(24 24 27 / 0.6);
+  backdrop-filter: blur(8px);
+  color: #f4f4f5;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.curve-tip[hidden] {
+  display: none;
+}
+
+/* The typed curve takes its own line under its label: four numbers do not fit beside it. */
+.ease .row {
+  grid-template-columns: 1fr auto;
+}
+
+.ease .row input {
+  grid-row: 2;
+  grid-column: 1 / -1;
+  font-family: var(--wb-mono, ui-monospace, monospace);
+  font-size: 11px;
+}

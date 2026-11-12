@@ -13,8 +13,8 @@
   background: transparent;
   color: var(--soft-ink);
   transition:
-    background-color var(--motion-hover) ease,
-    color var(--motion-hover) ease;
+    background-color var(--motion-hover) var(--motion-hover-ease),
+    color var(--motion-hover) var(--motion-hover-ease);
 }
 .icon-btn:hover,
 .icon-btn[aria-expanded="true"] {

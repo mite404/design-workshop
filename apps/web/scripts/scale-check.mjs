@@ -106,6 +106,17 @@ const durations = () =>
       return d;
     }),
   );
+// The override file holding just the hover easing `value`, and the timing a button renders.
+const ease = (value) => file([`--motion-hover-ease: ${value}`]);
+const timing = () =>
+  frame.locator("body").evaluate((body) => {
+    const probe = body.ownerDocument.createElement("button");
+    probe.className = "btn";
+    body.append(probe);
+    const t = getComputedStyle(probe).transitionTimingFunction;
+    probe.remove();
+    return t;
+  });
 async function type(name, value) {
   await field(name).click();
   await field(name).fill(value);
@@ -309,6 +320,81 @@ await step("the hover duration is one token every control's hover follows", asyn
     await page.waitForTimeout(100);
   }
   assert.equal(readFileSync(OVERRIDES, "utf8"), EMPTY, "Reset leaves the file empty");
+});
+
+await step("the hover easing's curve editor drags, steps, types and resets", async () => {
+  const settle = async (want) => {
+    for (let i = 0; i < 50 && readFileSync(OVERRIDES, "utf8") !== want; i++) {
+      await page.waitForTimeout(100);
+    }
+    assert.equal(readFileSync(OVERRIDES, "utf8"), want, "the override file");
+  };
+  assert.equal(
+    await timing(),
+    "cubic-bezier(0.25, 0.1, 0.25, 1), cubic-bezier(0.25, 0.1, 0.25, 1)",
+    "the baseline is CSS's ease, as a curve",
+  );
+  const first = page.getByRole("slider", { name: "First control point" });
+  await first.focus();
+  await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("Shift+ArrowUp");
+  await page.keyboard.press("Escape");
+  assert.equal(
+    await timing(),
+    "cubic-bezier(0.25, 0.1, 0.25, 1), cubic-bezier(0.25, 0.1, 0.25, 1)",
+    "Escape drops an unsaved nudge",
+  );
+  await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("Enter");
+  await settle(ease("cubic-bezier(0.26, 0.1, 0.25, 1)"));
+  assert.equal(
+    await timing(),
+    "cubic-bezier(0.26, 0.1, 0.25, 1), cubic-bezier(0.26, 0.1, 0.25, 1)",
+  );
+  // Drag the second point to (0.5, 1): screen coordinates from the plot's viewBox, 216 wide.
+  const plot = await page.locator("svg.curve").boundingBox();
+  const at = (t, p) => [
+    plot.x + ((8 + t * 200) * plot.width) / 216,
+    plot.y + ((60 + (1 - p) * 100) * plot.width) / 216,
+  ];
+  const second = await page.getByRole("slider", { name: "Second control point" }).boundingBox();
+  await page.mouse.move(second.x + second.width / 2, second.y + second.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(...at(0.5, 1), { steps: 6 });
+  await page.mouse.up();
+  for (let i = 0; i < 50 && !readFileSync(OVERRIDES, "utf8").includes("0.26, 0.1, 0.5"); i++) {
+    await page.waitForTimeout(100);
+  }
+  const dragged = /cubic-bezier\(0\.26, 0\.1, ([\d.]+), ([\d.]+)\)/.exec(
+    readFileSync(OVERRIDES, "utf8"),
+  );
+  assert.ok(dragged, "the drag saved a curve");
+  assert.ok(Math.abs(Number(dragged[1]) - 0.5) < 0.02 && Math.abs(Number(dragged[2]) - 1) < 0.02);
+  await page.mouse.move(...at(0.25, 0.5), { steps: 3 });
+  assert.match(await page.locator(".curve-tip").textContent(), /^25% time · \d+% done$/);
+  await page.locator("details[aria-label=Motion]").screenshot({ path: `${out}/ease.png` });
+  const typed = page.locator("#wb-motion-hover-ease");
+  await typed.fill("cubic-bezier(0, 0, 0.58, 1)");
+  await typed.press("Enter");
+  await settle(ease("cubic-bezier(0, 0, 0.58, 1)"));
+  await typed.fill("0.3, 1.4, 0.6, 1");
+  await typed.press("Enter");
+  await settle(ease("cubic-bezier(0.3, 1.4, 0.6, 1)"));
+  // the pointer still rests at 25% time: the readout follows the new curve without a move
+  assert.notEqual(await page.locator(".curve-tip").textContent(), "25% time · 28% done", "fresh");
+  await page
+    .locator("details[aria-label=Motion]")
+    .screenshot({ path: `${out}/ease-overshoot.png` });
+  await page.getByRole("button", { name: "Reset hover easing" }).click();
+  await settle(EMPTY);
+  for (let i = 0; i < 50 && (await timing()).includes("1.4"); i++) {
+    await page.waitForTimeout(100); // until the hot reload drops the saved curve
+  }
+  assert.equal(
+    await timing(),
+    "cubic-bezier(0.25, 0.1, 0.25, 1), cubic-bezier(0.25, 0.1, 0.25, 1)",
+    "Reset brings back the baseline",
+  );
 });
 
 await browser.close();

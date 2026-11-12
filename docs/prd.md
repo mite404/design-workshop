@@ -237,8 +237,9 @@ look in under an hour without writing a prompt.
   another checkout (ETH-125 to 127). Starting a project from a theme and agent-drafted themes are
   not built.*
 - R17. Motion: scrub a running transition, edit duration and easing curves. *Partly built: the
-  controls' hover duration is one shared token the Workbench edits (ETH-139, ADR-038). Easing
-  curves and scrubbing are not started.*
+  controls' hover duration (ETH-139, ADR-038) and easing (ETH-140, ADR-039) are shared tokens
+  the Workbench edits, the easing on a curve editor. Scrubbing a running transition is not
+  started.*
 - R18. Open a story in Component mode: a component or a state the app is not showing opens as
   its Storybook story, and the drawer lists those stories. *Built (ETH-118).*
 

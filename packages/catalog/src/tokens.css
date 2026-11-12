@@ -296,6 +296,7 @@
   /* every control's hover feedback, one shared value (Ethan: motion values are "shared");
      the Workbench edits it */
   --motion-hover: 150ms;
+  --motion-hover-ease: cubic-bezier(0.25, 0.1, 0.25, 1); /* CSS's ease, as a curve to edit */
   --btn-radius: 4px; /* every button's corners (.btn, Done, Skip, Submit); tokens.test.ts guards it */
   --radius-card: 14px; /* the catalog card and the thread panel; shadcn owns --radius (ADR-082) */
   /* A lane's collapse (ADR-134): its 20px fill sits --leading-space inside the lane's 1px border,
@@ -347,7 +348,7 @@ button:hover {
   --btn-hover-ink: var(--on-accent); /* css: 10.4:1 on moss */
   --btn-duration: var(--motion-hover);
   --btn-delay: 0ms; /* css: none; kept as a token for iteration */
-  --btn-ease: ease; /* css: the default curve */
+  --btn-ease: var(--motion-hover-ease);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -402,7 +403,7 @@ button:hover {
   color: var(--ink);
   font-size: var(--text-xs);
   line-height: var(--text-xs--line-height);
-  transition: border-color var(--motion-hover) ease;
+  transition: border-color var(--motion-hover) var(--motion-hover-ease);
 }
 .field::placeholder {
   color: var(--field-placeholder);

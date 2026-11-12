@@ -421,3 +421,15 @@ Workbench edits it with the type scale's field (type, arrows, label scrub, Escap
 to take it, and the endpoint takes whole milliseconds only. Rejected: a per-element transition
 field in the Selection panel, the per-element edit Ethan ruled out; and a second field editor for
 durations, a copy of the scale's.
+
+## ADR-039 - The hover easing is a cubic-bezier token with a visible range
+
+2026-11-12 - Accepted. ETH-140. Follows ADR-038.
+`--motion-hover-ease` holds a `cubic-bezier()`, never a keyword, so the curve editor always has
+two points to drag; its baseline is CSS's `ease` written out as `cubic-bezier(0.25, 0.1, 0.25,
+1)`, which renders the same. The endpoint takes x from 0 to 1, as CSS requires, and y from -0.6
+to 1.6, the range the plot shows, so every saved curve can be seen and grabbed; 1.6 still takes
+the common back-out ease (y 1.56). The editor follows PRD section 9's look for curve interfaces
+(dark, smooth curve, crosshair, blurred readout) in plain SVG and CSS, because bklit provides
+charts, not a bezier editor. Rejected: a plot that grows to fit any overshoot, which moves the
+point under the pointer mid-drag; and a list of named eases, a choice Ethan has not asked for.

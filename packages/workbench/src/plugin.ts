@@ -32,6 +32,7 @@ import { parseOverrides, setOverride } from "./overrides.ts";
 import { isPosition, type Change } from "./history.ts";
 import { isSelector } from "./selector.ts";
 import { SPACING } from "./spacing.ts";
+import { EASE, parseBezier } from "./motion.ts";
 import { isScale, isType, SCALE, scaleValue, TYPE, typeValue } from "./type.ts";
 import { COLOUR_ROOT, colourTokens, HEX } from "./colour.ts";
 import { parseTheme, type Theme } from "./theme.ts";
@@ -50,7 +51,14 @@ const PAGE = fileURLToPath(new URL("./page.ts", import.meta.url));
 const ROOT = ":root";
 const COLOURS = colourTokens(readFileSync(TOKENS, "utf8"));
 const COLOUR_NAMES = Object.keys(COLOURS).filter((name) => COLOURS[name]?.editable);
-const EDITABLE = ["--window-radius", "--motion-hover", "--font-text", "--font-display", ...SCALE];
+const EDITABLE = [
+  "--window-radius",
+  "--motion-hover",
+  EASE,
+  "--font-text",
+  "--font-display",
+  ...SCALE,
+];
 const PX = /^\d{1,4}px$/;
 const MS = /^\d{1,4}ms$/;
 const TRANSLATE = /^-?\d{1,4}px -?\d{1,4}px$/;
@@ -115,6 +123,11 @@ function namesOf(selector: string): readonly string[] {
   if (Object.values(COLOUR_ROOT).includes(selector)) return COLOUR_NAMES;
   return isSelector(selector) ? [...SPACING, "translate", ...TYPE] : [];
 }
+// The motion tokens' checks (ADR-038): a duration in whole ms, an easing as a cubic-bezier.
+const MOTION_CHECKS: Record<string, (v: string) => boolean> = {
+  "--motion-hover": (v) => MS.test(v),
+  [EASE]: (v) => parseBezier(v) !== null,
+};
 function isValue(v: unknown, name: string): v is string | null {
   if (v === null) return true;
   if (typeof v !== "string") return false;
@@ -122,7 +135,8 @@ function isValue(v: unknown, name: string): v is string | null {
   if (isType(name)) return typeValue(name, v);
   if (isScale(name)) return scaleValue(name, v);
   if (name.startsWith("--font-")) return isFamilyValue(v);
-  if (name === "--motion-hover") return MS.test(v);
+  const motion = MOTION_CHECKS[name];
+  if (motion !== undefined) return motion(v);
   return (name === "translate" ? TRANSLATE : PX).test(v);
 }
 const isWas = (v: unknown): v is string | null => v === null || typeof v === "string";
