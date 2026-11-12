@@ -2231,9 +2231,9 @@ const stepReadouts = STEPS.map((step) => {
 });
 
 const scalePanel = element(
-  "section",
-  { ariaLabel: "Type", className: "scale" },
-  element("h2", {}, "Type"),
+  "details",
+  { ariaLabel: "Type", className: "scale", open: true },
+  element("summary", {}, element("h2", {}, "Type")),
   ...rootFonts.map((r) => r.row),
   ...scaleFields.map((f) => f.row),
   ratioList,
@@ -2678,9 +2678,9 @@ const typeNote = element(
   "Read-only fields are set in the element's own style attribute, which no stylesheet overrides.",
 );
 const typePanel = element(
-  "section",
-  { ariaLabel: "Typography", className: "type" },
-  element("div", { className: "type-head" }, element("h2", {}, "Typography"), basicsOpen),
+  "details",
+  { ariaLabel: "Typography", className: "type", open: true },
+  element("summary", { className: "type-head" }, element("h2", {}, "Typography"), basicsOpen),
   element(
     "div",
     { className: "type-grid" },
@@ -2846,9 +2846,9 @@ function trackType(): void {
 }
 
 const selectionPanel = element(
-  "section",
-  { ariaLabel: "Selection" },
-  element("h2", {}, "Selection"),
+  "details",
+  { ariaLabel: "Selection", open: true },
+  element("summary", {}, element("h2", {}, "Selection")),
   selectorText,
   reachNote,
   ...rows.map((r) => r.row),
@@ -2857,9 +2857,9 @@ const selectionPanel = element(
   offsetNote,
 );
 const unmatchedPanel = element(
-  "section",
-  { ariaLabel: "Saved values that match nothing" },
-  element("h2", {}, "Saved, matching nothing"),
+  "details",
+  { ariaLabel: "Saved values that match nothing", open: true },
+  element("summary", {}, element("h2", {}, "Saved, matching nothing")),
   unmatchedList,
 );
 
@@ -2925,11 +2925,11 @@ function trackUnmatched(): void {
 }
 
 const colourList = element("div", { className: "colour-list" });
-const colourHeading = element("summary", {}, "Colours · Light");
+const colourHeading = element("h2", {}, "Colours · Light");
 const colourPanel = element(
   "details",
-  { className: "colours", open: true },
-  colourHeading,
+  { ariaLabel: "Colours", open: true },
+  element("summary", {}, colourHeading),
   colourList,
 );
 type ColourRow = {
@@ -3162,8 +3162,12 @@ document.body.append(
       checkCommit,
       message,
       componentNotice,
-      element("h2", {}, "Window · Both modes"),
-      element("div", { className: "row" }, label, field, reset),
+      element(
+        "details",
+        { ariaLabel: "Window", open: true },
+        element("summary", {}, element("h2", {}, "Window · Both modes")),
+        element("div", { className: "row" }, label, field, reset),
+      ),
       colourPanel,
       scalePanel,
       selectionPanel,
@@ -3173,6 +3177,16 @@ document.body.append(
   ),
 );
 document.body.append(stepList, fontPicker, basics, commitDialog);
+// Each category folds away to save space, and stays folded across reloads.
+const folded = new Set(localStorage.getItem("workbench-folded")?.split("|"));
+for (const panel of document.querySelectorAll<HTMLDetailsElement>(".inspector > details")) {
+  panel.open = !folded.has(panel.ariaLabel ?? "");
+  panel.addEventListener("toggle", () => {
+    if (panel.open) folded.delete(panel.ariaLabel ?? "");
+    else folded.add(panel.ariaLabel ?? "");
+    localStorage.setItem("workbench-folded", [...folded].join("|"));
+  });
+}
 paddingLayer.append(...paddingBars.flatMap((b) => [b.el, b.space]));
 unmatchedPanel.hidden = true;
 

@@ -116,7 +116,7 @@ await step("at the baseline the nine steps are 10 to 42px, and render so", async
   await expectField("ratio", "1.2");
   await expectField("leading", "1.3");
   await expectScale(BASELINE, []);
-  await page.locator("section[aria-label=Type]").screenshot({ path: `${out}/baseline.png` });
+  await page.locator("details[aria-label=Type]").screenshot({ path: `${out}/baseline.png` });
 });
 
 await step("Up twice in base size previews 16px, and Enter saves it", async () => {

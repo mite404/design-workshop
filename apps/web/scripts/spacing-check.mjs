@@ -334,7 +334,7 @@ await step("Reset on the gap field removes it and the card's own 0 returns", asy
 await step("clicking empty space deselects", async () => {
   await page.mouse.click(6, 450);
   await page.locator(".overlay[data-selected=false]").waitFor();
-  assert.equal(await page.locator("section[aria-label=Selection]").isHidden(), true);
+  assert.equal(await page.locator("details[aria-label=Selection]").isHidden(), true);
 });
 
 await step("values whose selector matches nothing are listed and can be deleted", async () => {
@@ -359,7 +359,7 @@ await step("values whose selector matches nothing are listed and can be deleted"
   }
   assert.equal(readFileSync(OVERRIDES, "utf8"), EMPTY);
   assert.equal(
-    await page.locator("section[aria-label='Saved values that match nothing']").isHidden(),
+    await page.locator("details[aria-label='Saved values that match nothing']").isHidden(),
     true,
   );
 });

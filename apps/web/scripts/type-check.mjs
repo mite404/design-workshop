@@ -39,7 +39,7 @@ const { context, page, errors } = await workbenchPage(browser);
 await context.route(/api\.fontsource\.org|cdn\.jsdelivr\.net/, (route) => route.abort());
 const frame = page.frameLocator("iframe");
 const heading = frame.locator("h2").first();
-const panel = page.locator("section[aria-label=Typography]");
+const panel = page.locator("details[aria-label=Typography]");
 const control = (id) => page.locator(`#wb-${id}`);
 let subject = heading; // the element the checks read
 const css = (name) => subject.evaluate((el, n) => getComputedStyle(el).getPropertyValue(n), name);
@@ -276,7 +276,7 @@ await step("each reset removes its value and the heading's own value returns", a
 await step("a type value in the element's own style is read-only", async () => {
   await heading.evaluate((el) => el.style.setProperty("font-size", "18px"));
   await page.keyboard.press("Escape");
-  await page.locator("section[aria-label=Typography]:not([hidden])").waitFor({ state: "detached" });
+  await page.locator("details[aria-label=Typography]:not([hidden])").waitFor({ state: "detached" });
   await select(heading);
   await page.waitForFunction(() => document.querySelector("#wb-font-size").readOnly);
   await page.getByRole("button", { name: "Size steps", disabled: true }).waitFor();
@@ -582,7 +582,7 @@ await step("Escape closes the popover, keeps the selection, and focus returns", 
   assert.equal(await page.evaluate(() => document.activeElement?.ariaLabel), "Type settings");
   assert.equal(await page.locator(".selector").textContent(), sel, "still the paragraph");
   await openBasics();
-  await page.locator(".inspector h2").first().click(); // outside the popover
+  await page.locator(".inspector .mode-note").first().click(); // outside the popover
   await basics.waitFor({ state: "hidden" });
   await openBasics();
   await control("margin-bottom").press("Enter"); // focus leaves for the page
