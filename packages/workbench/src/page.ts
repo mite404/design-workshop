@@ -2174,7 +2174,19 @@ type ScaleSpec = {
   places: number;
   unit: string;
 };
-const SCALE_SPECS: Record<ScaleName, ScaleSpec> = {
+const MOTION = "--motion-hover"; // the one shared duration so far (R17)
+// A `:root` value edited as a number: the type scale's three, and the motion duration.
+type RootName = ScaleName | typeof MOTION;
+const SCALE_SPECS: Record<RootName, ScaleSpec> = {
+  [MOTION]: {
+    title: "Hover time",
+    step: 10,
+    dragPx: 2,
+    min: 0,
+    max: 2000,
+    places: 0,
+    unit: "ms",
+  },
   "--type-base": { title: "Base size", step: 2, dragPx: 4, min: 4, max: 96, places: 0, unit: "px" },
   "--type-ratio": {
     title: "Ratio",
@@ -2196,35 +2208,35 @@ const SCALE_SPECS: Record<ScaleName, ScaleSpec> = {
   },
 };
 
-const scaleEdits = new Map<ScaleName, string>(); // each value in hand's value before the change
-let scaleDrag: { name: ScaleName; scrub: HTMLElement; from: number; x: number } | null = null;
+const scaleEdits = new Map<RootName, string>(); // each value in hand's value before the change
+let scaleDrag: { name: RootName; scrub: HTMLElement; from: number; x: number } | null = null;
 
 // A value the endpoint takes: the base floored to even, the others to their decimals, in bounds.
-function scaleText(name: ScaleName, n: number): string {
+function scaleText(name: RootName, n: number): string {
   const { min, max, places, unit } = SCALE_SPECS[name];
   const fitted = name === "--type-base" ? Math.floor(n / 2) * 2 : Number(n.toFixed(places));
   return `${Math.min(Math.max(fitted, min), max)}${unit}`;
 }
-const scaleNow = (name: ScaleName): number => {
+const scaleNow = (name: RootName): number => {
   const root = doc()?.documentElement;
   return root === undefined ? Number.NaN : Number.parseFloat(style(root).getPropertyValue(name));
 };
 // One arrow press from `n`: the ratio moves between the named ratios, the others by their step.
-function scaleStep(name: ScaleName, n: number, sign: 1 | -1): number {
+function scaleStep(name: RootName, n: number, sign: 1 | -1): number {
   if (name !== "--type-ratio") return n + sign * SCALE_SPECS[name].step;
   const named =
     sign === 1 ? RATIOS.find((r) => r > n + 1e-9) : RATIOS.findLast((r) => r < n - 1e-9);
   return named ?? n;
 }
 
-function previewScale(name: ScaleName, n: number): void {
+function previewScale(name: RootName, n: number): void {
   const root = doc()?.documentElement;
   if (root === undefined || !Number.isFinite(n)) return;
   if (!scaleEdits.has(name)) scaleEdits.set(name, style(root).getPropertyValue(name).trim());
   root.style.setProperty(name, scaleText(name, n));
 }
 // Saves the value in hand, or drops it when it changes nothing.
-function commitScale(name: ScaleName): void {
+function commitScale(name: RootName): void {
   const root = doc()?.documentElement;
   const before = scaleEdits.get(name);
   scaleEdits.delete(name);
@@ -2234,7 +2246,7 @@ function commitScale(name: ScaleName): void {
   else saveValue(root, ROOT, name, value);
 }
 // Puts back the value in hand, unsaved, and ends a scrub of it, so its release saves nothing.
-function revertScale(name: ScaleName): void {
+function revertScale(name: RootName): void {
   if (scaleDrag?.name === name) {
     delete scaleDrag.scrub.dataset.dragging;
     scaleDrag = null;
@@ -2243,9 +2255,10 @@ function revertScale(name: ScaleName): void {
 }
 // A typed value as the endpoint saves it, or null: the whole text must be a plain decimal, the
 // base is floored to even, and the value must pass the endpoint's own check.
-function typedScale(name: ScaleName, raw: string): string | null {
+function typedScale(name: RootName, raw: string): string | null {
   if (!/^\d*\.?\d+$/.test(raw.trim())) return null;
   const n = Number(raw);
+  if (name === MOTION) return Number.isInteger(n) && n <= 2000 ? `${n}ms` : null;
   const value = name === "--type-base" ? `${Math.floor(n / 2) * 2}px` : String(n);
   return scaleValue(name, value) ? value : null;
 }
@@ -2256,7 +2269,7 @@ const ratioList = element(
   ...RATIOS.map((r) => element("option", { value: String(r) })),
 );
 // A drag on a value's label scrubs it one step per `dragPx` px, live, and saves on release.
-function scrubScale(scrub: HTMLLabelElement, name: ScaleName): void {
+function scrubScale(scrub: HTMLLabelElement, name: RootName): void {
   scrub.addEventListener("pointerdown", (event) => {
     if (event.button !== 0) return;
     event.preventDefault();
@@ -2284,7 +2297,8 @@ function scrubScale(scrub: HTMLLabelElement, name: ScaleName): void {
   });
 }
 
-const scaleFields = SCALE.map((name) => {
+// A `:root` number field: type it, step it with the arrows, scrub its label, Escape or Reset it.
+function rootField(name: RootName) {
   const { title } = SCALE_SPECS[name];
   const id = `wb-${name.slice(2)}`;
   const input = element("input", { id, inputMode: "decimal", autocomplete: "off" });
@@ -2330,7 +2344,9 @@ const scaleFields = SCALE.map((name) => {
     if (root !== undefined && was(ROOT, name) !== null) saveValue(root, ROOT, name, null);
   });
   return { name, input, clear, row: element("div", { className: "row" }, scrub, input, clear) };
-});
+}
+const scaleFields = SCALE.map(rootField);
+const motionField = rootField(MOTION);
 
 // The nine steps as the frame works them out: each one's size and line height in px.
 const stepReadouts = STEPS.map((step) => {
@@ -2410,8 +2426,9 @@ function trackScale(): void {
   const root: HTMLElement | null | undefined = doc()?.documentElement;
   if (!root) return;
   const s = style(root);
-  for (const { name, input, clear } of scaleFields) {
-    const value = String(Number.parseFloat(s.getPropertyValue(name)) || "");
+  for (const { name, input, clear } of [...scaleFields, motionField]) {
+    const n = Number.parseFloat(s.getPropertyValue(name)); // 0ms is a real duration
+    const value = Number.isNaN(n) ? "" : String(n);
     if (input.dataset.dirty === undefined && input.value !== value) input.value = value;
     clear.disabled = was(ROOT, name) === null && !scaleEdits.has(name);
   }
@@ -3453,6 +3470,12 @@ document.body.append(
         { ariaLabel: "Window", open: true },
         element("summary", {}, element("h2", {}, "Window · Both modes")),
         element("div", { className: "row" }, label, field, reset),
+      ),
+      element(
+        "details",
+        { ariaLabel: "Motion", open: true },
+        element("summary", {}, element("h2", {}, "Motion · Both modes")),
+        motionField.row,
       ),
       colourPanel,
       scalePanel,

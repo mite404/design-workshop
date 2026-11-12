@@ -7,7 +7,8 @@
 // reload, a size set on one heading in pixels holds while the steps around it move, Escape drops
 // an unsaved change or a scrub in progress, malformed or out-of-range typed values are refused,
 // a typed ratio of 1.001 saves as typed, and each Reset puts the app's own
-// value back. Screenshots go to .artifacts/scale/. Exits 1 when any step fails. It writes the
+// value back. Last, a typed hover duration (ETH-139) reaches every button and icon button
+// in the frame, and its Reset empties the file. Screenshots go to .artifacts/scale/. Exits 1 when any step fails. It writes the
 // real override file and leaves it empty, so start from an empty one.
 //
 //   node apps/web/scripts/scale-check.mjs [--base http://localhost:5173] [--out dir]
@@ -92,6 +93,18 @@ const expectField = (name, want) =>
   page.waitForFunction(
     ([n, w]) => document.querySelector(`#wb-type-${n}`)?.value === w,
     [name, want],
+  );
+// The transition durations a button and an icon button render, in seconds.
+const durations = () =>
+  frame.locator("body").evaluate((body) =>
+    ["btn", "icon-btn"].map((name) => {
+      const probe = body.ownerDocument.createElement("button");
+      probe.className = name;
+      body.append(probe);
+      const d = getComputedStyle(probe).transitionDuration;
+      probe.remove();
+      return d;
+    }),
   );
 async function type(name, value) {
   await field(name).click();
@@ -274,6 +287,28 @@ await step("each Reset removes its value, and the app's own scale returns", asyn
   await expectScale(BASELINE, []);
   await expectField("base", "12");
   await page.getByRole("button", { name: "Reset leading", disabled: true }).waitFor();
+});
+
+await step("the hover duration is one token every control's hover follows", async () => {
+  assert.deepEqual(await durations(), ["0.15s, 0.15s", "0.15s, 0.15s"], "the 150ms baseline");
+  const motion = page.locator("#wb-motion-hover");
+  await motion.fill("300");
+  await motion.press("Enter");
+  for (
+    let i = 0;
+    i < 50 && readFileSync(OVERRIDES, "utf8") !== file(["--motion-hover: 300ms"]);
+    i++
+  ) {
+    await page.waitForTimeout(100);
+  }
+  assert.equal(readFileSync(OVERRIDES, "utf8"), file(["--motion-hover: 300ms"]));
+  assert.deepEqual(await durations(), ["0.3s, 0.3s", "0.3s, 0.3s"], "both follow the token");
+  await page.locator("details[aria-label=Motion]").screenshot({ path: `${out}/motion.png` });
+  await page.getByRole("button", { name: "Reset hover time" }).click();
+  for (let i = 0; i < 50 && readFileSync(OVERRIDES, "utf8") !== EMPTY; i++) {
+    await page.waitForTimeout(100);
+  }
+  assert.equal(readFileSync(OVERRIDES, "utf8"), EMPTY, "Reset leaves the file empty");
 });
 
 await browser.close();

@@ -50,8 +50,9 @@ const PAGE = fileURLToPath(new URL("./page.ts", import.meta.url));
 const ROOT = ":root";
 const COLOURS = colourTokens(readFileSync(TOKENS, "utf8"));
 const COLOUR_NAMES = Object.keys(COLOURS).filter((name) => COLOURS[name]?.editable);
-const EDITABLE = ["--window-radius", "--font-text", "--font-display", ...SCALE];
+const EDITABLE = ["--window-radius", "--motion-hover", "--font-text", "--font-display", ...SCALE];
 const PX = /^\d{1,4}px$/;
+const MS = /^\d{1,4}ms$/;
 const TRANSLATE = /^-?\d{1,4}px -?\d{1,4}px$/;
 
 // One answer: its HTTP status, and a page as a string or anything else as JSON.
@@ -121,6 +122,7 @@ function isValue(v: unknown, name: string): v is string | null {
   if (isType(name)) return typeValue(name, v);
   if (isScale(name)) return scaleValue(name, v);
   if (name.startsWith("--font-")) return isFamilyValue(v);
+  if (name === "--motion-hover") return MS.test(v);
   return (name === "translate" ? TRANSLATE : PX).test(v);
 }
 const isWas = (v: unknown): v is string | null => v === null || typeof v === "string";

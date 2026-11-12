@@ -1157,8 +1157,8 @@
   line-height: var(--text-xs--line-height);
   font-variant-numeric: tabular-nums;
   transition:
-    border-color var(--btn-duration, 150ms) ease,
-    background-color var(--btn-duration, 150ms) ease;
+    border-color var(--motion-hover) ease,
+    background-color var(--motion-hover) ease;
 }
 :is(.awaiting-tile:hover, .awaiting-tile[data-hover]) .awaiting-key {
   border-color: var(--soft-ink);
@@ -1209,8 +1209,8 @@
   line-height: var(--text-xs--line-height);
   font-weight: 500;
   transition:
-    background-color var(--btn-duration, 150ms) ease,
-    opacity var(--btn-duration, 150ms) ease,
+    background-color var(--motion-hover) ease,
+    opacity var(--motion-hover) ease,
     scale 160ms ease-out;
 }
 .awaiting-action:hover {

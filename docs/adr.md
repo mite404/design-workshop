@@ -409,3 +409,15 @@ outside drags size, and the two never stack on a box with little padding. The ha
 while the pointer is within that 12px of the box. A drag snaps to 2px (10px with Shift) like the
 other spacing handles (ADR-010). Rejected: handles on the edge itself, which overlap the padding
 handle 5px inside; and corner handles, which the window's radius handles already use.
+
+## ADR-038 - Motion values are root tokens edited like the type scale
+
+2026-11-12 - Accepted. ETH-139.
+Ethan wants motion values shared, not set per element (PRD section 13: "shared"), and PRD
+section 5 makes a duration a design value like any other. So a duration is one `:root` custom
+property in the catalog's `tokens.css`, and every rule with that role reads it: the first is
+`--motion-hover`, the controls' hover feedback, which replaced five hardcoded 150ms values. The
+Workbench edits it with the type scale's field (type, arrows, label scrub, Escape, Reset), widened
+to take it, and the endpoint takes whole milliseconds only. Rejected: a per-element transition
+field in the Selection panel, the per-element edit Ethan ruled out; and a second field editor for
+durations, a copy of the scale's.
