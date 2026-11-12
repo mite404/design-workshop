@@ -130,7 +130,8 @@ that end in its completion check. The phases above are tickets inside these.
    Check: every category folds, stays folded on reload; all browser groups pass.
 2. **Component tree drawer.** Done: `81be6da`, `583cc1b`, `ba94a7e`, `e14d710`.
    Check: tree opens on top groups; a Live pick scrolls only when off screen and highlights.
-3. **Colour and font themes** (ETH-119 to 121). Commits: theme format and role map; save a
+3. **Colour and font themes** (ETH-119 to 121). Done: `a6ec247`, `a33a880`, `dcf2eac`, `9692eaa`,
+   `27880ec`, `8b3d883`. Commits: theme format and role map; save a
    palette; load and unload a palette; save, load and unload a type pairing.
    Check: `theme-check.mjs` saves a palette, loads it (colours change, radius does not), undoes
    in one step, unloads to the baseline, and does the same for a type pairing.

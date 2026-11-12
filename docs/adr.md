@@ -321,3 +321,13 @@ and the contract together.
 Workbench, forwards Storybook and adds the override stylesheet to HTML, so the host's code is
 never edited. It writes only under `.workbench/`. Rejected: one plugin per framework. Nothing
 is published to npm.
+
+## ADR-032 - Theme state is read from the override file, never the canvas
+
+2026-11-12 - Accepted. Commits `27880ec`, `8b3d883`. Amends ADR-028.
+Which theme is on, and which of its values to write, comes from the override file the page holds
+and the tokens.css baselines (with `var()` resolved), not from the canvas's computed styles. The
+canvas lags each write until its stylesheet reloads, so a canvas read right after an undo showed
+the old theme and skipped the next apply (five red theme-check runs). Fonts are compared and saved
+as `"Family", generic`, the only form the plugin writes, so a pairing saved at the baseline reads
+as in effect there. Rejected: waiting for the canvas to settle, which still races a fast user.
