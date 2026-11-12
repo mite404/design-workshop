@@ -219,9 +219,9 @@ look in under an hour without writing a prompt.
 ### Next
 
 - R12. **Request a design value.** Point at something that is not adjustable; the Workbench writes
-  an exact request (element, file and line, current value) for an agent. *Not started. ETH-110
+  an exact request (element, file and line, current value) for an agent. *Partly built. ETH-110
   points at an element and discusses it, without the file and line. The agent skill file that
-  section 7 and block 6 name is not written either.*
+  section 7 and block 6 name is `.agents/skills/design-values/SKILL.md` (ETH-134).*
 - R13. Handles on the canvas for sizes, gaps, padding and radius, with measurement readouts.
   *Partly built: radius (ETH-101), gap and padding (ETH-102) have handles and readouts. Size
   handles are not started.*
