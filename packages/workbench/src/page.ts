@@ -3446,7 +3446,13 @@ function trackSurface(node: Element): void {
 function trackPanelState(): void {
   setOff(selectionPanel, selection === null ? "Select an element on the canvas to edit it." : null);
   sizeLabel.textContent = componentMode ? "Size · Live mode only" : "Size";
-  if (selection === null) for (const { input } of [...rows, ...offsetRows]) input.value = "";
+  if (selection !== null) return;
+  for (const { input, clear } of [...rows, ...offsetRows]) {
+    input.value = "";
+    clear.disabled = true;
+  }
+  // Each note describes a selected element, so none shows without one.
+  for (const n of [surfaceNote, note, offsetNote]) n.hidden = true;
 }
 
 function trackFields(): void {

@@ -728,7 +728,8 @@ body {
 }
 
 .row[hidden],
-.note[hidden] {
+.note[hidden],
+.surface-note[hidden] {
   display: none;
 }
 

@@ -385,6 +385,11 @@ await step("clicking empty space deselects", async () => {
     "Spacing",
     "Position",
   ]);
+  // Notes about a selected element leave with it.
+  for (const n of [".surface-note", ".note", ".offset-note"])
+    assert.equal(await panel.locator(n).isVisible(), false, n);
+  assert.equal(await panel.locator(".row button:enabled").count(), 0, "a Reset stays enabled");
+  await page.screenshot({ path: `${out}/04-deselected.png` });
 });
 
 await step("values whose selector matches nothing are listed and can be deleted", async () => {
