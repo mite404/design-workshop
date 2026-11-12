@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Nothing to re-authenticate or reconnect on wake: dependencies ship in the
+# snapshot and dev servers are supervised by Amp from .amp/services.yaml.
+# This script only repairs the two things a wake can actually break.
+if [[ ! -x node_modules/.bin/turbo ]]; then
+  pnpm install --frozen-lockfile
+fi
