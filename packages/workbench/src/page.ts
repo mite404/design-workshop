@@ -1221,7 +1221,7 @@ function watchFrame(from = frame): void {
       right + pill.offsetWidth <= overlay.clientWidth
         ? right
         : Math.max(0, parent.left - pill.offsetWidth - 14);
-    pill.style.translate = `${x}px ${event.clientY - pill.offsetHeight / 2}px`;
+    placePill(x, event.clientY - pill.offsetHeight / 2);
   });
   view.addEventListener(
     "pointerup",
@@ -1349,7 +1349,7 @@ function trackGaps(node: Styled, content: Box): void {
           overlay.clientHeight - pill.offsetHeight - 4,
         ),
       );
-      pill.style.translate = `${x}px ${y}px`;
+      placePill(x, y);
     }
   }
 }
@@ -3871,6 +3871,19 @@ for (const [i, handle] of handles.entries()) {
   });
 }
 draggable(label, (dx) => dx);
+// Places the readout at (x, y) in the overlay, lifted above the chat dock when it would sit
+// under it (ETH-151): the dock is drawn over the canvas, so a readout beneath it is hidden.
+function placePill(x: number, y: number): void {
+  const dock = document.querySelector(".dock")?.getBoundingClientRect();
+  const origin = overlay.getBoundingClientRect();
+  const under =
+    dock !== undefined &&
+    x + origin.left < dock.right &&
+    x + origin.left + pill.offsetWidth > dock.left &&
+    y + origin.top < dock.bottom &&
+    y + origin.top + pill.offsetHeight > dock.top;
+  pill.style.translate = `${x}px ${under ? dock.top - origin.top - pill.offsetHeight - 8 : y}px`;
+}
 // A spacing readout's x: beside the selected box rather than on its content, and past the
 // width handle that sits outside the right edge.
 function pillBeside(name: string | null, bounds: DOMRect): number {
@@ -3889,7 +3902,7 @@ overlay.addEventListener("pointermove", (event) => {
       ? Math.min(pointerX + 14, overlay.clientWidth - pill.offsetWidth)
       : pillBeside(spacingBar.getAttribute("data-name"), bounds);
   const y = spacingBar === null ? pointerY + 14 : pointerY - pill.offsetHeight / 2;
-  pill.style.translate = `${x}px ${y}px`;
+  placePill(x, y);
 });
 document.addEventListener("pointermove", (event) => {
   const origin = overlay.getBoundingClientRect();

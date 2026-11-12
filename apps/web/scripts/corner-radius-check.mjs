@@ -107,6 +107,15 @@ await step("dragging a handle towards the centre by an uneven amount", async () 
   assert.equal(await radius(), 62, "live while dragging");
   assert.equal(await page.locator(".pill").textContent(), "Radius 62");
   assert.equal(await page.locator(".pill").evaluate((p) => getComputedStyle(p).opacity), "1");
+  const [pill, dock] = await Promise.all(
+    [".pill", ".dock"].map((s) => page.locator(s).boundingBox()),
+  );
+  const overlaps =
+    pill.x < dock.x + dock.width &&
+    pill.x + pill.width > dock.x &&
+    pill.y < dock.y + dock.height &&
+    pill.y + pill.height > dock.y;
+  assert.ok(!overlaps, "the readout is clear of the chat dock (ETH-151)");
   const moved = await center(se);
   assert.ok(Math.abs(moved.x - (from.x - 12)) <= 1 && Math.abs(moved.y - (from.y - 12)) <= 1);
   const nw = await center(handle("nw"));
