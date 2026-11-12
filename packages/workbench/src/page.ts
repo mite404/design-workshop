@@ -234,6 +234,11 @@ const checkCommit = element(
   { type: "button", className: "check-commit", disabled: true },
   "Check and commit",
 );
+const exportButton = element(
+  "button",
+  { type: "button", className: "history-button", title: "Download this look as a project file" },
+  "Export",
+);
 const commitStatus = element("pre", { className: "commit-status", role: "status" });
 const commitClose = element("button", { type: "button", className: "history-button" }, "Close");
 const commitDialog = element(
@@ -3340,7 +3345,7 @@ document.body.append(
         redo,
         discard,
       ),
-      checkCommit,
+      element("div", { className: "commit-row" }, checkCommit, exportButton),
       message,
       componentNotice,
       selectionPanel,
@@ -3509,6 +3514,37 @@ canvasMode.addEventListener("change", () => {
 reset.addEventListener("click", () => {
   show(baseline);
   save(null);
+});
+// Downloads the project file the plugin builds (ETH-125). The browser saves it; nothing in the
+// repo is written. A manifest that breaks the contract is reported instead (ADR-029).
+exportButton.addEventListener("click", () => {
+  exportButton.disabled = true;
+  exportButton.textContent = "Exporting…";
+  void (async () => {
+    try {
+      const reply: unknown = await (await fetch("/__workbench/project")).json();
+      const failures = prop(reply, "failures");
+      if (!Array.isArray(failures) || failures.length > 0) {
+        const codes = Array.isArray(failures) ? failures.map((f) => text(prop(f, "code"))) : [];
+        showMessage(
+          `Not exported: ${codes.join(", ") || text(prop(reply, "error")) || "no reply"}`,
+          true,
+        );
+        return;
+      }
+      const url = URL.createObjectURL(
+        new Blob([`${JSON.stringify(prop(reply, "project"), null, 2)}\n`], {
+          type: "application/json",
+        }),
+      );
+      element("a", { href: url, download: "design-workshop.project.json" }).click();
+      URL.revokeObjectURL(url);
+      showMessage("Exported design-workshop.project.json.");
+    } finally {
+      exportButton.disabled = false;
+      exportButton.textContent = "Export";
+    }
+  })();
 });
 undo.addEventListener("click", () => replay(-1));
 redo.addEventListener("click", () => replay(1));

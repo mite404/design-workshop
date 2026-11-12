@@ -9,6 +9,21 @@
   cursor: pointer;
 }
 
+.commit-row {
+  display: flex;
+  gap: 6px;
+}
+
+.commit-row .check-commit {
+  flex: 1;
+  white-space: nowrap;
+}
+
+.commit-row .history-button {
+  flex: 0 0 auto;
+  padding: 0 12px;
+}
+
 .check-commit:disabled {
   background: #e6e6e6;
   color: #6b6b6b;

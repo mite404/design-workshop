@@ -308,7 +308,9 @@ being loaded. Built in `packages/workbench/src/contract.json` and `contract.ts`:
 (`design-workshop/manifest`, version 1) names its Storybook version and index format, its shell
 kind (`app-shell` or `full-screen`), its slots, its components with their story IDs, and its
 surfaces. Failures sort by code-unit order, not `localeCompare`, so no machine locale can change
-the list. A test pins the validator's only import to its contract data.
+the list. A test pins the validator's only import to its contract data. A project file
+(`design-workshop/project`, version 1) is that manifest plus the override file's values by
+selector; export refuses a manifest with failures and writes nothing in the repo.
 
 ## ADR-030 - Storybook is pinned to exactly 10.6.0
 

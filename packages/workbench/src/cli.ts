@@ -1,24 +1,24 @@
-import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
-import { execFileSync } from "node:child_process";
-import { tmpdir } from "node:os";
-import { basename, join } from "node:path";
+import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { manifestOf, validate } from "./contract.ts";
+import { validate } from "./contract.ts";
+import { exportProject, readManifest } from "./project.ts";
 import { checkValues, listValues, writeValues } from "./plugin.ts";
 import { parseOverrides } from "./overrides.ts";
 
 const OVERRIDES = fileURLToPath(new URL("../../catalog/src/overrides.css", import.meta.url));
 const TOKENS = fileURLToPath(new URL("../../catalog/src/tokens.css", import.meta.url));
-const REPO = fileURLToPath(new URL("../../../", import.meta.url));
-const SOURCE_DIRS = ["packages/catalog/src", "packages/ui/src", "apps/web/src"];
 const USAGE = `Usage: pnpm workbench list [--json]
        pnpm workbench manifest
+       pnpm workbench export > look.project.json
        pnpm workbench set <selector> <name> <value>
        pnpm workbench unset <selector> <name>
        pnpm workbench check
 Element baselines are null without a browser. Quote selectors and values containing spaces.`;
 
-const COMMANDS: Record<string, { counts: number[]; run: (args: string[]) => void }> = {
+const COMMANDS: Record<
+  string,
+  { counts: number[]; run: (args: string[]) => void | Promise<void> }
+> = {
   list: { counts: [0, 1], run: list },
   set: {
     counts: [3],
@@ -33,6 +33,7 @@ const COMMANDS: Record<string, { counts: number[]; run: (args: string[]) => void
     },
   },
   manifest: { counts: [0], run: manifest },
+  export: { counts: [0], run: exportFile },
   check: {
     counts: [0],
     run: () => {
@@ -53,45 +54,23 @@ function list(args: string[]): void {
   );
 }
 
-// Each `data-<attribute>` value the Template's source declares, with the file declaring it.
-function declared(attribute: string): [string, string][] {
-  const pattern = new RegExp(`data-${attribute}="([A-Za-z][\\w-]*)"`, "g");
-  return SOURCE_DIRS.flatMap((dir) =>
-    readdirSync(join(REPO, dir), { recursive: true, encoding: "utf8" })
-      .filter(
-        (file) => file.endsWith(".tsx") && !file.includes(".stories.") && !file.includes(".test."),
-      )
-      .flatMap((file) =>
-        [...readFileSync(join(REPO, dir, file), "utf8").matchAll(pattern)].map(
-          (m): [string, string] => [m[1] ?? "", basename(file)],
-        ),
-      ),
-  );
+// Prints this repo's manifest and every contract failure; exits 1 when there is any (ADR-029).
+async function manifest(): Promise<void> {
+  const result = await readManifest();
+  const failures = validate(JSON.stringify(result));
+  process.stdout.write(`${JSON.stringify({ manifest: result, failures }, null, 2)}\n`);
+  if (failures.length > 0) process.exitCode = 1;
 }
 
-// Prints this repo's manifest and every contract failure; exits 1 when there is any (ADR-029).
-function manifest(): void {
-  const out = mkdtempSync(join(tmpdir(), "manifest-"));
-  try {
-    const indexFile = join(out, "index.json");
-    execFileSync("pnpm", ["--filter", "storybook", "exec", "storybook", "index", "-o", indexFile], {
-      cwd: REPO,
-      stdio: "ignore",
-    });
-    const storybook = join(REPO, "apps/storybook/node_modules/storybook/package.json");
-    const pkg: unknown = JSON.parse(readFileSync(storybook, "utf8"));
-    const result = manifestOf({
-      version: String(typeof pkg === "object" && pkg !== null ? Reflect.get(pkg, "version") : ""),
-      index: JSON.parse(readFileSync(indexFile, "utf8")),
-      slots: declared("slot").map(([slot]) => slot),
-      names: new Map(declared("wb")),
-    });
-    const failures = validate(JSON.stringify(result));
-    process.stdout.write(`${JSON.stringify({ manifest: result, failures }, null, 2)}\n`);
-    if (failures.length > 0) process.exitCode = 1;
-  } finally {
-    rmSync(out, { recursive: true, force: true });
+// Prints this repo as a project file; refuses, exiting 1, when its manifest breaks the contract.
+async function exportFile(): Promise<void> {
+  const { project, failures } = await exportProject();
+  if (failures.length > 0) {
+    process.stderr.write(`${JSON.stringify(failures, null, 2)}\n`);
+    process.exitCode = 1;
+    return;
   }
+  process.stdout.write(`${JSON.stringify(project, null, 2)}\n`);
 }
 
 function edit(selector: string, name: string, value: string | null): void {
@@ -100,15 +79,13 @@ function edit(selector: string, name: string, value: string | null): void {
   if (reply.status !== 200) throw new Error(JSON.stringify(reply.body));
 }
 
-function run([verb = "", ...args]: string[]): void {
+async function run([verb = "", ...args]: string[]): Promise<void> {
   const command = Object.hasOwn(COMMANDS, verb) ? COMMANDS[verb] : undefined;
   if (command === undefined || !command.counts.includes(args.length)) throw new Error(USAGE);
-  command.run(args);
+  await command.run(args);
 }
 
-try {
-  run(process.argv.slice(2));
-} catch (error) {
+run(process.argv.slice(2)).catch((error: unknown) => {
   process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
   process.exitCode = 1;
-}
+});

@@ -35,6 +35,7 @@ import { SPACING } from "./spacing.ts";
 import { isScale, isType, SCALE, scaleValue, TYPE, typeValue } from "./type.ts";
 import { COLOUR_ROOT, colourTokens, HEX } from "./colour.ts";
 import { parseTheme, type Theme } from "./theme.ts";
+import { exportProject } from "./project.ts";
 
 const OVERRIDES = fileURLToPath(new URL("../../catalog/src/overrides.css", import.meta.url));
 const TOKENS = fileURLToPath(new URL("../../catalog/src/tokens.css", import.meta.url));
@@ -489,6 +490,8 @@ const WRITES: Record<string, { run: (post: Post) => Reply | Promise<Reply>; file
 
 // Each reading endpoint and the JSON it answers a GET with.
 const READS: Record<string, () => unknown> = {
+  // Runs `storybook index`, so it takes seconds; asynchronously, so the dev server keeps serving.
+  "/__workbench/project": exportProject,
   "/__workbench/values": () => ({
     ...readValues(readFileSync(OVERRIDES, "utf8"), readFileSync(TOKENS, "utf8")),
     ...historyStatus(),
@@ -502,7 +505,7 @@ async function answer(server: ViteDevServer, req: IncomingMessage): Promise<Repl
     return { status: 200, body: await server.transformIndexHtml("/__workbench/", HTML) };
   }
   const reader = READS[path ?? ""];
-  if (reader !== undefined && req.method === "GET") return { status: 200, body: reader() };
+  if (reader !== undefined && req.method === "GET") return { status: 200, body: await reader() };
   const write = WRITES[path ?? ""];
   if (write !== undefined && req.method === "POST") {
     return answerWrite(server, req, write);

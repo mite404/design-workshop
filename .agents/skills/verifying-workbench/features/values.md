@@ -7,6 +7,7 @@ The CLI edits allowed values offline. Colour controls edit light and dark tokens
 - CLI listing, setting, removing, validation and refusal without mutation.
 - Colour editing, light/dark separation, reset and persistence.
 - CLI writes hot reload while an open inspector refuses unseen conflicting edits.
+- Project export: the Workbench's Export and `pnpm workbench export`, which write nothing.
 - Themes: save the colours as a theme file, refuse a taken name, apply a theme as one undo step.
 
 ## How to get to it (user POV)
@@ -25,6 +26,7 @@ pnpm workbench check
 pnpm --silent workbench manifest
 node apps/web/scripts/colour-check.mjs --base http://localhost:5173 --out "$OUT/colour"
 node apps/web/scripts/theme-check.mjs --base http://localhost:5173 --out "$OUT/theme"
+node apps/web/scripts/project-check.mjs --base http://localhost:5173 --out "$OUT/project"
 ```
 
 `manifest` prints this repo's project manifest and its contract failures, exiting 1 on any
