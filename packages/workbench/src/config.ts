@@ -3,7 +3,7 @@
 // where an empty list accepts.
 import type { Failure } from "./contract.ts";
 
-const FIELDS = new Set(["format", "version", "sources", "storybook"]);
+const FIELDS = new Set(["format", "version", "sources", "storybook", "tokens"]);
 
 const record = (v: unknown): v is Record<string, unknown> =>
   typeof v === "object" && v !== null && !Array.isArray(v);
@@ -11,7 +11,10 @@ const record = (v: unknown): v is Record<string, unknown> =>
 // Code-unit order by path then code, so the list does not depend on the machine's locale.
 const key = (f: Failure) => `${f.path}\u0000${f.code}`;
 
-// A folder below the root, written with `/`: not empty, not absolute, never climbing out.
+// Whether a folder or file below the root is there.
+type Exists = (path: string, kind: "folder" | "file") => boolean;
+
+// A path below the root, written with `/`: not empty, not absolute, never climbing out.
 const inside = (path: unknown): path is string =>
   typeof path === "string" &&
   path !== "" &&
@@ -19,21 +22,22 @@ const inside = (path: unknown): path is string =>
   !/^[A-Za-z]:|\\/.test(path) &&
   !path.split("/").includes("..");
 
-// The failures of one folder field: its shape, then whether it exists under the root.
-function checkFolder(
+// The failures of one path field: its shape, then whether it exists under the root.
+function checkPath(
   path: unknown,
   at: string,
   code: string,
-  exists: (path: string) => boolean,
+  exists: Exists,
+  kind: "folder" | "file" = "folder",
 ): Failure[] {
   if (!inside(path))
-    return [{ code, path: at, message: "Must be a folder inside the root, written with /." }];
-  return exists(path)
+    return [{ code, path: at, message: `Must be a ${kind} inside the root, written with /.` }];
+  return exists(path, kind)
     ? []
-    : [{ code: "missing-folder", path: at, message: `No folder ${path} under the root.` }];
+    : [{ code: `missing-${kind}`, path: at, message: `No ${kind} ${path} under the root.` }];
 }
 
-function checkFields(data: Record<string, unknown>, exists: (path: string) => boolean): Failure[] {
+function checkFields(data: Record<string, unknown>, exists: Exists): Failure[] {
   const sources = Array.isArray(data.sources) ? data.sources : null;
   const storybook = data.storybook;
   return [
@@ -42,11 +46,11 @@ function checkFields(data: Record<string, unknown>, exists: (path: string) => bo
       .map((field) => ({ code: "unknown-field", path: field, message: `No field ${field}.` })),
     ...(sources === null || sources.length === 0
       ? [{ code: "bad-sources", path: "sources", message: "Sources must list one folder or more." }]
-      : sources.flatMap((s, i) => checkFolder(s, `sources/${i}`, "bad-source", exists))),
+      : sources.flatMap((s, i) => checkPath(s, `sources/${i}`, "bad-source", exists))),
     ...(storybook === null
       ? []
       : record(storybook) && Object.keys(storybook).join() === "configDir"
-        ? checkFolder(storybook.configDir, "storybook/configDir", "bad-storybook", exists)
+        ? checkPath(storybook.configDir, "storybook/configDir", "bad-storybook", exists)
         : [
             {
               code: "bad-storybook",
@@ -54,17 +58,19 @@ function checkFields(data: Record<string, unknown>, exists: (path: string) => bo
               message: "Storybook must be null or { configDir }.",
             },
           ]),
+    // Optional: the stylesheet whose `:root` values are the baselines (ADR-045).
+    ...(data.tokens === undefined
+      ? []
+      : checkPath(data.tokens, "tokens", "bad-tokens", exists, "file")),
   ];
 }
 
 /**
  * Every reason config `text` is refused, sorted by path then code; an empty list accepts it.
- * `exists` says whether a folder, relative to the root, is there; the default skips that check.
+ * `exists` says whether a folder or file, relative to the root, is there; the default skips that
+ * check.
  */
-export function checkConfig(
-  text: string,
-  exists: (path: string) => boolean = () => true,
-): Failure[] {
+export function checkConfig(text: string, exists: Exists = () => true): Failure[] {
   let data: unknown;
   try {
     data = JSON.parse(text);
@@ -81,12 +87,13 @@ export function checkConfig(
 }
 
 /**
- * The folders config `text` names, once `checkConfig` accepts it.
+ * The paths config `text` names, once `checkConfig` accepts it; `tokens` is null when absent.
  * @throws With the first failure's path and message when it is refused.
  */
 export function parseConfig(text: string): {
   sources: string[];
   storybook: { configDir: string } | null;
+  tokens: string | null;
 } {
   const [failure] = checkConfig(text); // → Failure | undefined
   if (failure !== undefined) throw new Error(`${failure.path}: ${failure.message}`);
@@ -98,5 +105,6 @@ export function parseConfig(text: string): {
       ? fields.sources.filter((s): s is string => typeof s === "string")
       : [],
     storybook: typeof storybook.configDir === "string" ? { configDir: storybook.configDir } : null,
+    tokens: typeof fields.tokens === "string" ? fields.tokens : null,
   };
 }

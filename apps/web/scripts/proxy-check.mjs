@@ -35,6 +35,18 @@ writeFileSync(
   appOverrides,
   "/* Written by the Workbench. One design value per line. Do not edit by hand. */\n:root {\n}\n",
 );
+// Its config names the app's own tokens file, whose `:root` values are the baselines (ADR-045).
+writeFileSync(
+  path.join(app, ".workbench/config.json"),
+  JSON.stringify({
+    format: "design-workshop/config",
+    version: 1,
+    sources: ["."],
+    storybook: null,
+    tokens: "tokens.css",
+  }),
+);
+writeFileSync(path.join(app, "tokens.css"), ":root {\n  --window-radius: 7px;\n}\n");
 // The app's own Vite caches into .vite/, which a host ignores.
 writeFileSync(path.join(app, ".gitignore"), ".vite/\n");
 const git = (...args) => execFileSync("git", args, { cwd: app, encoding: "utf8" });
@@ -125,6 +137,12 @@ try {
     const status = await page.evaluate(async () => (await fetch("/__workbench/values")).json());
     if (status.dirty !== true)
       throw new Error("the Workbench does not see the app's file as edited");
+  });
+
+  await step("baselines come from the tokens file the app's config names", async () => {
+    const values = await page.evaluate(async () => (await fetch("/__workbench/values")).json());
+    const radius = values.tokens["--window-radius"].baseline;
+    if (radius !== "7px") throw new Error(`radius baseline ${radius}`);
   });
 
   await step("the value is still there after a reload", async () => {

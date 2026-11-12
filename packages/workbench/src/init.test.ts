@@ -79,7 +79,9 @@ test("a host with no source folder at all gives a config the check refuses", () 
 test("this repo's detected config is the one it commits", async () => {
   const root = fileURLToPath(new URL("../../../", import.meta.url));
   const found = await inspect(root);
-  expect(found.config).toEqual(JSON.parse(readFileSync(`${root}.workbench/config.json`, "utf8")));
+  // `tokens` is named by a person, not detected (ADR-045).
+  const committed: unknown = JSON.parse(readFileSync(`${root}.workbench/config.json`, "utf8"));
+  expect({ ...found.config, tokens: "packages/catalog/src/tokens.css" }).toEqual(committed);
   expect(found.shell).toBe("app-shell");
   expect(found.storybook?.version).toBe("10.6.0");
   expect(found.side).toEqual({ asked: true, default: "left" });

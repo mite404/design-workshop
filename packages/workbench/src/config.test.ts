@@ -8,7 +8,7 @@ const VALID = {
   sources: ["src", "packages/ui/src"],
   storybook: { configDir: ".storybook" },
 };
-const codes = (change: object, exists?: (path: string) => boolean) =>
+const codes = (change: object, exists?: (path: string, kind: string) => boolean) =>
   checkConfig(JSON.stringify({ ...VALID, ...change }), exists).map((f) => `${f.code} ${f.path}`);
 
 test("this repo's own config is accepted", () => {
@@ -28,6 +28,16 @@ test("each kind of breach fails with its own code and path", () => {
   expect(codes({ sources: "src" })).toEqual(["bad-sources sources"]);
   expect(codes({ storybook: { configDir: ".storybook", port: 6006 } })).toEqual([
     "bad-storybook storybook",
+  ]);
+});
+
+const onlySrc = (path: string, kind: string) => kind === "folder" && path === "src";
+
+test("tokens is an optional file inside the root", () => {
+  expect(codes({ tokens: "src/tokens.css" })).toEqual([]);
+  expect(codes({ tokens: "../tokens.css" })).toEqual(["bad-tokens tokens"]);
+  expect(codes({ tokens: "src", storybook: null, sources: ["src"] }, onlySrc)).toEqual([
+    "missing-file tokens",
   ]);
 });
 

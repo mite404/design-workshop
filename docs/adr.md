@@ -499,3 +499,13 @@ history and commit flow need the override file committed in a Git repo, as after
 first commit. Fonts still install into the Template's catalog; a host's fonts need their own
 story. Rejected: reading baselines from the host's stylesheets on the server, a CSS cascade
 without a browser.
+
+## ADR-045 - The config names a host's tokens file, and the override file lives in `.workbench/`
+
+2026-11-12 - Accepted. Ethan, ETH-150. PRD section 16. `.workbench/config.json` takes an
+optional `tokens`, a root-relative stylesheet whose `:root` values are the baselines the
+inspector starts from and Reset compares against. A host without it keeps ADR-044's null
+baselines. This repo names `packages/catalog/src/tokens.css`. The override file moves to
+`.workbench/overrides.css` here too, so this repo is a host like any other and `dev` serves it
+with no special case. Rejected: a Template-only code path for this repo's baselines, a second
+path the proxy was meant to remove.

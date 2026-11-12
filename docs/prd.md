@@ -441,3 +441,5 @@ built: the proxy and `design-workshop dev`. Plan detail:
   only; adding names is the host's own change, made by an agent in the structure lane.
 - The proxy replaces the Vite plugin in this repo too once it passes the same browser checks,
   so there is one path, not two.
+- This repo's override file moves to `.workbench/overrides.css`, and `.workbench/config.json`
+  names the tokens file baselines come from (ADR-045).

@@ -37,6 +37,7 @@ import { isScale, isType, SCALE, scaleValue, TYPE, typeValue } from "./type.ts";
 import { COLOUR_ROOT, colourTokens, HEX } from "./colour.ts";
 import { parseTheme, type Theme } from "./theme.ts";
 import { exportProject, readSources } from "./project.ts";
+import { parseConfig } from "./config.ts";
 
 const BUNDLED_THEMES = fileURLToPath(new URL("../themes/", import.meta.url));
 const TOKENS = fileURLToPath(new URL("../../catalog/src/tokens.css", import.meta.url));
@@ -55,12 +56,19 @@ const TEMPLATE: Files = {
   themes: [BUNDLED_THEMES, fileURLToPath(new URL("../../../.workbench/themes/", import.meta.url))],
 };
 
-/** A host's files, all under its `.workbench/` at `root` (PRD section 16, ETH-149). */
-export const hostFiles = (root: string): Files => ({
-  overrides: join(root, ".workbench", "overrides.css"),
-  tokens: null,
-  themes: [BUNDLED_THEMES, join(root, ".workbench", "themes")],
-});
+/**
+ * A host's files: under its `.workbench/` at `root`, and the tokens file its config names, if
+ * any (PRD section 16, ADR-044, ADR-045).
+ * @throws When `.workbench/config.json` is missing or refused.
+ */
+export function hostFiles(root: string): Files {
+  const { tokens } = parseConfig(readFileSync(join(root, ".workbench", "config.json"), "utf8"));
+  return {
+    overrides: join(root, ".workbench", "overrides.css"),
+    tokens: tokens === null ? null : join(root, tokens),
+    themes: [BUNDLED_THEMES, join(root, ".workbench", "themes")],
+  };
+}
 const PAGE = fileURLToPath(new URL("./page.ts", import.meta.url));
 const ROOT = ":root";
 const COLOURS = colourTokens(readFileSync(TOKENS, "utf8"));

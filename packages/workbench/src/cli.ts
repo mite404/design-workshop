@@ -165,13 +165,16 @@ async function init(args: string[]): Promise<void> {
   }
 }
 
-// Prints each config failure, folders checked under the root that holds `.workbench/`; exits 1
-// on any (ADR-042).
+// Prints each config failure, paths checked under the root that holds `.workbench/`; exits 1 on
+// any (ADR-042).
 function checkConfigFile(file: string): void {
   const root = dirname(dirname(resolve(file))); // .workbench/config.json → the host root
-  const isFolder = (path: string) =>
-    existsSync(join(root, path)) && statSync(join(root, path)).isDirectory();
-  const failures = checkConfig(readFileSync(file, "utf8"), isFolder); // → Failure[]
+  const exists = (path: string, kind: "folder" | "file") =>
+    existsSync(join(root, path)) &&
+    (kind === "folder"
+      ? statSync(join(root, path)).isDirectory()
+      : statSync(join(root, path)).isFile());
+  const failures = checkConfig(readFileSync(file, "utf8"), exists); // → Failure[]
   process.stdout.write(
     failures.length === 0
       ? "Config is valid.\n"
