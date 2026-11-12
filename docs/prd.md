@@ -186,7 +186,7 @@ git HEAD ──read baseline + override──> inspector and canvas
 
 ## 9. Requirements
 
-Each requirement ends with its status on Nov 11 2026, read from Linear and the source.
+Each requirement ends with its status on Nov 12 2026, read from Linear and the source.
 
 ### Must have for a first usable version
 
@@ -197,8 +197,7 @@ Each requirement ends with its status on Nov 11 2026, read from Linear and the s
   from production builds. *Built.*
 - R3. Two modes: Live mode and Component mode, offered under More actions with chat and browser
   icons. For this version Component mode opens a component the app is showing, in place.
-  *Partly built: both modes open, but Component mode only frames the chat panel. Focusing one
-  component in place is ETH-115.*
+  *Built (ETH-115).*
 - R4. The component tree in the side drawer lists the named components on the canvas; click a
   row or the canvas to select. *Built (ETH-114).*
 - R5. Inspector shows the design values of the selection, with a control per kind: scrub field with
@@ -233,11 +232,13 @@ look in under an hour without writing a prompt.
   as a colour palette or a font pairing (families, sizes and styles), so Ethan can swap to "font
   pairing 2" from the current state without losing his other changes. An agent can draft a theme
   from a component Ethan likes elsewhere by translating its styles into the Template's value names.
-  *Not started.*
+  *Partly built, as role-keyed theme files (ADR-028): save the colours as a palette, load and
+  unload a palette or a type pairing (ETH-119 to 121). A project file carries a whole look into
+  another checkout (ETH-125 to 127). Starting a project from a theme and agent-drafted themes are
+  not built.*
 - R17. Motion: scrub a running transition, edit duration and easing curves. *Not started.*
 - R18. Open a story in Component mode: a component or a state the app is not showing opens as
-  its Storybook story, and the drawer lists those stories. *Not started (ETH-118, blocked by
-  ETH-115).*
+  its Storybook story, and the drawer lists those stories. *Built (ETH-118).*
 
 ### Not doing
 
