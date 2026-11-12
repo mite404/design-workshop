@@ -5,9 +5,9 @@ allowBuilds:
   esbuild: true
   workerd: true
 catalog:
-  "@storybook/addon-a11y": ^10.6.0
-  "@storybook/addon-vitest": ^10.6.0
-  "@storybook/react-vite": ^10.6.0
+  "@storybook/addon-a11y": 10.6.0
+  "@storybook/addon-vitest": 10.6.0
+  "@storybook/react-vite": 10.6.0
   "@types/node": ^26.4.1
   "@types/react": ^19.2.18
   "@types/react-dom": ^19.2.7
@@ -18,7 +18,7 @@ catalog:
   react: ^19.2.8
   react-dom: ^19.2.8
   sonner: ^2.0.8
-  storybook: ^10.6.0
+  storybook: 10.6.0
   tailwindcss: ^4.3.3
   typescript: ^7.0.2
   vite: ^8.2.2
