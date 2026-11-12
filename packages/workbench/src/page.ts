@@ -1027,7 +1027,9 @@ function pressSelection(event: PointerEvent, under: Element | null): boolean {
   return true;
 }
 
-function openComponent(node: Styled): void {
+// Records the component `node` belongs to as the open one. Entering Component mode centres it;
+// in Live mode it stays put unless it is off screen, ready for Component mode to focus later.
+function openComponent(node: Styled, enter: boolean): void {
   const root = node.closest("[data-wb]");
   if (root === null || !styled(root)) {
     select(node);
@@ -1048,9 +1050,13 @@ function openComponent(node: Styled): void {
   url.searchParams.set("component-view", view);
   window.history.replaceState(null, "", url);
   component = root;
-  componentMode = true;
+  if (enter) componentMode = true;
   doc()?.dispatchEvent(new Event(TREE_EVENT.focus));
-  root.scrollIntoView({ block: "center", inline: "nearest", behavior: "instant" });
+  root.scrollIntoView({
+    block: enter ? "center" : "nearest",
+    inline: "nearest",
+    behavior: "instant",
+  });
   select(root);
 }
 
@@ -1082,7 +1088,9 @@ function watchFrame(from = frame): void {
       node.isConnected &&
       styled(node)
     ) {
-      openComponent(node);
+      // The app's mode now, not as the last frame saw it, so a row pressed straight after a mode
+      // switch follows that switch.
+      openComponent(node, appDoc()?.documentElement.dataset.wbMode === "component");
     }
   });
   view.document.addEventListener(TREE_EVENT.hover, (event) => {

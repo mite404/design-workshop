@@ -164,6 +164,7 @@ body {
   position: absolute;
   box-sizing: border-box;
   border: 1px solid var(--wb-accent);
+  background: rgb(13 153 255 / 0.08);
 }
 
 .handle {

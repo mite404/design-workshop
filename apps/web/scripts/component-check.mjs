@@ -22,6 +22,7 @@ async function checkChildOpening() {
     if ((await toggle.getAttribute("aria-expanded")) !== "true") await toggle.click();
     await frame.getByRole("treeitem", { name: "ChatThreadPanel", exact: true }).first().focus();
     await page.keyboard.press("Enter");
+    await frame.getByRole("button", { name: "Component mode", exact: true }).click();
     await page.waitForFunction(
       () =>
         document.querySelector("iframe").contentDocument.documentElement.dataset.wbMode ===
@@ -104,6 +105,14 @@ try {
   await rows.getByRole("treeitem").first().focus();
   await page.keyboard.press("ArrowDown");
   await page.keyboard.press("Enter");
+  assert.equal(
+    await page.evaluate(
+      () => document.querySelector("iframe").contentDocument.documentElement.dataset.wbMode,
+    ),
+    "live",
+    "a Live row selects in place",
+  );
+  await frame.getByRole("button", { name: "Component mode", exact: true }).click();
   await page.waitForFunction(() =>
     document.querySelector(".selector").textContent.includes("data-wb"),
   );
@@ -118,7 +127,7 @@ try {
       .getByRole("button", { name: "Component mode", exact: true })
       .getAttribute("aria-pressed"),
     "true",
-    "tree opens Component mode",
+    "Component mode opens the row chosen in Live",
   );
   assert.ok(new URL(page.url()).searchParams.has("component"), "open component is in URL");
   const cards = frame.locator('[data-wb="CatalogCard"]');

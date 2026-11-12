@@ -35,6 +35,31 @@ try {
   const panel = frame.locator('[data-wb="ChatThreadPanel"]').first();
   await row("ChatThreadPanel").first().locator(':scope > [data-sidebar="menu-button"]').click();
   assert.ok(await selected(panel), "a tree click selects the real component");
+  assert.equal(
+    await page.evaluate(
+      () => document.querySelector("iframe").contentDocument.documentElement.dataset.wbMode,
+    ),
+    "live",
+    "a Live row click selects in place",
+  );
+  const scroller = frame.locator(".thread-scroll").first();
+  const scrolled = () => scroller.evaluate((element) => element.scrollTop);
+  const shown = (name) =>
+    frame
+      .locator(`[data-wb="${name}"]`)
+      .first()
+      .evaluate((element) => {
+        const box = element.getBoundingClientRect();
+        return box.top >= 0 && box.bottom <= innerHeight;
+      });
+  assert.ok(await shown("ComposeBox"));
+  assert.equal(await shown("UserTurn"), false, "the first turn starts above the fold");
+  const before = await scrolled();
+  await row("ComposeBox").first().locator(':scope > [data-sidebar="menu-button"]').click();
+  assert.equal(await scrolled(), before, "a visible component does not scroll");
+  await row("UserTurn").first().locator(':scope > [data-sidebar="menu-button"]').click();
+  assert.ok(await shown("UserTurn"), "an off-screen component scrolls fully into view");
+  await row("ChatThreadPanel").first().locator(':scope > [data-sidebar="menu-button"]').click();
   await frame.getByRole("button", { name: "Live mode", exact: true }).click();
   await page.waitForFunction(
     () =>
