@@ -21,6 +21,13 @@ const form = page.getByRole("form", { name: "Save the colours as a theme" });
 const nameField = page.getByRole("textbox", { name: "New theme name" });
 const picker = page.getByRole("combobox", { name: "Apply a theme" });
 const mode = page.getByRole("combobox", { name: "Canvas mode" });
+const remove = page.getByRole("button", { name: "Remove", exact: true });
+const undo = page.getByRole("button", { name: "Undo", exact: true });
+const canvasBg = () =>
+  page
+    .frameLocator("iframe")
+    .locator("html")
+    .evaluate((root) => getComputedStyle(root).getPropertyValue("--bg"));
 const disk = () => readFileSync(file, "utf8");
 const message = () => page.locator(".message").textContent();
 const cursor = () =>
@@ -117,9 +124,7 @@ try {
     await picker.selectOption("vesper");
     await until(() => disk().includes("--bg: #101010;"), "vesper saved");
     assert.equal(await mode.inputValue(), "dark", "a dark-only theme shows Dark");
-    const html = page.frameLocator("iframe").locator("html");
-    const bg = () => html.evaluate((root) => getComputedStyle(root).getPropertyValue("--bg"));
-    await until(async () => (await bg()).trim() === "#101010", "canvas shows Vesper's --bg");
+    await until(async () => (await canvasBg()).trim() === "#101010", "canvas shows Vesper's --bg");
     await page.screenshot({ path: path.join(out, "vesper.png") });
   });
 
@@ -132,8 +137,48 @@ try {
   });
 
   await step("2.4 a load is one step of undo", async () => {
-    await page.getByRole("button", { name: "Undo", exact: true }).click();
+    await undo.click();
     await until(() => disk() === starting, "one undo restores the file");
+  });
+
+  await step("2.3 unload removes the theme's values, back to the baseline", async () => {
+    await picker.selectOption("vesper");
+    await until(() => disk().includes("--bg: #101010;"), "vesper saved");
+    await until(async () => (await picker.inputValue()) === "vesper", "picker shows vesper on");
+    await page.locator(".inspector").screenshot({ path: path.join(out, "vesper-on.png") });
+    await remove.click();
+    await until(() => disk() === starting, "unload restores the file");
+    await until(async () => (await canvasBg()).trim() === "#131212", "baseline --bg returns");
+    // The theme saved in 1.2 is the baseline, so it is the one now in effect.
+    await until(
+      async () => (await picker.inputValue()) === NAME,
+      "picker shows the baseline's theme",
+    );
+  });
+
+  await step("2.4 an unload is one step of undo", async () => {
+    await undo.click();
+    await until(() => disk().includes("--bg: #101010;"), "one undo puts vesper back");
+    await until(async () => (await picker.inputValue()) === "vesper", "and shows it on");
+    await undo.click();
+    await until(() => disk() === starting, "a second undo takes the load back");
+  });
+
+  await step("2.5 load and unload work from the keyboard", async () => {
+    await picker.focus();
+    await page.keyboard.type("v");
+    const seen = await page.evaluate(() => [
+      document.activeElement?.id,
+      document.querySelector("#theme-file").value,
+    ]);
+    await until(
+      () => disk().includes("--bg: #101010;"),
+      `typing v on the picker loads vesper (${seen})`,
+    );
+    await page.keyboard.press("Tab");
+    assert.equal(await remove.evaluate((b) => b === document.activeElement), true);
+    await page.keyboard.press("Enter");
+    await until(() => disk() === starting, "Enter on Remove unloads it");
   });
 } finally {
   writeFileSync(file, starting);

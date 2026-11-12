@@ -6,7 +6,7 @@
 import "./page.css";
 import { DRAWER, TREE_EVENT } from "./tree";
 import { COLOUR_ROOT, CONTRAST, contrast, HEX } from "./colour";
-import { COLOUR_ROLES, parseTheme, themeValues, type Theme } from "./theme";
+import { COLOUR_ROLES, parseTheme, themeValues, type Theme, type ThemeValue } from "./theme";
 import {
   historyDirection,
   move,
@@ -483,10 +483,17 @@ async function load(): Promise<void> {
     ]),
     [ROOT, root],
   ]);
+  colourBaseline = new Map(
+    entries(prop(values, "colours")).map(([name, t]): [string, { light: string; dark: string }] => [
+      name,
+      { light: text(prop(t, "light")) ?? "", dark: text(prop(t, "dark")) ?? "" },
+    ]),
+  );
   buildColours(prop(values, "colours"));
   reset.disabled = savedRadius() === null;
   show(onDisk());
   await settleRadius();
+  showActiveTheme();
 }
 
 function record(selector: string, name: string, value: string | null): void {
@@ -2937,6 +2944,16 @@ const THEMES_ENDPOINT = "/__workbench/themes";
 // The bundled and saved themes (ADR-028), as the plugin lists them.
 let themes: Theme[] = [];
 const themePicker = element("select", { id: "theme-file", ariaLabel: "Apply a theme" });
+const themeRemove = element(
+  "button",
+  {
+    type: "button",
+    className: "history-button",
+    disabled: true,
+    title: "Remove the theme's values",
+  },
+  "Remove",
+);
 const themeName = element("input", {
   id: "theme-name",
   ariaLabel: "New theme name",
@@ -2964,6 +2981,7 @@ const colourPanel = element(
     { className: "mode-row theme-row" },
     element("label", { htmlFor: "theme-file" }, "Theme"),
     themePicker,
+    themeRemove,
   ),
   themeSave,
   colourList,
@@ -3045,30 +3063,52 @@ function finishColour(accept: boolean): void {
   colourKey = "";
 }
 
-// The value `name` has now under `selector`, override or baseline. A colour mode is read by
-// flipping the canvas root's mode within one task, so nothing paints in between.
-function effective(root: HTMLElement, selector: string, name: string): string {
-  const mode = (["light", "dark"] as const).find((m) => COLOUR_ROOT[m] === selector);
-  if (mode === undefined) return style(root).getPropertyValue(name).trim();
-  const showing = root.dataset.theme;
-  root.dataset.theme = mode;
-  const value = colourHex(style(root).getPropertyValue(name));
-  if (showing === undefined) delete root.dataset.theme;
-  else root.dataset.theme = showing;
-  return value;
+// Each colour name's baseline from tokens.css, per mode, as the plugin reads it.
+let colourBaseline = new Map<string, { light: string; dark: string }>();
+
+// `value` with each `var(--x)` replaced by x's baseline in `mode`, so the canvas-free colour
+// probe can read it. Depth-limited: tokens.css has no cycles, but a cycle must not hang.
+function resolveVars(value: string, mode: "light" | "dark", depth = 0): string {
+  if (depth > 8) return value;
+  const next = value.replaceAll(/var\((--[\w-]+)\)/g, (all, name: string) => {
+    const base = colourBaseline.get(name)?.[mode];
+    return base === undefined ? all : resolveVars(base, mode, depth + 1);
+  });
+  return next;
 }
 
+// The value `name` has in `selector` per the override file, else its tokens.css baseline. Read
+// from data, not the canvas, which lags each write until its stylesheet reloads.
+function effectiveColour(selector: string, name: string): string | null {
+  const saved = was(selector, name);
+  if (saved !== null) return saved.toLowerCase();
+  const mode = (["light", "dark"] as const).find((m) => COLOUR_ROOT[m] === selector);
+  const base = mode === undefined ? undefined : colourBaseline.get(name)?.[mode];
+  return mode === undefined || base === undefined ? null : colourHex(resolveVars(base, mode));
+}
+
+const inEffect = (values: ThemeValue[]): boolean[] =>
+  values.map((v) => effectiveColour(v.selector, v.name) === v.value);
+
 // Every colour role's value now, light and dark.
-function currentColours(root: HTMLElement): NonNullable<Theme["colours"]> {
+function currentColours(): NonNullable<Theme["colours"]> {
   return Object.fromEntries(
     Object.entries(COLOUR_ROLES).map(([role, name]) => [
       role,
       {
-        light: effective(root, COLOUR_ROOT.light, name),
-        dark: effective(root, COLOUR_ROOT.dark, name),
+        light: effectiveColour(COLOUR_ROOT.light, name) ?? undefined,
+        dark: effectiveColour(COLOUR_ROOT.dark, name) ?? undefined,
       },
     ]),
   );
+}
+
+// Shows the first theme whose every value is in effect, so it stays right after a reload, an
+// undo or a hand edit.
+function showActiveTheme(): void {
+  const active = themes.find((t) => inEffect(themeValues(t)).every(Boolean));
+  themePicker.value = active?.name ?? "";
+  themeRemove.disabled = active === undefined;
 }
 
 // Lists the plugin's themes in the picker, keeping only those that parse here too.
@@ -3079,9 +3119,10 @@ async function loadThemes(): Promise<void> {
     .map((t) => parseTheme(JSON.stringify(t)))
     .filter((t): t is Theme => typeof t !== "string");
   themePicker.replaceChildren(
-    element("option", { value: "" }, "Apply…"),
+    element("option", { value: "" }, "None"),
     ...themes.map((t) => element("option", { value: t.name }, t.name.replaceAll("-", " "))),
   );
+  showActiveTheme();
 }
 
 function buildColours(values: unknown): void {
@@ -3321,10 +3362,12 @@ field.addEventListener("keydown", (event) => {
 field.addEventListener("blur", commitField);
 // Applies a theme as one history step, so one undo takes all of it back. A theme for one mode
 // shows that mode, or applying it would change nothing on the canvas.
-themePicker.addEventListener("change", () => {
+themePicker.addEventListener("input", () => {
   const theme = themes.find((t) => t.name === themePicker.value);
-  themePicker.value = "";
-  if (theme === undefined) return;
+  if (theme === undefined) {
+    showActiveTheme();
+    return;
+  }
   const values = themeValues(theme);
   const modes = new Set(values.map((v) => v.selector));
   for (const mode of ["light", "dark"] as const) {
@@ -3334,11 +3377,25 @@ themePicker.addEventListener("change", () => {
     }
   }
   enqueue(async () => {
-    const root = doc()?.documentElement;
+    const now = inEffect(values);
     // A value already in effect, even as the baseline, is not written as an override.
     const changes = values
-      .filter((v) => root === undefined || effective(root, v.selector, v.name) !== v.value)
+      .filter((_, i) => now[i] !== true)
       .map((v) => ({ ...v, before: was(v.selector, v.name), after: v.value }));
+    if (changes.length === 0 || !(await writeChanges(changes))) return;
+    settleChanges(changes);
+    await load();
+  });
+});
+// Removes the shown theme's values from the override file as one history step, so each
+// returns to its baseline (story feature 2, criterion 3).
+themeRemove.addEventListener("click", () => {
+  const theme = themes.find((t) => t.name === themePicker.value);
+  if (theme === undefined) return;
+  enqueue(async () => {
+    const changes = themeValues(theme)
+      .map((v) => ({ ...v, before: was(v.selector, v.name), after: null }))
+      .filter((c) => c.before !== null);
     if (changes.length === 0 || !(await writeChanges(changes))) return;
     settleChanges(changes);
     await load();
@@ -3346,13 +3403,11 @@ themePicker.addEventListener("change", () => {
 });
 themeSave.addEventListener("submit", (event) => {
   event.preventDefault();
-  const root = doc()?.documentElement;
-  if (root === undefined) return;
   const body = JSON.stringify({
     format: "design-workshop/theme",
     version: 1,
     name: themeName.value,
-    colours: currentColours(root),
+    colours: currentColours(),
   });
   enqueue(async () => {
     const response = await fetch(THEMES_ENDPOINT, {

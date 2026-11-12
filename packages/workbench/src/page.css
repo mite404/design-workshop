@@ -406,7 +406,22 @@ body {
 }
 
 .theme-row {
+  gap: 6px;
   margin: 4px 0 8px;
+}
+
+.theme-row label {
+  margin-right: auto;
+}
+
+.theme-row select {
+  flex: 1;
+  min-width: 0;
+}
+
+.theme-row .history-button {
+  flex: 0 0 auto;
+  padding: 0 10px;
 }
 
 .theme-save {
