@@ -173,6 +173,15 @@ try {
   await page.setViewportSize({ width: 1440, height: 900 });
 
   assert.ok((await row("UserTurn").count()) > 0);
+  const expand = tree.getByRole("button", { name: /^Expand / });
+  while ((await expand.count()) > 0) await expand.first().click();
+  assert.ok((await row("IconButton").count()) > 0);
+  assert.ok(
+    await frame
+      .locator('[data-slot="sidebar-content"]')
+      .evaluate((element) => element.scrollWidth <= element.clientWidth),
+    "a fully expanded tree keeps every row and chevron inside the drawer",
+  );
   await page.locator(".tool").click();
   await frame.getByRole("link", { name: "Home", exact: true }).click();
   await frame.locator(".welcome").waitFor();

@@ -181,7 +181,7 @@ export default function ComponentTree() {
             render={<div />}
             isActive={active}
             className="group/fold h-8 rounded-[var(--radius)] text-sm text-ink [li:focus-visible>&]:ring-2 [li:focus-visible>&]:ring-inset [li:focus-visible>&]:ring-sidebar-ring"
-            style={{ paddingLeft: 8 + depth * 16, minWidth: 168 + depth * 16 }}
+            style={{ paddingLeft: 8 + depth * 16 }}
             onClick={() => {
               focusRow(rows.current.get(node.element));
               announce(TREE_EVENT.select, node.element);
