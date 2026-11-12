@@ -61,12 +61,23 @@ try {
       if ((await page.locator(".selector").textContent()) === '[data-wb="CatalogCard"]') break;
     }
     assert.equal(await page.locator(".selector").textContent(), '[data-wb="CatalogCard"]');
-    const outline = await page.locator(".outline").boundingBox();
-    const bounds = await card.boundingBox();
-    assert.ok(
-      Math.abs(outline.x - bounds.x) < 2 && Math.abs(outline.y - bounds.y) < 2,
-      "nested overlay aligns",
-    );
+    // Selection text updates immediately; the overlay follows layout on the next animation frame.
+    await page.waitForFunction(() => {
+      const frame = document.querySelector("iframe.frame");
+      const nested = frame.contentDocument.querySelector("iframe[data-wb-story]");
+      const bounds = nested.contentDocument
+        .querySelector('[data-wb="CatalogCard"]')
+        .getBoundingClientRect();
+      const outer = frame.getBoundingClientRect();
+      const inner = nested.getBoundingClientRect();
+      const outline = document.querySelector(".outline").getBoundingClientRect();
+      return (
+        Math.abs(outline.x - (outer.x + inner.x + bounds.x)) < 2 &&
+        Math.abs(outline.y - (outer.y + inner.y + bounds.y)) < 2 &&
+        Math.abs(outline.width - bounds.width) < 2 &&
+        Math.abs(outline.height - bounds.height) < 2
+      );
+    });
     const before = await card.evaluate((node) => parseFloat(getComputedStyle(node).paddingLeft));
     const handle = await page
       .locator('.bar[data-name="padding-left"]:not([hidden])')
