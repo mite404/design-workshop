@@ -10,7 +10,7 @@
     "control": { "light": "#ffffff" },
     "ink": { "light": "#4c4f69" },
     "ink-soft": { "light": "#5c5f77" },
-    "ink-faint": { "light": "#6c6f85" },
+    "ink-faint": { "light": "#5c5f77" },
     "accent": { "light": "#8839ef" },
     "on-accent": { "light": "#eff1f5" },
     "send": { "light": "#8839ef" },
@@ -18,6 +18,7 @@
     "selection": { "light": "#1e66f5" },
     "chrome": { "light": "#dce0e8" },
     "on-chrome": { "light": "#4c4f69" },
+    "on-chrome-soft": { "light": "#5c5f77" },
     "chrome-hover": { "light": "#ccd0da" }
   }
 }

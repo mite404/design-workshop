@@ -6,6 +6,9 @@
 import "./page.css";
 import { DRAWER, TREE_EVENT } from "./tree";
 import { COLOUR_ROOT, CONTRAST, contrast, HEX } from "./colour";
+import { parseTheme, themeValues, type Theme } from "./theme";
+import catppuccinLatte from "../themes/catppuccin-latte.theme.json?raw";
+import vesper from "../themes/vesper.theme.json?raw";
 import {
   historyDirection,
   move,
@@ -2932,12 +2935,28 @@ function trackUnmatched(): void {
   );
 }
 
+// The bundled themes (ADR-028), parsed like any theme file so a bad one is never offered.
+const THEMES = [vesper, catppuccinLatte]
+  .map((raw) => parseTheme(raw))
+  .filter((t): t is Theme => typeof t !== "string");
+const themePicker = element(
+  "select",
+  { id: "theme-file", ariaLabel: "Apply a theme" },
+  element("option", { value: "" }, "Apply…"),
+  ...THEMES.map((t) => element("option", { value: t.name }, t.name.replaceAll("-", " "))),
+);
 const colourList = element("div", { className: "colour-list" });
 const colourHeading = element("h2", {}, "Colours · Light");
 const colourPanel = element(
   "details",
   { ariaLabel: "Colours", open: true },
   element("summary", {}, colourHeading),
+  element(
+    "div",
+    { className: "mode-row theme-row" },
+    element("label", { htmlFor: "theme-file" }, "Theme"),
+    themePicker,
+  ),
   colourList,
 );
 type ColourRow = {
@@ -3252,6 +3271,29 @@ field.addEventListener("keydown", (event) => {
   if (event.key === "Enter") commitField();
 });
 field.addEventListener("blur", commitField);
+// Applies a theme as one history step, so one undo takes all of it back. A theme for one mode
+// shows that mode, or applying it would change nothing on the canvas.
+themePicker.addEventListener("change", () => {
+  const theme = THEMES.find((t) => t.name === themePicker.value);
+  themePicker.value = "";
+  if (theme === undefined) return;
+  const values = themeValues(theme);
+  const modes = new Set(values.map((v) => v.selector));
+  for (const mode of ["light", "dark"] as const) {
+    if (modes.size === 1 && modes.has(COLOUR_ROOT[mode]) && canvasMode.value !== mode) {
+      canvasMode.value = mode;
+      canvasMode.dispatchEvent(new Event("change"));
+    }
+  }
+  enqueue(async () => {
+    const changes = values
+      .map((v) => ({ ...v, before: was(v.selector, v.name), after: v.value }))
+      .filter((c) => c.before !== c.after);
+    if (changes.length === 0 || !(await writeChanges(changes))) return;
+    settleChanges(changes);
+    await load();
+  });
+});
 canvasMode.addEventListener("change", () => {
   finishColour(false);
   const root = doc()?.documentElement;

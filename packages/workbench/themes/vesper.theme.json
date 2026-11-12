@@ -18,6 +18,7 @@
     "selection": { "dark": "#ffc799" },
     "chrome": { "dark": "#0b0b0b" },
     "on-chrome": { "dark": "#ffffff" },
+    "on-chrome-soft": { "dark": "#a0a0a0" },
     "chrome-hover": { "dark": "#232323" }
   }
 }

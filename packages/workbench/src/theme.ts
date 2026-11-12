@@ -21,6 +21,7 @@ const COLOUR_ROLES = {
   selection: "--blue",
   chrome: "--chrome",
   "on-chrome": "--on-chrome",
+  "on-chrome-soft": "--on-chrome-soft",
   "chrome-hover": "--chrome-hover",
 } as const;
 

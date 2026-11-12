@@ -405,6 +405,10 @@ body {
   }
 }
 
+.theme-row {
+  margin: 4px 0 8px;
+}
+
 .colour-row {
   padding: 8px 0;
   border-bottom: 1px solid var(--wb-line);
