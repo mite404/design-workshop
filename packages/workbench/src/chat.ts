@@ -3,13 +3,22 @@
 // While choosing, a filled highlight glides between the visible units under the pointer; a click
 // or Enter selects the element it shows, never activating it, and Add to chat puts a removable
 // reference in the draft. A sent message keeps each reference's selector (ADR-012), preview, and
-// the file and line of the component it sits in (R12).
+// the file and line of the component it sits in, and its current values (R12).
 // Nothing leaves the page: no model is called.
 import { chain, element, place, selectorOf, style, type Styled } from "./dom";
-import { holds, labelOf, sourceOf } from "./reference";
+import { currentValues, holds, labelOf, sourceOf } from "./reference";
+import { SPACING } from "./spacing";
+import { TYPE } from "./type";
 
 // One element a draft or message refers to: the element, and its identity when it was chosen.
-type Ref = { node: Styled; label: string; selector: string; preview: string; source: string };
+type Ref = {
+  node: Styled;
+  label: string;
+  selector: string;
+  preview: string;
+  source: string;
+  values: string[]; // as rendered when chosen: what the Live-mode inspector shows
+};
 type Point = { x: number; y: number };
 
 const GLIDE = 160; // ms the highlight eases between targets, a little longer than its transition
@@ -214,7 +223,7 @@ const resolved = (ref: Ref): boolean =>
 function refItem(ref: Ref, removable: boolean): HTMLLIElement {
   const item = element("li", {
     className: "chip",
-    title: `${ref.preview}\n${ref.source}\n${ref.selector}`,
+    title: [ref.preview, ref.source, ref.selector, ...ref.values].join("\n"),
   });
   item.dataset.selector = ref.selector;
   item.dataset.preview = ref.preview;
@@ -238,7 +247,16 @@ function refItem(ref: Ref, removable: boolean): HTMLLIElement {
     });
     item.append(remove);
   } else {
-    item.append(element("code", {}, ref.preview), element("code", {}, ref.source));
+    item.append(
+      element("code", {}, ref.preview),
+      element("code", {}, ref.source),
+      element(
+        "details",
+        { className: "values" },
+        element("summary", {}, "Current values"),
+        element("pre", {}, ref.values.join("\n")),
+      ),
+    );
   }
   shown.set(item, ref);
   return item;
@@ -262,12 +280,14 @@ async function attach(): Promise<void> {
   const [node, old] = [picked, replacing];
   const known = await sources; // → { ComposeBox: "packages/catalog/src/ComposeBox.tsx:193", … }
   if (!choosing) return; // cancelled while the sources loaded
+  const rendered = style(node);
   const ref = {
     node,
     label: name(node),
     selector: selectorOf(node),
     preview: previewOf(node),
     source: sourceOf(node.closest<HTMLElement>("[data-wb]")?.dataset.wb ?? null, known),
+    values: currentValues([...SPACING, ...TYPE], (prop) => rendered.getPropertyValue(prop)),
   };
   const at = old === null ? -1 : references.indexOf(old);
   if (at !== -1) references[at] = ref;

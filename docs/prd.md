@@ -218,9 +218,9 @@ look in under an hour without writing a prompt.
 ### Next
 
 - R12. **Request a design value.** Point at something that is not adjustable; the Workbench writes
-  an exact request (element, file and line, current value) for an agent. *Partly built. ETH-110
+  an exact request (element, file and line, current value) for an agent. *Built. ETH-110
   points at an element and discusses it; ETH-135 adds the file and line of the named component
-  around it. The current value is not built. The agent skill file that
+  around it; ETH-136 adds its current values as rendered. The agent skill file that
   section 7 and block 6 name is `.agents/skills/design-values/SKILL.md` (ETH-134).*
 - R13. Handles on the canvas for sizes, gaps, padding and radius, with measurement readouts.
   *Partly built: radius (ETH-101), gap and padding (ETH-102) have handles and readouts. Size

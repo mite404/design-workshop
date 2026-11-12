@@ -1546,6 +1546,22 @@ body[data-referencing] .overlay,
   font-size: 10px;
 }
 
+/* A sent reference's current values (R12): folded, so the message stays one chip tall. */
+.chip .values {
+  color: var(--wb-soft-ink);
+  font-size: 10px;
+}
+
+.chip .values summary {
+  cursor: pointer;
+}
+
+.chip .values pre {
+  margin: 4px 0 0;
+  font-size: 10px;
+  white-space: pre-wrap;
+}
+
 .chip[data-unresolved="true"] {
   border-style: dashed;
   border-color: var(--wb-soft-ink);

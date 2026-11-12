@@ -35,6 +35,13 @@ export function sourceOf(owner: string | null, known: unknown): string {
   return typeof at === "string" ? `${at} ·\u00A0${owner}` : `${owner} · source not found`;
 }
 
+/**
+ * A reference's current values (R12): each named property as the browser renders it, in order,
+ * as `name: value` lines. Ethan: "the property currently being rendered in live mode".
+ */
+export const currentValues = (names: readonly string[], read: (name: string) => string): string[] =>
+  names.map((name) => `${name}: ${read(name).trim() || "none"}`); // → ["gap: 8px", …]
+
 /** A reference's label, its tag and first words: "button · Start with a refund workflow". */
 export function labelOf(tag: string, name: string): string {
   const words = name.replaceAll(/\s+/g, " ").trim(); // "  Start\n with " → "Start with"

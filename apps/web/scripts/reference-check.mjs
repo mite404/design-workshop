@@ -242,6 +242,25 @@ await step("send keeps the reference's identity in the message", async () => {
   assert.equal(named, owner, `${source} names the button's component`);
   const declared = readFileSync(path.join(ROOT, file), "utf8").split("\n")[Number(line) - 1];
   assert.match(declared, new RegExp(`data-wb="${owner}"`, "u"), `${source} declares it`);
+  // R12: its current values are the button's computed styles, as the inspector renders them.
+  await ref.getByText("Current values").click();
+  const lines = ((await ref.locator(".values pre").textContent()) ?? "").split("\n");
+  const rendered = await button.evaluate(
+    (el, names) => {
+      const css = getComputedStyle(el);
+      return names.map((name) => `${name}: ${css.getPropertyValue(name).trim() || "none"}`);
+    },
+    lines.map((entry) => entry.split(":")[0]),
+  );
+  assert.deepEqual(lines, rendered);
+  assert.ok(
+    lines.some((entry) => entry.startsWith("padding-left: ")),
+    "spacing is listed",
+  );
+  assert.ok(
+    lines.some((entry) => entry.startsWith("font-size: ")),
+    "type is listed",
+  );
   sent = (await ref.getAttribute("data-selector")) ?? "";
   assert.equal(
     await button.evaluate((el, s) => {
