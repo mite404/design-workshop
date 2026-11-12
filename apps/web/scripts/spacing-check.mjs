@@ -323,12 +323,30 @@ await step("a value set in the element's own style is read-only", async () => {
   await page.keyboard.press("Escape");
   await page.waitForFunction(() => !document.querySelector("#wb-padding-bottom").readOnly);
   assert.equal(await fieldOf("padding-bottom").getAttribute("readonly"), null);
+  assert.equal(await page.locator(".note").isHidden(), true, "note only shows while locked");
 });
 
 await step("Reset on the gap field removes it and the card's own 0 returns", async () => {
   await page.getByRole("button", { name: "Reset gap" }).click();
   await expectSpacing("gap", 0, saved.slice(1));
   await page.getByRole("button", { name: "Reset gap", disabled: true }).waitFor();
+});
+
+await step("typing a width saves it for this element; Reset removes it", async () => {
+  const natural = await computed(card, "width");
+  const want = Math.round(natural) - 40;
+  await fieldOf("width").fill(String(want));
+  await fieldOf("width").press("Enter");
+  await expectSpacing("width", want, [...saved.slice(1), `width: ${want}px`]);
+  await page.getByRole("button", { name: "Reset width" }).click();
+  for (let i = 0; i < 50 && readFileSync(OVERRIDES, "utf8") !== file(saved.slice(1)); i++) {
+    await page.waitForTimeout(100);
+  }
+  assert.equal(readFileSync(OVERRIDES, "utf8"), file(saved.slice(1)), "override file");
+  for (let i = 0; i < 50 && Math.round(await computed(card, "width")) === want; i++) {
+    await page.waitForTimeout(100); // until the hot reload drops the saved width
+  }
+  assert.equal(Math.round(await computed(card, "width")), Math.round(natural), "width returns");
 });
 
 await step("clicking empty space deselects", async () => {

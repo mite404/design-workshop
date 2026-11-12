@@ -664,6 +664,11 @@ body {
   gap: 8px;
 }
 
+.row[hidden],
+.note[hidden] {
+  display: none;
+}
+
 .scrub {
   color: var(--wb-soft-ink);
   cursor: ew-resize;

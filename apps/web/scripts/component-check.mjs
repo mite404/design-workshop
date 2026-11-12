@@ -183,6 +183,7 @@ try {
     true,
     "root nudge is locked",
   );
+  assert.equal(await page.locator("#wb-width").isHidden(), true, "size is Live mode only");
   await page.locator("body").press("ArrowRight");
   assert.equal(
     await cards.first().evaluate((node) => node.style.translate),

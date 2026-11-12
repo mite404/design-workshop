@@ -78,10 +78,12 @@ export function place(node: HTMLElement, rect: Box): void {
   });
 }
 
-/** `node`'s gap and padding as the browser lays them out, inline values included. */
+/** `node`'s size, gap and padding as the browser lays them out, inline values included. */
 export function spacingOf(node: Element): Record<Spacing, number> {
   const s = style(node);
   return {
+    width: size(s.width),
+    height: size(s.height),
     gap: Math.max(size(s.rowGap), size(s.columnGap)),
     "padding-top": size(s.paddingTop),
     "padding-right": size(s.paddingRight),

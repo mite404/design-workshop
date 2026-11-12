@@ -78,6 +78,7 @@ import {
   paddingSides,
   paddingSpace,
   SIDES,
+  SIZE,
   SPACING,
   type Offset,
   type Side,
@@ -111,6 +112,8 @@ const CURSOR: Record<Corner, string> = {
   sw: "nesw-resize",
 };
 const LABEL: Record<Spacing, string> = {
+  width: "Width",
+  height: "Height",
   gap: "Gap",
   "padding-top": "Top",
   "padding-right": "Right",
@@ -3019,20 +3022,27 @@ function trackFields(): void {
   trackSurface(node);
   const v = spacingOf(node);
   const laidOut = laysOut(node);
-  for (const { name, input, clear } of rows) {
+  const inline = style(node).display === "inline"; // width and height do nothing there
+  for (const { name, input, clear, row } of rows) {
+    const sized = SIZE.includes(name);
+    row.hidden = sized && componentMode; // size is a Live-mode edit (Ethan)
     if (document.activeElement !== input) input.value = String(v[name]);
     input.readOnly = locked.has(name);
-    input.disabled = name === "gap" && !laidOut;
+    input.disabled = (name === "gap" && !laidOut) || (sized && inline);
     clear.disabled = was(selector, name) === null;
   }
   note.hidden = !SPACING.some((name) => locked.has(name));
+  trackOffset(node, selection.nudgeLocked);
+}
+
+function trackOffset(node: Styled, nudgeLocked: boolean): void {
   const offset = offsetOf(node);
   for (const { axis, input, clear } of offsetRows) {
     if (document.activeElement !== input) input.value = String(offset[axis]);
-    input.readOnly = selection.nudgeLocked;
-    clear.disabled = selection.nudgeLocked || offset[axis] === 0;
+    input.readOnly = nudgeLocked;
+    clear.disabled = nudgeLocked || offset[axis] === 0;
   }
-  offsetNote.hidden = !selection.nudgeLocked;
+  offsetNote.hidden = !nudgeLocked;
   offsetNote.textContent = componentRoot(node)
     ? "Placement belongs to Live mode. Edit inside this component's border."
     : "Offset is read-only because the element already has a native transform or translate.";

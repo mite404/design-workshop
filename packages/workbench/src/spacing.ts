@@ -5,14 +5,18 @@ import type { Box } from "./radius";
 /** A side of an element's padding box. */
 export type Side = "top" | "right" | "bottom" | "left";
 
-/** The spacing properties the Workbench sets on an element. */
-export type Spacing = "gap" | `padding-${Side}`;
+/** The box properties the Workbench sets on an element: gap, padding and, in Live mode only,
+ *  size (ETH-137). */
+export type Spacing = "gap" | `padding-${Side}` | "width" | "height";
 
 /** The sides, clockwise from the top. */
 export const SIDES: Side[] = ["top", "right", "bottom", "left"];
 
-/** Every spacing property, in the inspector's order. */
-export const SPACING: Spacing[] = ["gap", ...SIDES.map((s): Spacing => `padding-${s}`)];
+/** The size properties, set in Live mode only (Ethan: "live mode"). */
+export const SIZE: Spacing[] = ["width", "height"];
+
+/** Every box property, in the inspector's order: Figma's W and H first (ADR-009). */
+export const SPACING: Spacing[] = [...SIZE, "gap", ...SIDES.map((s): Spacing => `padding-${s}`)];
 
 /** A space a handle controls, and the axis it is dragged along. */
 export type Space = { axis: "x" | "y"; box: Box };
