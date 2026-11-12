@@ -1,19 +1,19 @@
 import { z } from "zod";
 
 const text = z.string().trim().min(1).max(120);
+const rowFields = {
+  label: z.string().min(1).max(40),
+  value: z.number().finite().min(-1e12).max(1e12).nullable(),
+};
 const shared = {
   title: text,
   source: text,
   unit: z.string().trim().min(1).max(24),
-  rows: z
-    .array(
-      z.strictObject({
-        label: z.string().min(1).max(40),
-        value: z.number().finite().min(-1e12).max(1e12).nullable(),
-      }),
-    )
-    .max(100),
+  rows: z.array(z.strictObject(rowFields)).max(100),
 };
+
+// A trend's x axis is time (bklit's line chart, ADR-035): each row is one calendar day.
+const day = z.iso.date().describe("The calendar day this row was observed, YYYY-MM-DD");
 
 /** Single source of truth for the permitted agent response; unknown keys are rejected. */
 export const selectionSchema = z.discriminatedUnion("component", [
@@ -22,6 +22,7 @@ export const selectionSchema = z.discriminatedUnion("component", [
     component: z.literal("LineChart"),
     props: z.strictObject({
       ...shared,
+      rows: z.array(z.strictObject({ ...rowFields, date: day })).max(100),
       variant: z.enum(["trend", "snapshot"]),
     }),
   }),

@@ -370,3 +370,18 @@ and chart in the thread. Measured at 4x CPU slowdown on the dev server, the medi
 fell from about 448 ms to 160 to 176 ms. Rejected: `React.memo` on `Turn`, which needs every
 callback and object prop stabilised and fails silently when one is not; and CSS `field-sizing`
 for the box (first attempt), which measured no change because layout was 3% of a keystroke.
+
+## ADR-035 - Line cards carry dates; bklit's line is patched to leave gaps
+
+2026-11-12 - Accepted. ETH-130. Amends ADR-033.
+bklit's line chart is time-only: its docs and source build the x axis with `scaleTime()` and
+turn every x value into a `Date`. A LineChart row therefore carries `date` (`YYYY-MM-DD`, a real
+calendar day) beside its `label`, and the axis prints the labels. (Ethan: "try option 2 first if
+that doesnt work use option 1".) bklit as shipped draws a missing value at the plot's top edge,
+which breaks the card's promise that missing observations remain gaps, so
+`series-path-utils.ts` carries a two-line marked patch (`design-workshop patch`): a missing value
+becomes `NaN` and the path generator skips it. Re-apply it after any `shadcn add` that touches
+that file. `shimmering-text.tsx`, which the line chart's loading label imports, is kept as
+shipped like the charts folder. Rejected: categorical x by forking the time-series shell, a far
+larger patch for weekday labels that are days anyway; and dropping rows with no value, which
+would draw a line straight across the gap.

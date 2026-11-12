@@ -10,13 +10,13 @@ export const trend = {
     unit: "cases",
     variant: "trend",
     rows: [
-      { label: "Mon", value: 24 },
-      { label: "Tue", value: 38 },
-      { label: "Wed", value: 31 },
-      { label: "Thu", value: 52 },
-      { label: "Fri", value: 46 },
-      { label: "Sat", value: 62 },
-      { label: "Sun", value: 58 },
+      { date: "2026-09-14", label: "Mon", value: 24 },
+      { date: "2026-09-15", label: "Tue", value: 38 },
+      { date: "2026-09-16", label: "Wed", value: 31 },
+      { date: "2026-09-17", label: "Thu", value: 52 },
+      { date: "2026-09-18", label: "Fri", value: 46 },
+      { date: "2026-09-19", label: "Sat", value: 62 },
+      { date: "2026-09-20", label: "Sun", value: 58 },
     ],
   },
 } satisfies Selection;
@@ -65,7 +65,7 @@ export const scenarios: Record<string, { label: string; question: string; payloa
     question: "Show a trend from this one observation.",
     payload: {
       ...trend,
-      props: { ...trend.props, rows: [{ label: "Mon", value: 24 }] },
+      props: { ...trend.props, rows: [{ date: "2026-09-14", label: "Mon", value: 24 }] },
     },
   },
   missing: {

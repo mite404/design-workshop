@@ -7,13 +7,21 @@ const props = {
   unit: "cases",
   variant: "trend",
   rows: [
-    { label: "Mon", value: 12 },
-    { label: "Tue", value: 7 },
+    { date: "2026-09-14", label: "Mon", value: 12 },
+    { date: "2026-09-15", label: "Tue", value: 7 },
   ],
 };
 const valid = { catalogVersion: "1", component: "LineChart", props };
+const withFirstDate = (date?: string) => [{ ...props.rows[0], date }, props.rows[1]];
 
 describe("agent contract", () => {
+  it("rejects a trend row without a real calendar day", () => {
+    for (const date of [undefined, "Mon", "2026-02-30", "2026-9-14"]) {
+      expect(resolve({ ...valid, props: { ...props, rows: withFirstDate(date) } }).kind).toBe(
+        "rejected",
+      );
+    }
+  });
   it("accepts approved component and props", () => {
     expect(resolve(valid)).toMatchObject({
       kind: "approved",
@@ -73,7 +81,7 @@ describe("agent contract", () => {
     expect(
       resolve({
         ...valid,
-        props: { ...props, rows: [{ label: "Mon", value: 12 }] },
+        props: { ...props, rows: [{ date: "2026-09-14", label: "Mon", value: 12 }] },
       }),
     ).toMatchObject({
       kind: "fallback",
@@ -87,8 +95,8 @@ describe("agent contract", () => {
         props: {
           ...props,
           rows: [
-            { label: "Mon", value: null },
-            { label: "Tue", value: 7 },
+            { date: "2026-09-14", label: "Mon", value: null },
+            { date: "2026-09-15", label: "Tue", value: 7 },
           ],
         },
       }),

@@ -76,3 +76,10 @@ render time; bytes are judged once Recharts leaves (feature 3).
 1. Line cards move to bklit's `line-chart` with the same checks as feature 2.
 2. `recharts` leaves every `package.json` and the lockfile.
 3. The bundle no longer contains Recharts, measured.
+
+### Line cards on bklit, Nov 12 2026 (ETH-130, first commit)
+
+Criterion 1 done: line cards draw with bklit's `line-chart` (ADR-035). Rows carry their calendar
+day; a missing value leaves a gap (checked: the missing-Wednesday story's line is two subpaths,
+with no marker at Wednesday). Recharts remains for the slider card's `StopChart`, so criteria 2
+and 3 wait for its move.

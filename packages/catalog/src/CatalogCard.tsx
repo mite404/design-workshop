@@ -1,14 +1,8 @@
+import { curveLinear } from "d3-shape";
 import { useId, useState, type ReactNode } from "react";
-import {
-  ResponsiveContainer,
-  LineChart as RechartsLineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-} from "recharts";
 import { Bar } from "@yaklabs/ui/components/charts/bar";
+import { Line, LineChart } from "@yaklabs/ui/components/charts/line-chart";
+import { XAxis } from "@yaklabs/ui/components/charts/x-axis";
 import { BarChart } from "@yaklabs/ui/components/charts/bar-chart";
 import { BarXAxis } from "@yaklabs/ui/components/charts/bar-x-axis";
 import { Grid } from "@yaklabs/ui/components/charts/grid";
@@ -51,15 +45,25 @@ function DataTable({ props }: { props: DataProps }) {
   );
 }
 
+// "2026-09-14" → that day at local midnight; `new Date("2026-09-14")` is UTC midnight, which
+// lands on the day before west of Greenwich.
+function localDay(iso: string): Date {
+  const [year = 0, month = 1, day = 1] = iso.split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
 function Chart({ selection }: { selection: Selection }) {
   const props = selection.props;
-  const axes = (
-    <>
-      <CartesianGrid vertical={false} stroke="var(--hairline)" />
-      <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fill: "var(--soft-ink)" }} />
-      <YAxis tickLine={false} axisLine={false} width={48} tick={{ fill: "var(--soft-ink)" }} />
-      <Tooltip />
-    </>
+  const tooltip = (
+    <ChartTooltip
+      rows={(point) => [
+        {
+          color: "var(--data)",
+          label: props.unit,
+          value: typeof point.value === "number" ? point.value : "Not recorded",
+        },
+      ]}
+    />
   );
   return (
     <div
@@ -69,25 +73,28 @@ function Chart({ selection }: { selection: Selection }) {
       aria-label={`${props.title}. Values available in the data table.`}
     >
       {selection.component === "LineChart" ? (
-        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-          <RechartsLineChart
-            data={props.rows}
-            margin={{ top: 20, right: 24, bottom: 10, left: 0 }}
-            accessibilityLayer
-          >
-            {axes}
-            <Line
-              dataKey="value"
-              name={props.unit}
-              type="linear"
-              stroke="var(--data)"
-              strokeWidth={props.variant === "snapshot" ? 0 : 3}
-              dot={{ r: 4, fill: "var(--data)", strokeWidth: 2 }}
-              connectNulls={false}
-              isAnimationActive={false}
-            />
-          </RechartsLineChart>
-        </ResponsiveContainer>
+        // bklit's line chart (PRD section 12, ADR-035): x is time, labelled with the rows' own
+        // labels; a missing value leaves a gap.
+        <LineChart
+          data={selection.props.rows.map((row) => ({ date: localDay(row.date), value: row.value }))}
+          aspectRatio="auto"
+          animationDuration={0}
+          margin={{ top: 20, right: 24, bottom: 32, left: 48 }}
+        >
+          <Grid horizontal stroke="var(--hairline)" strokeOpacity={1} />
+          <Line
+            dataKey="value"
+            stroke="var(--data)"
+            strokeWidth={props.variant === "snapshot" ? 0 : 3}
+            curve={curveLinear}
+            fadeEdges={false}
+            showMarkers
+            animate={false}
+          />
+          <BarValueAxis />
+          <XAxis labels={props.rows.map((row) => row.label)} tickMode="data" />
+          {tooltip}
+        </LineChart>
       ) : (
         // bklit's bar chart (PRD section 12), drawn at once: cards are read, not watched.
         <BarChart
@@ -100,15 +107,7 @@ function Chart({ selection }: { selection: Selection }) {
           <Bar dataKey="value" fill="var(--data)" lineCap={BAR_RADIUS} animate={false} />
           <BarValueAxis />
           <BarXAxis />
-          <ChartTooltip
-            rows={(point) => [
-              {
-                color: "var(--data)",
-                label: props.unit,
-                value: typeof point.value === "number" ? point.value : "Not recorded",
-              },
-            ]}
-          />
+          {tooltip}
         </BarChart>
       )}
     </div>

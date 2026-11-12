@@ -17,11 +17,11 @@ export const workloadChart = {
     unit: "cases",
     variant: "trend",
     rows: [
-      { label: "Mon", value: 46 },
-      { label: "Tue", value: 39 },
-      { label: "Wed", value: 31 },
-      { label: "Thu", value: 24 },
-      { label: "Fri", value: 18 },
+      { date: "2025-09-22", label: "Mon", value: 46 },
+      { date: "2025-09-23", label: "Tue", value: 39 },
+      { date: "2025-09-24", label: "Wed", value: 31 },
+      { date: "2025-09-25", label: "Thu", value: 24 },
+      { date: "2025-09-26", label: "Fri", value: 18 },
     ],
   },
 } satisfies Selection;

@@ -77,7 +77,8 @@
     "**/dist",
     "**/storybook-static",
     ".artifacts",
-    "packages/ui/src/components/charts/**"
+    "packages/ui/src/components/charts/**",
+    "packages/ui/src/components/shimmering-text.tsx"
   ],
   "overrides": [
     {
