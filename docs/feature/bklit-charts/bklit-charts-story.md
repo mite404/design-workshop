@@ -23,6 +23,22 @@ Status: drafted Nov 12 2026 from PRD section 12 (charts come from bklit) and the
    brief's two cards, and the `Interactive Profit` story's render time under 4x CPU slowdown.
 2. Each number has its command, run count and spread, saved with the plan.
 
+### Baseline, Nov 12 2026 (Recharts 3.10.1, ETH-128)
+
+Command: `node apps/web/scripts/chart-measure.mjs` with the dev server and Storybook running,
+twice in run `verify-eth-128-base-20261112-102348`. Times are under 4x CPU slowdown, five runs
+after one warm-up, as median (min to max).
+
+| Measure | Run 1 | Run 2 |
+| --- | --- | --- |
+| Chart code the catalog imports, minified | 528,708 B | 528,708 B |
+| Same, gzip | 124,543 B | 124,543 B |
+| Weekly brief click to both charts drawn | 4013 ms (3642 to 4458) | 4124 ms (3815 to 4339) |
+| Interactive Profit story to chart drawn | 3330 ms (3225 to 3622) | 3319 ms (3291 to 3524) |
+
+Each run's median sits inside the other's range. The bytes bundle only the names the catalog
+imports, React external, in production mode.
+
 ## 2. The bar chart on bklit
 
 **As** a designer reading a card,
