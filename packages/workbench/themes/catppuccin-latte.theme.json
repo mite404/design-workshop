@@ -1,0 +1,23 @@
+{
+  "format": "design-workshop/theme",
+  "version": 1,
+  "name": "catppuccin-latte",
+  "colours": {
+    "page": { "light": "#eff1f5" },
+    "surface": { "light": "#e6e9ef" },
+    "hover": { "light": "#dce0e8" },
+    "compose": { "light": "#ffffff" },
+    "control": { "light": "#ffffff" },
+    "ink": { "light": "#4c4f69" },
+    "ink-soft": { "light": "#5c5f77" },
+    "ink-faint": { "light": "#6c6f85" },
+    "accent": { "light": "#8839ef" },
+    "on-accent": { "light": "#eff1f5" },
+    "send": { "light": "#8839ef" },
+    "focus": { "light": "#7287fd" },
+    "selection": { "light": "#1e66f5" },
+    "chrome": { "light": "#dce0e8" },
+    "on-chrome": { "light": "#4c4f69" },
+    "chrome-hover": { "light": "#ccd0da" }
+  }
+}

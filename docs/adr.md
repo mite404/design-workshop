@@ -293,7 +293,9 @@ Applying a theme writes those values into the override file through the normal s
 undo, Discard and Check and commit are unchanged and the override file stays the only live
 look. The Workbench may also create new files in `.workbench/themes/`. JSON over YAML: both
 the browser and Node parse it with no dependency. Rejected: CSS theme files, which tie a theme
-to one app's variable names.
+to one app's variable names. A colour role may set one mode only, so a dark theme (Vesper)
+or a light one (Catppuccin Latte, Ethan's two picks) leaves the other mode alone. Unknown roles
+and malformed values refuse the whole file.
 
 ## ADR-029 - A project is accepted by a JSON contract and a pure validator, never an agent
 

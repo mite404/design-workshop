@@ -1,0 +1,23 @@
+{
+  "format": "design-workshop/theme",
+  "version": 1,
+  "name": "vesper",
+  "colours": {
+    "page": { "dark": "#101010" },
+    "surface": { "dark": "#161616" },
+    "hover": { "dark": "#232323" },
+    "compose": { "dark": "#1c1c1c" },
+    "control": { "dark": "#1c1c1c" },
+    "ink": { "dark": "#ffffff" },
+    "ink-soft": { "dark": "#a0a0a0" },
+    "ink-faint": { "dark": "#8b8b8b" },
+    "accent": { "dark": "#ffc799" },
+    "on-accent": { "dark": "#101010" },
+    "send": { "dark": "#ffc799" },
+    "focus": { "dark": "#99ffe4" },
+    "selection": { "dark": "#ffc799" },
+    "chrome": { "dark": "#0b0b0b" },
+    "on-chrome": { "dark": "#ffffff" },
+    "chrome-hover": { "dark": "#232323" }
+  }
+}
