@@ -3,6 +3,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { checkConfig } from "./config.ts";
 import { checkProject, validate } from "./contract.ts";
+import { inspect } from "./init.ts";
 import { exportProject, readManifest } from "./project.ts";
 import { checkValues, listValues, writeValues } from "./plugin.ts";
 import { parseOverrides } from "./overrides.ts";
@@ -14,6 +15,7 @@ const USAGE = `Usage: pnpm workbench list [--json]
        pnpm workbench export > look.project.json
        pnpm workbench check-project <file>
        pnpm workbench check-config [.workbench/config.json]
+       pnpm workbench init <root> --dry-run
        pnpm workbench set <selector> <name> <value>
        pnpm workbench unset <selector> <name>
        pnpm workbench check
@@ -37,6 +39,7 @@ const COMMANDS: Record<
     },
   },
   manifest: { counts: [0], run: manifest },
+  init: { counts: [2], run: ([root = "", flag = ""]) => dryRun(root, flag) },
   export: { counts: [0], run: exportFile },
   "check-project": { counts: [1], run: ([file = ""]) => checkProjectFile(file) },
   "check-config": {
@@ -90,6 +93,18 @@ function checkProjectFile(file: string): void {
   ); // → string[]
   process.stdout.write(`${lines.join("\n")}\n`);
   if (items.some((i) => i.failure)) process.exitCode = 1;
+}
+
+// Prints what `init` detects at `root` and whether it is the config already there; writes
+// nothing. Exits 1 when the proposed config would be refused (ADR-042).
+async function dryRun(root: string, flag: string): Promise<void> {
+  if (flag !== "--dry-run") throw new Error(USAGE);
+  const found = await inspect(root);
+  const file = join(root, ".workbench/config.json");
+  const current: unknown = existsSync(file) ? JSON.parse(readFileSync(file, "utf8")) : null;
+  const matches = JSON.stringify(current) === JSON.stringify(found.config);
+  process.stdout.write(`${JSON.stringify({ ...found, configMatches: matches }, null, 2)}\n`);
+  if (found.failures.length > 0) process.exitCode = 1;
 }
 
 // Prints each config failure, folders checked under the root that holds `.workbench/`; exits 1

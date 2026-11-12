@@ -18,6 +18,15 @@ const written = [NAME, "pairing-check", "pairing-wide"].map((n) =>
 );
 const starting = readFileSync(file, "utf8");
 const hadThemes = existsSync(themes);
+// What git reports under .workbench/, so step 1.4 sees only what this run wrote there.
+const workbenchStatus = () =>
+  execFileSync("git", ["status", "--porcelain", "--untracked-files=all"], {
+    cwd: ROOT,
+    encoding: "utf8",
+  })
+    .split("\n")
+    .filter((l) => l.includes(".workbench/"));
+const startingStatus = workbenchStatus();
 const browser = await launch();
 const { page, errors } = await workbenchPage(browser);
 const form = page.getByRole("form", { name: "Save the colours as a theme" });
@@ -139,11 +148,7 @@ try {
 
   await step("1.4 saving writes only that file", () => {
     assert.equal(disk(), starting, "override file untouched");
-    const status = execFileSync("git", ["status", "--porcelain", "--untracked-files=all"], {
-      cwd: ROOT,
-      encoding: "utf8",
-    });
-    const changed = status.split("\n").filter((l) => l.includes(".workbench/"));
+    const changed = workbenchStatus().filter((l) => !startingStatus.includes(l));
     assert.deepEqual(changed.toSorted(), [
       "?? .workbench/themes/pairing-wide.theme.json",
       `?? .workbench/themes/${NAME}.theme.json`,

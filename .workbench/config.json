@@ -1,6 +1,6 @@
 {
   "format": "design-workshop/config",
   "version": 1,
-  "sources": ["packages/catalog/src", "packages/ui/src", "apps/web/src"],
+  "sources": ["apps/web/src", "packages/catalog/src", "packages/ui/src"],
   "storybook": { "configDir": "apps/storybook/.storybook" }
 }
