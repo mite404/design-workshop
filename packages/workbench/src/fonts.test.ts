@@ -1,5 +1,6 @@
 import { expect, test } from "vitest";
 import {
+  familyOf,
   installedFaces,
   isFamilyValue,
   matchesFamily,
@@ -69,4 +70,16 @@ test("a Google family the mockup has, with or without Variable, is listed once, 
   );
   expect(merged.mockup).toEqual(["Inter Variable", "Lora", "Newsreader Variable"]);
   expect(merged.google.map((g) => g.family)).toEqual(["Roboto"]);
+});
+
+test("familyOf reduces a fallback stack to the saved form, keeping its generic", () => {
+  expect(familyOf('"Inter Variable", Inter, Helvetica, Arial, sans-serif')).toBe(
+    '"Inter Variable", sans-serif',
+  );
+  expect(familyOf('"Newsreader Variable", Newsreader, Georgia, serif')).toBe(
+    '"Newsreader Variable", serif',
+  );
+  expect(familyOf("Menlo, monospace")).toBe('"Menlo", monospace');
+  expect(familyOf('"Inter", serif')).toBe('"Inter", serif');
+  expect(familyOf("x; } body {")).toBeNull();
 });

@@ -40,6 +40,18 @@ export const fallbackOf = (category: string | undefined): Fallback =>
 export const familyValue = (family: string, fallback: Fallback): string =>
   `"${family}", ${fallback}`;
 
+/**
+ * `stack` as a value the Workbench may save, keeping its first family and generic:
+ * `"Inter Variable", Inter, Arial, sans-serif` → `"Inter Variable", sans-serif`. Null when its
+ * first family is not a name the Workbench may write.
+ */
+export function familyOf(stack: string): string | null {
+  if (isFamilyValue(stack)) return stack;
+  const parts = stack.split(",").map((part) => part.trim().replaceAll(/^"|"$/g, "")); // → string[]
+  const first = parts[0] ?? "";
+  return isFamilyName(first) ? familyValue(first, fallbackOf(parts.at(-1))) : null;
+}
+
 /** A Google family as the Fontsource list gives it. */
 export type GoogleFont = {
   id: string;

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { COLOUR_ROLES } from "../../../packages/workbench/src/theme.ts";
+import { COLOUR_ROLES, TYPE_ROLES } from "../../../packages/workbench/src/theme.ts";
 import { arg, launch, report, ROOT, workbenchPage } from "./harness.mjs";
 
 // Theme story (docs/feature/themes/themes-story.md) criteria, one step each.
@@ -13,6 +13,9 @@ const file = path.join(ROOT, "packages/catalog/src/overrides.css");
 const themes = path.join(ROOT, ".workbench/themes");
 const NAME = "theme-check";
 const saved = path.join(themes, `${NAME}.theme.json`);
+const written = [NAME, "pairing-check", "pairing-wide"].map((n) =>
+  path.join(themes, `${n}.theme.json`),
+);
 const starting = readFileSync(file, "utf8");
 const hadThemes = existsSync(themes);
 const browser = await launch();
@@ -21,7 +24,15 @@ const form = page.getByRole("form", { name: "Save the colours as a theme" });
 const nameField = page.getByRole("textbox", { name: "New theme name" });
 const picker = page.getByRole("combobox", { name: "Apply a theme" });
 const mode = page.getByRole("combobox", { name: "Canvas mode" });
-const remove = page.getByRole("button", { name: "Remove", exact: true });
+const remove = page
+  .locator('details[aria-label="Colours"]')
+  .getByRole("button", { name: "Remove", exact: true });
+const typeSection = page.locator('details[aria-label="Type"]');
+const pairingPicker = page.getByRole("combobox", { name: "Apply a pairing" });
+const pairingRemove = typeSection.getByRole("button", { name: "Remove", exact: true });
+const PAIRING = "pairing-check";
+const WIDE = "pairing-wide";
+const MISSING = "Zzz Missing Sans";
 const undo = page.getByRole("button", { name: "Undo", exact: true });
 const canvasBg = () =>
   page
@@ -64,6 +75,22 @@ async function save(name) {
   await nameField.fill(name);
   await form.getByRole("button", { name: "Save" }).click();
 }
+
+mkdirSync(themes, { recursive: true });
+writeFileSync(
+  path.join(themes, "pairing-wide.theme.json"),
+  JSON.stringify({
+    format: "design-workshop/theme",
+    version: 1,
+    name: "pairing-wide",
+    type: { "text-font": `"Zzz Missing Sans", sans-serif`, "base-size": "14px", ratio: "1.25" },
+  }),
+);
+// A tokens.css font stack as a theme saves it: its first family and its generic.
+const savedForm = (stack) => {
+  const parts = stack.split(",").map((p) => p.trim().replaceAll('"', ""));
+  return `"${parts[0]}", ${parts.at(-1)}`;
+};
 
 try {
   await page.goto(`${base}/__workbench/`);
@@ -117,7 +144,10 @@ try {
       encoding: "utf8",
     });
     const changed = status.split("\n").filter((l) => l.includes(".workbench/"));
-    assert.deepEqual(changed, [`?? .workbench/themes/${NAME}.theme.json`]);
+    assert.deepEqual(changed.toSorted(), [
+      "?? .workbench/themes/pairing-wide.theme.json",
+      `?? .workbench/themes/${NAME}.theme.json`,
+    ]);
   });
 
   await step("2.1 loading writes a theme's values and the canvas shows them", async () => {
@@ -165,24 +195,74 @@ try {
   });
 
   await step("2.5 load and unload work from the keyboard", async () => {
+    await until(async () => (await picker.inputValue()) === NAME, "picker settled on the baseline");
     await picker.focus();
     await page.keyboard.type("v");
-    const seen = await page.evaluate(() => [
-      document.activeElement?.id,
-      document.querySelector("#theme-file").value,
-    ]);
-    await until(
-      () => disk().includes("--bg: #101010;"),
-      `typing v on the picker loads vesper (${seen})`,
-    );
+    await until(() => disk().includes("--bg: #101010;"), "typing v on the picker loads vesper");
     await page.keyboard.press("Tab");
     assert.equal(await remove.evaluate((b) => b === document.activeElement), true);
     await page.keyboard.press("Enter");
     await until(() => disk() === starting, "Enter on Remove unloads it");
   });
+  await step("3.1 Type saves the five type values as a pairing", async () => {
+    const tokens = readFileSync(path.join(ROOT, "packages/catalog/src/tokens.css"), "utf8");
+    const baseOf = (name) => new RegExp(`^\\s*${name}: ([^;]+);`, "m").exec(tokens)[1];
+    await typeSection.getByRole("textbox", { name: "New pairing name" }).fill(PAIRING);
+    await page
+      .getByRole("form", { name: "Save the type as a pairing" })
+      .getByRole("button", { name: "Save" })
+      .click();
+    const pairingFile = path.join(themes, `${PAIRING}.theme.json`);
+    await until(() => existsSync(pairingFile), "pairing file written");
+    const pairing = JSON.parse(readFileSync(pairingFile, "utf8"));
+    assert.deepEqual(pairing.colours ?? {}, {}, "a pairing carries no colour roles");
+    const want = Object.fromEntries(
+      Object.entries(TYPE_ROLES).map(([role, name]) => [
+        role,
+        name.startsWith("--font-") ? savedForm(baseOf(name)) : baseOf(name),
+      ]),
+    );
+    assert.deepEqual(pairing.type, want);
+    await until(async () => (await pairingPicker.inputValue()) === PAIRING, "baseline pairing on");
+  });
+
+  await step("3.1 loading a pairing writes its type values", async () => {
+    await pairingPicker.selectOption(WIDE);
+    await until(() => disk().includes("--type-base: 14px;"), "pairing saved");
+    assert.ok(disk().includes(`--font-text: "${MISSING}", sans-serif;`));
+    await until(async () => (await pairingPicker.inputValue()) === WIDE, "picker shows it on");
+  });
+
+  await step("3.2 loading a pairing leaves colours and element values untouched", () => {
+    const names = new Set(Object.values(TYPE_ROLES));
+    const added = disk()
+      .split("\n")
+      .filter((line) => !starting.includes(line) && line.trim().startsWith("--"));
+    assert.ok(added.length > 0);
+    for (const line of added) assert.ok(names.has(line.trim().split(":")[0]), line);
+    assert.equal(disk().split("{").length, starting.split("{").length, "no new selector block");
+  });
+
+  await step("3.3 a pairing's missing font shows the missing-font warning", async () => {
+    const warning = typeSection.getByRole("img", {
+      name: `${MISSING} is not in the repo or installed on this computer`,
+    });
+    await warning.waitFor({ timeout: 5000 });
+    await typeSection.screenshot({ path: path.join(out, "pairing-missing.png") });
+  });
+
+  await step("3.1 unload removes the pairing in one undo step", async () => {
+    await pairingRemove.click();
+    await until(() => disk() === starting, "unload restores the file");
+    await undo.click();
+    await until(() => disk().includes("--type-base: 14px;"), "one undo puts the pairing back");
+    await undo.click();
+    await until(() => disk() === starting, "a second undo takes the load back");
+  });
 } finally {
   writeFileSync(file, starting);
-  rmSync(hadThemes ? saved : path.join(ROOT, ".workbench"), { recursive: true, force: true });
+  for (const f of written) rmSync(f, { force: true });
+  if (!hadThemes) rmSync(path.join(ROOT, ".workbench"), { recursive: true, force: true });
   await browser.close();
 }
 report(results, errors, out);

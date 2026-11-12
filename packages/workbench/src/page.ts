@@ -6,7 +6,14 @@
 import "./page.css";
 import { DRAWER, TREE_EVENT } from "./tree";
 import { COLOUR_ROOT, CONTRAST, contrast, HEX } from "./colour";
-import { COLOUR_ROLES, parseTheme, themeValues, type Theme, type ThemeValue } from "./theme";
+import {
+  COLOUR_ROLES,
+  parseTheme,
+  themeValues,
+  TYPE_ROLES,
+  type Theme,
+  type ThemeValue,
+} from "./theme";
 import {
   historyDirection,
   move,
@@ -49,6 +56,7 @@ import {
 } from "./dom";
 import {
   fallbackOf,
+  familyOf,
   familyValue,
   googleName,
   installedFaces,
@@ -483,6 +491,12 @@ async function load(): Promise<void> {
     ]),
     [ROOT, root],
   ]);
+  rootBaseline = new Map(
+    entries(prop(values, "tokens")).flatMap(([n, t]): [string, string][] => {
+      const base = text(prop(t, "baseline"));
+      return base === null ? [] : [[n, base]];
+    }),
+  );
   colourBaseline = new Map(
     entries(prop(values, "colours")).map(([name, t]): [string, { light: string; dark: string }] => [
       name,
@@ -534,6 +548,7 @@ async function writeChanges(changes: Change[], replaying = false): Promise<boole
     return false;
   }
   for (const c of changes) record(c.selector, c.name, c.after);
+  showActiveTheme();
   const body: unknown = await response.json();
   const saved = readChanges(prop(body, "changes"));
   if (!replaying && saved !== null) history = push(history, saved);
@@ -2027,10 +2042,19 @@ familyReset.addEventListener("click", () => {
 // The Template's two fonts, on the frame's root, in the Type panel.
 const rootFonts = Object.entries(ROOT_FONTS).map(([name, title]) => {
   const value = element("span");
-  const open = fontOpener((anchor) => {
-    const root = doc()?.documentElement;
-    return root === undefined ? null : { node: root, selector: ROOT, name, anchor };
-  }, value);
+  const gone = element(
+    "span",
+    { className: "font-missing", role: "img", hidden: true },
+    icon(ICONS.warning),
+  );
+  const open = fontOpener(
+    (anchor) => {
+      const root = doc()?.documentElement;
+      return root === undefined ? null : { node: root, selector: ROOT, name, anchor };
+    },
+    value,
+    gone,
+  );
   open.ariaLabel = title;
   const clear = typeReset(title.toLowerCase());
   clear.addEventListener("click", () => {
@@ -2043,7 +2067,7 @@ const rootFonts = Object.entries(ROOT_FONTS).map(([name, title]) => {
     element("span", {}, title),
     element("div", { className: "type-field" }, open, clear),
   );
-  return { name, value, open, clear, row };
+  return { name, value, gone, open, clear, row };
 });
 
 function trackRootFonts(): void {
@@ -2056,6 +2080,10 @@ function trackRootFonts(): void {
     const family = unquote(style(root).getPropertyValue(r.name).split(",")[0] ?? "");
     if (r.value.textContent !== family) r.value.textContent = family;
     r.clear.disabled = was(ROOT, r.name) === null;
+    const gone = missing(root.ownerDocument, family);
+    r.gone.hidden = !gone;
+    r.gone.title = gone ? `${family} is not in the repo or installed on this computer` : "";
+    r.gone.ariaLabel = r.gone.title;
   }
 }
 
@@ -2246,10 +2274,50 @@ const stepReadouts = STEPS.map((step) => {
   return { step, size, line, row };
 });
 
+type ThemeKind = "colours" | "type";
+// One section's theme controls (ADR-028): a theme of colour roles in Colours, a pairing of type
+// roles in Type. Both apply, show and remove the same way.
+function themeKit(kind: ThemeKind, id: string, noun: string) {
+  const picker = element("select", { id: `${id}-file`, ariaLabel: `Apply a ${noun}` });
+  const remove = element(
+    "button",
+    {
+      type: "button",
+      className: "history-button",
+      disabled: true,
+      title: `Remove the ${noun}'s values`,
+    },
+    "Remove",
+  );
+  const name = element("input", {
+    id: `${id}-name`,
+    ariaLabel: `New ${noun} name`,
+    placeholder: `new-${noun}-name`,
+    required: true,
+    pattern: "[a-z0-9][a-z0-9\\-]{0,47}",
+    title: "Lowercase letters, digits and hyphens",
+    autocomplete: "off",
+    spellcheck: false,
+  });
+  const form = element(
+    "form",
+    { className: "theme-save", ariaLabel: `Save the ${kind} as a ${noun}` },
+    name,
+    element("button", { type: "submit", className: "history-button" }, "Save"),
+  );
+  const row = element("div", { className: "mode-row theme-row" }, picker, remove);
+  return { kind, noun, picker, remove, name, form, row };
+}
+const colourKit = themeKit("colours", "theme", "theme");
+const typeKit = themeKit("type", "pairing", "pairing");
+const kits = [colourKit, typeKit];
+
 const scalePanel = element(
   "details",
   { ariaLabel: "Type", className: "scale", open: true },
   element("summary", {}, element("h2", {}, "Type")),
+  typeKit.row,
+  typeKit.form,
   ...rootFonts.map((r) => r.row),
   ...scaleFields.map((f) => f.row),
   ratioList,
@@ -2943,47 +3011,14 @@ function trackUnmatched(): void {
 const THEMES_ENDPOINT = "/__workbench/themes";
 // The bundled and saved themes (ADR-028), as the plugin lists them.
 let themes: Theme[] = [];
-const themePicker = element("select", { id: "theme-file", ariaLabel: "Apply a theme" });
-const themeRemove = element(
-  "button",
-  {
-    type: "button",
-    className: "history-button",
-    disabled: true,
-    title: "Remove the theme's values",
-  },
-  "Remove",
-);
-const themeName = element("input", {
-  id: "theme-name",
-  ariaLabel: "New theme name",
-  placeholder: "new-theme-name",
-  required: true,
-  pattern: "[a-z0-9][a-z0-9\\-]{0,47}",
-  title: "Lowercase letters, digits and hyphens",
-  autocomplete: "off",
-  spellcheck: false,
-});
-const themeSave = element(
-  "form",
-  { className: "theme-save", ariaLabel: "Save the colours as a theme" },
-  themeName,
-  element("button", { type: "submit", className: "history-button" }, "Save"),
-);
 const colourList = element("div", { className: "colour-list" });
 const colourHeading = element("h2", {}, "Colours · Light");
 const colourPanel = element(
   "details",
   { ariaLabel: "Colours", open: true },
   element("summary", {}, colourHeading),
-  element(
-    "div",
-    { className: "mode-row theme-row" },
-    element("label", { htmlFor: "theme-file" }, "Theme"),
-    themePicker,
-    themeRemove,
-  ),
-  themeSave,
+  colourKit.row,
+  colourKit.form,
   colourList,
 );
 type ColourRow = {
@@ -3077,18 +3112,31 @@ function resolveVars(value: string, mode: "light" | "dark", depth = 0): string {
   return next;
 }
 
-// The value `name` has in `selector` per the override file, else its tokens.css baseline. Read
-// from data, not the canvas, which lags each write until its stylesheet reloads.
-function effectiveColour(selector: string, name: string): string | null {
+// Each `:root` design value's baseline from tokens.css, as the plugin reads it.
+let rootBaseline = new Map<string, string>();
+
+// The value `name` has in `selector` per the override file, else its tokens.css baseline, in the
+// form a theme saves. Read from data, not the canvas, which lags each write until it reloads.
+function effectiveValue(selector: string, name: string): string | null {
+  const mode = (["light", "dark"] as const).find((m) => COLOUR_ROOT[m] === selector);
+  if (mode === undefined) {
+    const value = was(selector, name) ?? rootBaseline.get(name) ?? null;
+    return value !== null && name.startsWith("--font-") ? familyOf(value) : value;
+  }
   const saved = was(selector, name);
   if (saved !== null) return saved.toLowerCase();
-  const mode = (["light", "dark"] as const).find((m) => COLOUR_ROOT[m] === selector);
-  const base = mode === undefined ? undefined : colourBaseline.get(name)?.[mode];
-  return mode === undefined || base === undefined ? null : colourHex(resolveVars(base, mode));
+  const base = colourBaseline.get(name)?.[mode];
+  return base === undefined ? null : colourHex(resolveVars(base, mode));
 }
 
 const inEffect = (values: ThemeValue[]): boolean[] =>
-  values.map((v) => effectiveColour(v.selector, v.name) === v.value);
+  values.map((v) => effectiveValue(v.selector, v.name) === v.value);
+
+// The part of `theme` a kit applies: its colour roles or its type roles.
+const kindValues = (theme: Theme, kind: ThemeKind): ThemeValue[] =>
+  themeValues(kind === "colours" ? { ...theme, type: {} } : { ...theme, colours: {} });
+const ofKind = (theme: Theme, kind: ThemeKind): boolean =>
+  Object.keys(theme[kind] ?? {}).length > 0;
 
 // Every colour role's value now, light and dark.
 function currentColours(): NonNullable<Theme["colours"]> {
@@ -3096,19 +3144,32 @@ function currentColours(): NonNullable<Theme["colours"]> {
     Object.entries(COLOUR_ROLES).map(([role, name]) => [
       role,
       {
-        light: effectiveColour(COLOUR_ROOT.light, name) ?? undefined,
-        dark: effectiveColour(COLOUR_ROOT.dark, name) ?? undefined,
+        light: effectiveValue(COLOUR_ROOT.light, name) ?? undefined,
+        dark: effectiveValue(COLOUR_ROOT.dark, name) ?? undefined,
       },
     ]),
   );
 }
 
+// Every type role's value now.
+const currentType = (): NonNullable<Theme["type"]> =>
+  Object.fromEntries(
+    Object.entries(TYPE_ROLES).flatMap(([role, name]) => {
+      const value = effectiveValue(ROOT, name);
+      return value === null ? [] : [[role, value]];
+    }),
+  );
+
 // Shows the first theme whose every value is in effect, so it stays right after a reload, an
 // undo or a hand edit.
 function showActiveTheme(): void {
-  const active = themes.find((t) => inEffect(themeValues(t)).every(Boolean));
-  themePicker.value = active?.name ?? "";
-  themeRemove.disabled = active === undefined;
+  for (const kit of kits) {
+    const active = themes.find(
+      (t) => ofKind(t, kit.kind) && inEffect(kindValues(t, kit.kind)).every(Boolean),
+    );
+    kit.picker.value = active?.name ?? "";
+    kit.remove.disabled = active === undefined;
+  }
 }
 
 // Lists the plugin's themes in the picker, keeping only those that parse here too.
@@ -3118,10 +3179,14 @@ async function loadThemes(): Promise<void> {
   themes = (Array.isArray(listed) ? listed : [])
     .map((t) => parseTheme(JSON.stringify(t)))
     .filter((t): t is Theme => typeof t !== "string");
-  themePicker.replaceChildren(
-    element("option", { value: "" }, "None"),
-    ...themes.map((t) => element("option", { value: t.name }, t.name.replaceAll("-", " "))),
-  );
+  for (const kit of kits) {
+    kit.picker.replaceChildren(
+      element("option", { value: "" }, "None"),
+      ...themes
+        .filter((t) => ofKind(t, kit.kind))
+        .map((t) => element("option", { value: t.name }, t.name.replaceAll("-", " "))),
+    );
+  }
   showActiveTheme();
 }
 
@@ -3362,69 +3427,75 @@ field.addEventListener("keydown", (event) => {
 field.addEventListener("blur", commitField);
 // Applies a theme as one history step, so one undo takes all of it back. A theme for one mode
 // shows that mode, or applying it would change nothing on the canvas.
-themePicker.addEventListener("input", () => {
-  const theme = themes.find((t) => t.name === themePicker.value);
-  if (theme === undefined) {
-    showActiveTheme();
-    return;
-  }
-  const values = themeValues(theme);
-  const modes = new Set(values.map((v) => v.selector));
-  for (const mode of ["light", "dark"] as const) {
-    if (modes.size === 1 && modes.has(COLOUR_ROOT[mode]) && canvasMode.value !== mode) {
-      canvasMode.value = mode;
-      canvasMode.dispatchEvent(new Event("change"));
-    }
-  }
-  enqueue(async () => {
-    const now = inEffect(values);
-    // A value already in effect, even as the baseline, is not written as an override.
-    const changes = values
-      .filter((_, i) => now[i] !== true)
-      .map((v) => ({ ...v, before: was(v.selector, v.name), after: v.value }));
-    if (changes.length === 0 || !(await writeChanges(changes))) return;
-    settleChanges(changes);
-    await load();
-  });
-});
-// Removes the shown theme's values from the override file as one history step, so each
-// returns to its baseline (story feature 2, criterion 3).
-themeRemove.addEventListener("click", () => {
-  const theme = themes.find((t) => t.name === themePicker.value);
-  if (theme === undefined) return;
-  enqueue(async () => {
-    const changes = themeValues(theme)
-      .map((v) => ({ ...v, before: was(v.selector, v.name), after: null }))
-      .filter((c) => c.before !== null);
-    if (changes.length === 0 || !(await writeChanges(changes))) return;
-    settleChanges(changes);
-    await load();
-  });
-});
-themeSave.addEventListener("submit", (event) => {
-  event.preventDefault();
-  const body = JSON.stringify({
-    format: "design-workshop/theme",
-    version: 1,
-    name: themeName.value,
-    colours: currentColours(),
-  });
-  enqueue(async () => {
-    const response = await fetch(THEMES_ENDPOINT, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body,
-    });
-    const reply: unknown = await response.json();
-    if (!response.ok) {
-      showMessage(`Not saved: ${text(prop(reply, "error")) ?? response.statusText}`, true);
+for (const kit of kits) {
+  // Applies the kit's part of a theme as one history step. A theme for one colour mode shows that
+  // mode, or applying it would change nothing on the canvas. `input`, not `change`: keyboard
+  // typeahead on a closed select does not fire `change` in Chromium.
+  kit.picker.addEventListener("input", () => {
+    const theme = themes.find((t) => t.name === kit.picker.value);
+    if (theme === undefined) {
+      showActiveTheme();
       return;
     }
-    showMessage(`Saved theme ${themeName.value}.`);
-    themeName.value = "";
-    await loadThemes();
+    const values = kindValues(theme, kit.kind);
+    const modes = new Set(values.map((v) => v.selector));
+    for (const mode of ["light", "dark"] as const) {
+      if (modes.size === 1 && modes.has(COLOUR_ROOT[mode]) && canvasMode.value !== mode) {
+        canvasMode.value = mode;
+        canvasMode.dispatchEvent(new Event("change"));
+      }
+    }
+    enqueue(async () => {
+      const now = inEffect(values);
+      // A value already in effect, even as the baseline, is not written as an override.
+      const changes = values
+        .filter((_, i) => now[i] !== true)
+        .map((v) => ({ ...v, before: was(v.selector, v.name), after: v.value }));
+      if (changes.length === 0 || !(await writeChanges(changes))) return;
+      settleChanges(changes);
+      await load();
+    });
   });
-});
+  // Removes the shown theme's values from the override file as one history step, so each
+  // returns to its baseline (story feature 2, criterion 3).
+  kit.remove.addEventListener("click", () => {
+    const theme = themes.find((t) => t.name === kit.picker.value);
+    if (theme === undefined) return;
+    enqueue(async () => {
+      const changes = kindValues(theme, kit.kind)
+        .map((v) => ({ ...v, before: was(v.selector, v.name), after: null }))
+        .filter((c) => c.before !== null);
+      if (changes.length === 0 || !(await writeChanges(changes))) return;
+      settleChanges(changes);
+      await load();
+    });
+  });
+  kit.form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const name = kit.name.value;
+    const body = JSON.stringify({
+      format: "design-workshop/theme",
+      version: 1,
+      name,
+      [kit.kind]: kit.kind === "colours" ? currentColours() : currentType(),
+    });
+    enqueue(async () => {
+      const response = await fetch(THEMES_ENDPOINT, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body,
+      });
+      const reply: unknown = await response.json();
+      if (!response.ok) {
+        showMessage(`Not saved: ${text(prop(reply, "error")) ?? response.statusText}`, true);
+        return;
+      }
+      showMessage(`Saved ${kit.noun} ${name}.`);
+      kit.name.value = "";
+      await loadThemes();
+    });
+  });
+}
 canvasMode.addEventListener("change", () => {
   finishColour(false);
   const root = doc()?.documentElement;

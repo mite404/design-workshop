@@ -428,7 +428,7 @@ for (const how of Object.keys(failures)) {
 }
 
 await step("a saved family that is nowhere shows the missing font warning", async () => {
-  const warning = page.locator(".font-missing");
+  const warning = page.locator('details[aria-label="Typography"] .font-missing');
   assert.equal(await warning.isHidden(), true, "Inter is in the repo");
   const post = (value, was) =>
     page.evaluate(

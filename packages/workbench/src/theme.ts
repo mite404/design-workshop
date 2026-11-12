@@ -26,7 +26,7 @@ export const COLOUR_ROLES = {
 } as const;
 
 /** Each type role and the Template design value that plays it, on `:root`. */
-const TYPE_ROLES = {
+export const TYPE_ROLES = {
   "text-font": "--font-text",
   "display-font": "--font-display",
   "base-size": "--type-base",
