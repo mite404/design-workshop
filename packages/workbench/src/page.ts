@@ -6,9 +6,7 @@
 import "./page.css";
 import { DRAWER, TREE_EVENT } from "./tree";
 import { COLOUR_ROOT, CONTRAST, contrast, HEX } from "./colour";
-import { parseTheme, themeValues, type Theme } from "./theme";
-import catppuccinLatte from "../themes/catppuccin-latte.theme.json?raw";
-import vesper from "../themes/vesper.theme.json?raw";
+import { COLOUR_ROLES, parseTheme, themeValues, type Theme } from "./theme";
 import {
   historyDirection,
   move,
@@ -2935,15 +2933,25 @@ function trackUnmatched(): void {
   );
 }
 
-// The bundled themes (ADR-028), parsed like any theme file so a bad one is never offered.
-const THEMES = [vesper, catppuccinLatte]
-  .map((raw) => parseTheme(raw))
-  .filter((t): t is Theme => typeof t !== "string");
-const themePicker = element(
-  "select",
-  { id: "theme-file", ariaLabel: "Apply a theme" },
-  element("option", { value: "" }, "Apply…"),
-  ...THEMES.map((t) => element("option", { value: t.name }, t.name.replaceAll("-", " "))),
+const THEMES_ENDPOINT = "/__workbench/themes";
+// The bundled and saved themes (ADR-028), as the plugin lists them.
+let themes: Theme[] = [];
+const themePicker = element("select", { id: "theme-file", ariaLabel: "Apply a theme" });
+const themeName = element("input", {
+  id: "theme-name",
+  ariaLabel: "New theme name",
+  placeholder: "new-theme-name",
+  required: true,
+  pattern: "[a-z0-9][a-z0-9\\-]{0,47}",
+  title: "Lowercase letters, digits and hyphens",
+  autocomplete: "off",
+  spellcheck: false,
+});
+const themeSave = element(
+  "form",
+  { className: "theme-save", ariaLabel: "Save the colours as a theme" },
+  themeName,
+  element("button", { type: "submit", className: "history-button" }, "Save"),
 );
 const colourList = element("div", { className: "colour-list" });
 const colourHeading = element("h2", {}, "Colours · Light");
@@ -2957,6 +2965,7 @@ const colourPanel = element(
     element("label", { htmlFor: "theme-file" }, "Theme"),
     themePicker,
   ),
+  themeSave,
   colourList,
 );
 type ColourRow = {
@@ -3034,6 +3043,43 @@ function finishColour(accept: boolean): void {
   row.input.value = colourHex(style(root).getPropertyValue(row.name));
   row.input.removeAttribute("aria-invalid");
   colourKey = "";
+}
+
+// Every colour role's value in both modes, read by flipping the canvas root's mode within one
+// task, so nothing paints in between.
+function currentColours(root: HTMLElement): NonNullable<Theme["colours"]> {
+  const mode = root.dataset.theme;
+  const read = (each: "light" | "dark") => {
+    root.dataset.theme = each;
+    return new Map(
+      Object.values(COLOUR_ROLES).map((name) => [
+        name,
+        colourHex(style(root).getPropertyValue(name)),
+      ]),
+    );
+  };
+  const [light, dark] = [read("light"), read("dark")];
+  if (mode === undefined) delete root.dataset.theme;
+  else root.dataset.theme = mode;
+  return Object.fromEntries(
+    Object.entries(COLOUR_ROLES).map(([role, name]) => [
+      role,
+      { light: light.get(name), dark: dark.get(name) },
+    ]),
+  );
+}
+
+// Lists the plugin's themes in the picker, keeping only those that parse here too.
+async function loadThemes(): Promise<void> {
+  const reply: unknown = await (await fetch(THEMES_ENDPOINT)).json();
+  const listed = prop(reply, "themes");
+  themes = (Array.isArray(listed) ? listed : [])
+    .map((t) => parseTheme(JSON.stringify(t)))
+    .filter((t): t is Theme => typeof t !== "string");
+  themePicker.replaceChildren(
+    element("option", { value: "" }, "Apply…"),
+    ...themes.map((t) => element("option", { value: t.name }, t.name.replaceAll("-", " "))),
+  );
 }
 
 function buildColours(values: unknown): void {
@@ -3274,7 +3320,7 @@ field.addEventListener("blur", commitField);
 // Applies a theme as one history step, so one undo takes all of it back. A theme for one mode
 // shows that mode, or applying it would change nothing on the canvas.
 themePicker.addEventListener("change", () => {
-  const theme = THEMES.find((t) => t.name === themePicker.value);
+  const theme = themes.find((t) => t.name === themePicker.value);
   themePicker.value = "";
   if (theme === undefined) return;
   const values = themeValues(theme);
@@ -3292,6 +3338,32 @@ themePicker.addEventListener("change", () => {
     if (changes.length === 0 || !(await writeChanges(changes))) return;
     settleChanges(changes);
     await load();
+  });
+});
+themeSave.addEventListener("submit", (event) => {
+  event.preventDefault();
+  const root = doc()?.documentElement;
+  if (root === undefined) return;
+  const body = JSON.stringify({
+    format: "design-workshop/theme",
+    version: 1,
+    name: themeName.value,
+    colours: currentColours(root),
+  });
+  enqueue(async () => {
+    const response = await fetch(THEMES_ENDPOINT, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body,
+    });
+    const reply: unknown = await response.json();
+    if (!response.ok) {
+      showMessage(`Not saved: ${text(prop(reply, "error")) ?? response.statusText}`, true);
+      return;
+    }
+    showMessage(`Saved theme ${themeName.value}.`);
+    themeName.value = "";
+    await loadThemes();
   });
 });
 canvasMode.addEventListener("change", () => {
@@ -3351,5 +3423,6 @@ frame.addEventListener("load", () => {
   canvasMode.value = doc()?.documentElement.dataset.theme === "dark" ? "dark" : "light";
   modeLabel.textContent = `Editing ${canvasMode.value === "dark" ? "Dark" : "Light"} mode · Other values apply to both modes`;
   void load();
+  void loadThemes();
 });
 requestAnimationFrame(track);

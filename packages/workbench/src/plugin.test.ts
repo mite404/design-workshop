@@ -10,7 +10,14 @@ import { execFileSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, test, vi } from "vitest";
-import { discardValues, installFont, readValues, writeValue } from "./plugin";
+import {
+  discardValues,
+  installFont,
+  listThemes,
+  readValues,
+  saveTheme,
+  writeValue,
+} from "./plugin";
 
 const HEADER = "/* Written by the Workbench. One design value per line. Do not edit by hand. */\n";
 const SAVED = `${HEADER}:root {\n  --window-radius: 20px;\n}\n`;
@@ -511,4 +518,33 @@ describe("installFont", () => {
     expect((await install(dir, "nope")).status).toBe(502);
     expect(readdirSync(path.join(dir, "fonts"))).toEqual([]);
   });
+});
+
+// A theme file setting only the accent.
+const theme = (name: string, light = "#112233") =>
+  JSON.stringify({
+    format: "design-workshop/theme",
+    version: 1,
+    name,
+    colours: { accent: { light, dark: "#445566" } },
+  });
+
+test("saveTheme writes a new theme file only, refusing taken names and bad themes", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "themes-"));
+  const [bundled, saved] = [path.join(root, "bundled"), path.join(root, "saved")];
+  mkdirSync(bundled);
+  writeFileSync(path.join(bundled, "house.theme.json"), theme("house"));
+  const save = (body: string, origin = ORIGIN) =>
+    saveTheme([bundled, saved], { origin, host: HOST, body });
+
+  expect(save(theme("mine")).status).toBe(200);
+  expect(listThemes([bundled, saved]).map((t) => t.name)).toEqual(["house", "mine"]);
+  expect(listThemes([saved])[0]?.colours?.accent).toEqual({ light: "#112233", dark: "#445566" });
+  // Neither a bundled nor a saved name is replaced.
+  expect(save(theme("house", "#000000")).status).toBe(409);
+  expect(save(theme("mine", "#000000")).status).toBe(409);
+  expect(listThemes([saved])[0]?.colours?.accent?.light).toBe("#112233");
+  expect(save(theme("../escape")).status).toBe(400);
+  expect(save(theme("other"), "http://evil.test").status).toBe(403);
+  expect(readdirSync(saved)).toEqual(["mine.theme.json"]);
 });

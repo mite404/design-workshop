@@ -1,11 +1,11 @@
 // Theme files (ADR-028): the Workbench's own JSON, keyed by roles rather than CSS variables, so
 // one theme can reskin any app whose role map says which of its values play each role.
-import { COLOUR_ROOT, HEX } from "./colour";
-import { isFamilyValue } from "./fonts";
-import { isScale, scaleValue } from "./type";
+import { COLOUR_ROOT, HEX } from "./colour.ts";
+import { isFamilyValue } from "./fonts.ts";
+import { isScale, scaleValue } from "./type.ts";
 
 /** Each colour role and the Template design value that plays it, light and dark. */
-const COLOUR_ROLES = {
+export const COLOUR_ROLES = {
   page: "--bg",
   surface: "--paper",
   hover: "--paper-deep",

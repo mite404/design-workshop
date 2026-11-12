@@ -409,6 +409,36 @@ body {
   margin: 4px 0 8px;
 }
 
+.theme-save {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.theme-save input {
+  flex: 1;
+  min-width: 0;
+  height: 28px;
+  box-sizing: border-box;
+  border: 1px solid var(--wb-line);
+  border-radius: 4px;
+  padding: 2px 8px;
+  background: #fff;
+  color: var(--wb-ink);
+  font:
+    11px ui-monospace,
+    monospace;
+}
+
+.theme-save input:focus-visible {
+  outline: 2px solid var(--wb-accent);
+  outline-offset: -1px;
+}
+
+.theme-save .history-button {
+  flex: 0 0 56px;
+}
+
 .colour-row {
   padding: 8px 0;
   border-bottom: 1px solid var(--wb-line);

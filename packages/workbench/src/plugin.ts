@@ -4,6 +4,7 @@
 import {
   existsSync,
   mkdirSync,
+  readdirSync,
   readFileSync,
   renameSync,
   rmSync,
@@ -33,11 +34,17 @@ import { isSelector } from "./selector.ts";
 import { SPACING } from "./spacing.ts";
 import { isScale, isType, SCALE, scaleValue, TYPE, typeValue } from "./type.ts";
 import { COLOUR_ROOT, colourTokens, HEX } from "./colour.ts";
+import { parseTheme, type Theme } from "./theme.ts";
 
 const OVERRIDES = fileURLToPath(new URL("../../catalog/src/overrides.css", import.meta.url));
 const TOKENS = fileURLToPath(new URL("../../catalog/src/tokens.css", import.meta.url));
 const CATALOG = fileURLToPath(new URL("../../catalog/src/", import.meta.url));
 const FONTS = join(CATALOG, "fonts.css");
+// Bundled themes, then the repo's saved ones (ADR-028), which are the only new files it writes.
+const THEME_FOLDERS = [
+  fileURLToPath(new URL("../themes/", import.meta.url)),
+  fileURLToPath(new URL("../../../.workbench/themes/", import.meta.url)),
+];
 const PAGE = fileURLToPath(new URL("./page.ts", import.meta.url));
 const ROOT = ":root";
 const COLOURS = colourTokens(readFileSync(TOKENS, "utf8"));
@@ -367,6 +374,40 @@ async function fetchFile(url: string): Promise<Buffer | string> {
   }
 }
 
+/** Every theme file in `folders` that parses, in folder then name order; others are skipped. */
+export function listThemes(folders: string[]): Theme[] {
+  return folders.flatMap((folder) =>
+    existsSync(folder)
+      ? readdirSync(folder)
+          .filter((file) => file.endsWith(".theme.json"))
+          .toSorted()
+          .flatMap((file) => {
+            const theme = parseTheme(readFileSync(join(folder, file), "utf8"));
+            return typeof theme === "string" ? [] : [theme];
+          })
+      : [],
+  );
+}
+
+/**
+ * Saves the body, a theme file, as a new `<name>.theme.json` in the last of `folders`. Refuses a
+ * foreign origin (403), a theme parseTheme refuses (400) and a name any folder already has
+ * (409), writing nothing. Never replaces a file.
+ * @throws When the folder cannot be created or written.
+ */
+export function saveTheme(folders: string[], request: Post): Reply {
+  if (foreign(request)) return FOREIGN;
+  const theme = parseTheme(request.body);
+  if (typeof theme === "string") return { status: 400, body: { error: theme } };
+  if (listThemes(folders).some((t) => t.name === theme.name))
+    return { status: 409, body: { error: `A theme named ${theme.name} already exists.` } };
+  const folder = folders.at(-1) ?? "";
+  mkdirSync(folder, { recursive: true });
+  const file = join(folder, `${theme.name}.theme.json`);
+  writeFileSync(file, `${JSON.stringify(theme, null, 2)}\n`, { flag: "wx" });
+  return { status: 200, body: { name: theme.name } };
+}
+
 /**
  * Copies the Google font with Fontsource ID `id` (the body's only field) into `catalog`: its
  * woff2 files and LICENSE into `fonts/ID/`, then its `@font-face` rules onto `fonts.css` under a
@@ -440,6 +481,19 @@ const WRITES: Record<string, { run: (post: Post) => Reply | Promise<Reply>; file
   },
   "/__workbench/discard": { run: (post) => discardValues(OVERRIDES, post), file: OVERRIDES },
   "/__workbench/fonts": { run: (post) => installFont(CATALOG, post), file: FONTS },
+  "/__workbench/themes": {
+    run: (post) => saveTheme(THEME_FOLDERS, post),
+    file: THEME_FOLDERS.at(-1) ?? "",
+  },
+};
+
+// Each reading endpoint and the JSON it answers a GET with.
+const READS: Record<string, () => unknown> = {
+  "/__workbench/values": () => ({
+    ...readValues(readFileSync(OVERRIDES, "utf8"), readFileSync(TOKENS, "utf8")),
+    ...historyStatus(),
+  }),
+  "/__workbench/themes": () => ({ themes: listThemes(THEME_FOLDERS) }),
 };
 
 async function answer(server: ViteDevServer, req: IncomingMessage): Promise<Reply> {
@@ -447,15 +501,8 @@ async function answer(server: ViteDevServer, req: IncomingMessage): Promise<Repl
   if (path === "/__workbench/" || path === "/__workbench") {
     return { status: 200, body: await server.transformIndexHtml("/__workbench/", HTML) };
   }
-  if (path === "/__workbench/values" && req.method === "GET") {
-    return {
-      status: 200,
-      body: {
-        ...readValues(readFileSync(OVERRIDES, "utf8"), readFileSync(TOKENS, "utf8")),
-        ...historyStatus(),
-      },
-    };
-  }
+  const reader = READS[path ?? ""];
+  if (reader !== undefined && req.method === "GET") return { status: 200, body: reader() };
   const write = WRITES[path ?? ""];
   if (write !== undefined && req.method === "POST") {
     return answerWrite(server, req, write);
