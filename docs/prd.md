@@ -377,8 +377,10 @@ uncommitted; it is not a proven four-flake fix.
 Ethan, Nov 12 2026: the Workbench should install into an existing repo, the way Storybook does,
 rather than every project cloning and reshaping itself to fit this one. A theme is the
 Workbench's own JSON file, a translation layer between standard primitives and their colours,
-fonts and hover colours. Neither writes the host app's code. This section is the plan; nothing
-in it is built yet. Plan detail: [portability plan](research/project-portability-plan.md).
+fonts and hover colours. Neither writes the host app's code. This section is the plan. Built:
+`design-workshop init` ([INIT CLI story](feature/init-cli/init-cli-story.md), ADR-042). Not
+built: the proxy and `design-workshop dev`. Plan detail:
+[portability plan](research/project-portability-plan.md).
 
 ### How Storybook installs (checked Nov 12 2026)
 

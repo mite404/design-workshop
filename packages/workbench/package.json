@@ -1,6 +1,9 @@
 {
   "name": "@yaklabs/workbench",
   "private": true,
+  "bin": {
+    "design-workshop": "./src/cli.ts"
+  },
   "type": "module",
   "exports": {
     "./overrides": "./src/overrides.ts",

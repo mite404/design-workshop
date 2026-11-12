@@ -1,10 +1,12 @@
 // Install detection (ETH-145, ADR-042): what `init` finds at a host's root, decided by code from
 // the host's files alone. Nothing here asks a person or writes a file.
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { checkConfig } from "./config.ts";
 import CONTRACT from "./contract.json" with { type: "json" };
+import { setOverride } from "./overrides.ts";
 
 const SLOTS = CONTRACT.shells["app-shell"].slots;
 const LOCKFILES = [
@@ -19,6 +21,12 @@ const READS_SIDE = /--shell-side|data-shell-side/;
 const SIDEBAR_RIGHT = /<Sidebar\b[^>]*\bside="right"/;
 const STORYBOOK_MAIN = /^((?:.*\/)?\.storybook)\/main\.[cm]?[jt]sx?$/;
 const SKIP = new Set(["node_modules", "dist", "build"]);
+
+// The rail and drawer side, the only layout choice Ethan allows (ADR-041).
+type Side = "left" | "right";
+
+// Whether `value` is a rail side: left or right, nothing else (ADR-041).
+const isSide = (value: unknown): value is Side => value === "left" || value === "right";
 
 // A component source file, as the manifest reads them: `.tsx`, not a story or a test.
 const component = (path: string) =>
@@ -78,7 +86,9 @@ export function detect(
     storybook: configDir === undefined ? null : { configDir, version: versionOf(configDir) },
     side: {
       asked: shell === "app-shell" && own.some((p) => READS_SIDE.test(text(p))),
-      default: own.some((p) => SIDEBAR_RIGHT.test(text(p))) ? "right" : "left",
+      default: (own.some((p) => SIDEBAR_RIGHT.test(text(p)))
+        ? "right"
+        : "left") satisfies Side as Side,
     },
     packageManager: LOCKFILES.find(([file]) => files.has(file))?.[1] ?? null,
   };
@@ -126,4 +136,143 @@ export async function inspect(root: string): Promise<ReturnType<typeof detect>> 
   const files = new Map(paths.map((p, i) => [p, texts[i] ?? ""]));
   for (const [file] of LOCKFILES) if (existsSync(join(root, file))) files.set(file, "");
   return detect(files, (configDir) => installedStorybook(root, configDir));
+}
+
+const SCRIPT = "design-workshop";
+const EMPTY_OVERRIDES =
+  "/* Written by the Workbench. One design value per line. Do not edit by hand. */\n:root {\n}\n";
+
+// The seeded override file: the chosen side only when it is asked and not the host's default.
+const overridesFor = (found: ReturnType<typeof detect>, side: Side) =>
+  found.side.asked && side !== found.side.default
+    ? setOverride(EMPTY_OVERRIDES, ":root", "--shell-side", side)
+    : EMPTY_OVERRIDES;
+
+// One file to write, when `when` holds.
+const entry = (when: boolean, path: string, text: string): [string, string][] =>
+  when ? [[path, text]] : [];
+
+const object = (v: unknown): v is Record<string, unknown> =>
+  typeof v === "object" && v !== null && !Array.isArray(v);
+
+// A package.json's fields, its scripts and its `workbench` script; fields are null when the text
+// is absent or not a JSON object.
+function packageScripts(text: string | null) {
+  let pkg: unknown = null;
+  try {
+    pkg = text === null ? null : JSON.parse(text);
+  } catch {
+    // Not JSON: refused as no package.json object.
+  }
+  const fields = object(pkg) ? pkg : null;
+  const scripts = object(fields?.scripts) ? fields.scripts : {};
+  return { fields, scripts, script: scripts.workbench };
+}
+
+// What `init` does at a host given what it `found`, the chosen `side` and the host's current
+// `package.json` text (null when absent) and `.workbench/` files: files to write by root-relative
+// path, files kept as they are, and refusals, any of which means nothing is written. Files that
+// already exist are kept, so a second run writes nothing.
+function installFiles(
+  found: ReturnType<typeof detect>,
+  side: Side,
+  host: { packageJson: string | null; config: boolean; overrides: boolean },
+): { writes: Map<string, string>; kept: string[]; refusals: string[] } {
+  const { fields, scripts, script } = packageScripts(host.packageJson);
+  const refusals = [
+    ...(fields === null ? ["No package.json object at the root."] : []),
+    ...(script === undefined || script === SCRIPT
+      ? []
+      : [`package.json already has a different workbench script: ${JSON.stringify(script)}.`]),
+    ...found.failures.map((f) => `config ${f.path}: ${f.message}`),
+  ];
+  const writes = new Map<string, string>([
+    ...entry(!host.config, ".workbench/config.json", `${JSON.stringify(found.config, null, 2)}\n`),
+    ...entry(!host.overrides, ".workbench/overrides.css", overridesFor(found, side)),
+    ...entry(
+      fields !== null && script === undefined,
+      "package.json",
+      `${JSON.stringify({ ...fields, scripts: { ...scripts, workbench: SCRIPT } }, null, 2)}\n`,
+    ),
+  ]);
+  const kept = [".workbench/config.json", ".workbench/overrides.css", "package.json"].filter(
+    (path) => !writes.has(path),
+  );
+  return { writes: refusals.length > 0 ? new Map<string, string>() : writes, kept, refusals };
+}
+
+// The rail side `init` writes: `flag` when given, else `answer` (a person's reply, null when not
+// asked, empty for the default), else the detected default. Throws on any other answer.
+function pickSide(
+  found: ReturnType<typeof detect>,
+  flag: string | undefined,
+  answer: string | null,
+): Side {
+  const side = flag ?? (answer === null || answer === "" ? found.side.default : answer);
+  if (!isSide(side)) throw new Error(`No side ${side}.`);
+  return side;
+}
+
+const WORKBENCH = fileURLToPath(new URL("../", import.meta.url));
+const LINK: Record<string, string> = {
+  pnpm: "pnpm add -D link:",
+  npm: "npm install -D ",
+  yarn: "yarn add -D link:",
+  bun: "bun add -D ",
+};
+
+// The command that links the unpublished package into the host (PRD section 16).
+const nextStep = (manager: string | null) =>
+  `Done. Next: ${(manager === null ? undefined : LINK[manager]) ?? LINK.npm}${WORKBENCH}`;
+
+// What the host at `root` already has of the files `init` writes.
+function hostFiles(root: string) {
+  const pkg = join(root, "package.json");
+  return {
+    packageJson: existsSync(pkg) ? readFileSync(pkg, "utf8") : null,
+    config: existsSync(join(root, ".workbench/config.json")),
+    overrides: existsSync(join(root, ".workbench/overrides.css")),
+  };
+}
+
+// The plan as lines: a notice when --side was skipped, then each file written or kept.
+const planLines = (plan: ReturnType<typeof installFiles>, skipped: boolean) => [
+  ...(skipped ? ["The shell's side is fixed by this app's own code; --side skipped."] : []),
+  ...[...plan.writes.keys()].map((path) => `  write ${path}`),
+  ...plan.kept.map((path) => `  keep  ${path}`),
+];
+
+// The side, asking a person only when no flag answers it and the host reads it.
+async function sideFor(
+  found: ReturnType<typeof detect>,
+  options: { side?: string; yes: boolean },
+  ask: (question: string) => Promise<string>,
+): Promise<Side> {
+  const asked = options.side === undefined && found.side.asked && !options.yes;
+  const question = `Rail and drawer side, left or right? [${found.side.default}] `;
+  return pickSide(found, options.side, asked ? await ask(question) : null);
+}
+
+/**
+ * Sets the Workbench up at the host `root` (ADR-042): asks `ask` only the rail side, when the
+ * host reads it, and to confirm, unless `options` answer them; writes what `installFiles` plans
+ * and returns the lines to print. Never touches the host's source.
+ * @throws With every refusal, before anything is written.
+ */
+export async function install(
+  root: string,
+  options: { side?: string; yes: boolean },
+  ask: (question: string) => Promise<string>,
+): Promise<string[]> {
+  const found = await inspect(root);
+  const plan = installFiles(found, await sideFor(found, options, ask), hostFiles(root));
+  if (plan.refusals.length > 0) throw new Error(plan.refusals.join("\n"));
+  const lines = planLines(plan, options.side !== undefined && !found.side.asked);
+  if (plan.writes.size === 0) return lines;
+  const confirmed =
+    options.yes || (await ask(`${lines.join("\n")}\nWrite these files? (y/N) `)) === "y";
+  if (!confirmed) return ["Nothing written."];
+  mkdirSync(join(root, ".workbench"), { recursive: true });
+  for (const [path, text] of plan.writes) writeFileSync(join(root, path), text);
+  return [...(options.yes ? lines : []), nextStep(found.packageManager)];
 }

@@ -1,9 +1,12 @@
+#!/usr/bin/env node
 import { existsSync, readFileSync, statSync } from "node:fs";
+import { createInterface } from "node:readline";
+import { parseArgs } from "node:util";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { checkConfig } from "./config.ts";
 import { checkProject, validate } from "./contract.ts";
-import { inspect } from "./init.ts";
+import { inspect, install } from "./init.ts";
 import { exportProject, readManifest } from "./project.ts";
 import { checkValues, listValues, writeValues } from "./plugin.ts";
 import { parseOverrides } from "./overrides.ts";
@@ -15,7 +18,7 @@ const USAGE = `Usage: pnpm workbench list [--json]
        pnpm workbench export > look.project.json
        pnpm workbench check-project <file>
        pnpm workbench check-config [.workbench/config.json]
-       pnpm workbench init <root> --dry-run
+       pnpm workbench init <root> [--dry-run | --yes] [--side left|right]
        pnpm workbench set <selector> <name> <value>
        pnpm workbench unset <selector> <name>
        pnpm workbench check
@@ -39,7 +42,7 @@ const COMMANDS: Record<
     },
   },
   manifest: { counts: [0], run: manifest },
-  init: { counts: [2], run: ([root = "", flag = ""]) => dryRun(root, flag) },
+  init: { counts: [1, 2, 3, 4], run: init },
   export: { counts: [0], run: exportFile },
   "check-project": { counts: [1], run: ([file = ""]) => checkProjectFile(file) },
   "check-config": {
@@ -95,16 +98,57 @@ function checkProjectFile(file: string): void {
   if (items.some((i) => i.failure)) process.exitCode = 1;
 }
 
-// Prints what `init` detects at `root` and whether it is the config already there; writes
-// nothing. Exits 1 when the proposed config would be refused (ADR-042).
-async function dryRun(root: string, flag: string): Promise<void> {
-  if (flag !== "--dry-run") throw new Error(USAGE);
+// `init`'s flags: a root, then --dry-run (which writes nothing, whatever else is given), --yes
+// and --side, which `install` checks.
+function initFlags(args: string[]) {
+  const { values, positionals } = parseArgs({
+    args,
+    allowPositionals: true,
+    options: { "dry-run": { type: "boolean" }, yes: { type: "boolean" }, side: { type: "string" } },
+  });
+  const [root] = positionals;
+  if (root === undefined || positionals.length > 1) throw new Error(USAGE);
+  return { root, side: values.side, preview: values["dry-run"] === true, yes: values.yes === true };
+}
+
+// A prompt that asks on stdout and reads each answer as a line of stdin, opening stdin only on
+// the first question, so `--yes` never waits on it; close ends it.
+function prompter() {
+  let lines: AsyncIterator<string> | undefined;
+  let rl: ReturnType<typeof createInterface> | undefined;
+  return {
+    ask: async (question: string) => {
+      process.stdout.write(question);
+      rl ??= createInterface({ input: process.stdin });
+      lines ??= rl[Symbol.asyncIterator]();
+      const line = await lines.next();
+      return line.done === true ? "" : line.value.trim();
+    },
+    close: () => rl?.close(),
+  };
+}
+
+// Prints what `init` detects at a root and whether it matches the config there; writes nothing.
+async function dryRun(root: string): Promise<void> {
   const found = await inspect(root);
   const file = join(root, ".workbench/config.json");
   const current: unknown = existsSync(file) ? JSON.parse(readFileSync(file, "utf8")) : null;
   const matches = JSON.stringify(current) === JSON.stringify(found.config);
   process.stdout.write(`${JSON.stringify({ ...found, configMatches: matches }, null, 2)}\n`);
   if (found.failures.length > 0) process.exitCode = 1;
+}
+
+// Sets the Workbench up at a host's root, or with --dry-run only prints what it detects.
+async function init(args: string[]): Promise<void> {
+  const flags = initFlags(args);
+  if (flags.preview) return dryRun(flags.root);
+  const prompt = prompter();
+  try {
+    const lines = await install(flags.root, flags, prompt.ask);
+    process.stdout.write(`${lines.join("\n")}\n`);
+  } finally {
+    prompt.close();
+  }
 }
 
 // Prints each config failure, folders checked under the root that holds `.workbench/`; exits 1

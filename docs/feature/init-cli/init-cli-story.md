@@ -76,6 +76,11 @@ Each ticket is one commit, verified and pushed before the next starts.
    bin. A browser-free check builds a scratch Vite app, runs `init --yes`, and asserts the
    files, a no-op rerun, untouched host source and a deterministic checklist.
 
+Status: items 1 to 4 built (ETH-143 to ETH-146). The unit tests in `init.test.ts` drive the
+real command line in scratch Vite apps for the checklist below. `init` prints the link command
+for the unpublished package. `list`, `set` and `check` still read this repo's override file; a
+host's `.workbench/overrides.css` is served once the proxy and `design-workshop dev` exist.
+
 Not in `init`, by ADR-042: the proxy and `design-workshop dev` (Phase 5, item 1), the devDependency
 entry (nothing is published; the bin is run from the workspace path), and theme role maps.
 
@@ -83,16 +88,16 @@ entry (nothing is published; the bin is run from the workspace path), and theme 
 
 INIT is complete when every item holds, each with its command output recorded in the decision log.
 
-- [ ] `pnpm workbench check-config` accepts this repo's config and fails each bad fixture with
+- [x] `pnpm workbench check-config` accepts this repo's config and fails each bad fixture with
       its own code, identically twice.
-- [ ] `pnpm workbench manifest` prints the same manifest as at `2532641`.
-- [ ] `init <repo> --dry-run` prints this repo's committed config and leaves `git status` clean.
-- [ ] In a scratch Vite app, `init --yes` writes exactly `.workbench/config.json`,
+- [x] `pnpm workbench manifest` prints the same manifest as at `2532641`.
+- [x] `init <repo> --dry-run` prints this repo's committed config and leaves `git status` clean.
+- [x] In a scratch Vite app, `init --yes` writes exactly `.workbench/config.json`,
       `.workbench/overrides.css` and the `workbench` script, and nothing under `src/`.
-- [ ] A second `init --yes` changes nothing; a conflicting `workbench` script is refused.
-- [ ] `--side right` in an app-shell host seeds `--shell-side: right`; in a full-screen host the
+- [x] A second `init --yes` changes nothing; a conflicting `workbench` script is refused.
+- [x] `--side right` in an app-shell host seeds `--shell-side: right`; in a full-screen host the
       side question is skipped.
-- [ ] The scratch app's `check-project` output is the same list on two runs.
-- [ ] `pnpm format`, `pnpm lint`, `pnpm typecheck`, `pnpm fallow`, unit tests and the browser
+- [x] The scratch app's `check-project` output is the same list on two runs.
+- [x] `pnpm format`, `pnpm lint`, `pnpm typecheck`, `pnpm fallow`, unit tests and the browser
       suites pass (Safari deferred by Ethan).
 - [ ] Each ticket is Done in Linear with a resolution comment linking its commit.
