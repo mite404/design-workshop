@@ -1,3 +1,4 @@
+// oxlint-disable no-await-in-loop -- one browser drives one page, checked in order
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -89,7 +90,7 @@ try {
     const rows = await dialog.locator("li").evaluateAll((lis) =>
       lis.map((li) => {
         const code = li.querySelector("code")?.textContent ?? "";
-        const fail = li.classList.contains("failed");
+        const fail = li.classList.contains("failed") === true;
         const detail = li.querySelector("span:last-child")?.textContent?.split(":")[0] ?? "";
         return `${fail ? "FAIL" : "ok"} ${code === "file" ? "" : code}${fail ? ` ${detail}` : ""}`.trim();
       }),
@@ -146,7 +147,7 @@ try {
       .locator('input[type="file"][aria-label="Project file"]')
       .setInputFiles(fixtures.version);
     const text = await page.getByRole("dialog", { name: "Project file" }).textContent();
-    assert.ok(text.includes("10.6.0") && text.includes("10.6.7"), text);
+    assert.ok(text?.includes("10.6.0") === true && text.includes("10.6.7") === true, text);
     await page.getByRole("button", { name: "Close", exact: true }).click();
   });
 
@@ -190,12 +191,13 @@ try {
           (html) =>
             new Promise((resolve, reject) => {
               const end = Date.now() + 5000;
-              const poll = () =>
-                getComputedStyle(html).getPropertyValue("--window-radius").trim() === "23px"
-                  ? resolve()
-                  : Date.now() > end
-                    ? reject(new Error("canvas did not take on the loaded radius"))
-                    : requestAnimationFrame(poll);
+              const poll = () => {
+                if (getComputedStyle(html).getPropertyValue("--window-radius").trim() === "23px")
+                  resolve();
+                else if (Date.now() > end)
+                  reject(new Error("canvas did not take on the loaded radius"));
+                else requestAnimationFrame(poll);
+              };
               poll();
             }),
         );
@@ -205,7 +207,7 @@ try {
         .waitFor();
       const changed = status()
         .split("\n")
-        .filter((l) => l && !before.includes(l));
+        .filter((l) => l !== "" && before.includes(l) !== true);
       assert.deepEqual(changed, [" M .workbench/overrides.css"]);
       await page.screenshot({ path: path.join(out, "loaded.png") });
       await page.getByRole("button", { name: "Undo", exact: true }).click();
@@ -224,7 +226,7 @@ try {
         .then((sel) =>
           locator.evaluate((el, s) => s !== "" && el.ownerDocument.querySelector(s) === el, sel),
         );
-    for (let i = 0; i < 20 && !(await selected()); i++) {
+    for (let i = 0; i < 20 && (await selected()) !== true; i++) {
       const b = await locator.boundingBox();
       await page.mouse.click(b.x + 30, b.y + b.height / 2);
       await page.waitForTimeout(50);
