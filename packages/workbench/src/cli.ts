@@ -1,5 +1,7 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { checkConfig } from "./config.ts";
 import { checkProject, validate } from "./contract.ts";
 import { exportProject, readManifest } from "./project.ts";
 import { checkValues, listValues, writeValues } from "./plugin.ts";
@@ -11,6 +13,7 @@ const USAGE = `Usage: pnpm workbench list [--json]
        pnpm workbench manifest
        pnpm workbench export > look.project.json
        pnpm workbench check-project <file>
+       pnpm workbench check-config [.workbench/config.json]
        pnpm workbench set <selector> <name> <value>
        pnpm workbench unset <selector> <name>
        pnpm workbench check
@@ -36,6 +39,10 @@ const COMMANDS: Record<
   manifest: { counts: [0], run: manifest },
   export: { counts: [0], run: exportFile },
   "check-project": { counts: [1], run: ([file = ""]) => checkProjectFile(file) },
+  "check-config": {
+    counts: [0, 1],
+    run: ([file = ".workbench/config.json"]) => checkConfigFile(file),
+  },
   check: {
     counts: [0],
     run: () => {
@@ -83,6 +90,21 @@ function checkProjectFile(file: string): void {
   ); // → string[]
   process.stdout.write(`${lines.join("\n")}\n`);
   if (items.some((i) => i.failure)) process.exitCode = 1;
+}
+
+// Prints each config failure, folders checked under the root that holds `.workbench/`; exits 1
+// on any (ADR-042).
+function checkConfigFile(file: string): void {
+  const root = dirname(dirname(resolve(file))); // .workbench/config.json → the host root
+  const isFolder = (path: string) =>
+    existsSync(join(root, path)) && statSync(join(root, path)).isDirectory();
+  const failures = checkConfig(readFileSync(file, "utf8"), isFolder); // → Failure[]
+  process.stdout.write(
+    failures.length === 0
+      ? "Config is valid.\n"
+      : `${failures.map((f) => `FAIL ${f.path}  ${f.code}: ${f.message}`).join("\n")}\n`,
+  );
+  if (failures.length > 0) process.exitCode = 1;
 }
 
 function edit(selector: string, name: string, value: string | null): void {
