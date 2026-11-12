@@ -28,5 +28,5 @@ Each ticket is one commit, verified and pushed before the next starts.
 - [x] A scratch Vite app with no override import shows a saved value through the proxy, and
       again after a reload (ETH-148).
 - [x] The scratch app's edits land in its `.workbench/overrides.css`, nothing else (ETH-149).
-- [ ] `pnpm test:browser` passes against the proxy; the plugin is gone (ETH-150).
+- [x] `pnpm test:browser` passes against the proxy; the plugin is gone (ETH-150).
 - [ ] Gates pass at each commit; each ticket is Done in Linear with its commit linked.

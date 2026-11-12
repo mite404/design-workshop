@@ -1,6 +1,5 @@
 import { reactRouter } from "@react-router/dev/vite";
 import tailwindcss from "@tailwindcss/vite";
-import { workbench } from "@yaklabs/workbench/plugin";
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
 
@@ -23,15 +22,17 @@ export default defineConfig({
       },
     },
     tailwindcss(),
-    workbench(),
     reactRouter(),
   ],
   optimizeDeps: {
     // The worker loads sqlite-wasm's wasm and helper files itself; pre-bundling breaks them.
     exclude: ["@sqlite.org/sqlite-wasm"],
   },
-  // Amp orb portals reach the dev server under their own hostname.
+  // Amp orb portals reach the dev server under their own hostname. `design-workshop dev` serves
+  // the Workbench on 5173 in front of this port (ADR-043, ADR-045).
   server: {
+    port: 5174,
+    strictPort: true,
     allowedHosts: [".onamp.dev"],
     proxy: {
       "/__stories/": {

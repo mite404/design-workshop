@@ -15,8 +15,6 @@
     "esModuleInterop": true,
     "verbatimModuleSyntax": true,
     "noEmit": true,
-    // vite.config.ts runs in Node, which loads @yaklabs/workbench/plugin with explicit .ts imports.
-    "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
     "skipLibCheck": true,
     "strict": true

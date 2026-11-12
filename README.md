@@ -21,7 +21,7 @@ and demo mode (`VITE_DEMO=on`). Open `/?scenario=demo` for a deterministic shell
 
 ```sh
 pnpm install
-pnpm dev:web          # the app at http://localhost:5173
+pnpm dev:web          # the app at http://localhost:5174, the Workbench in front at :5173
 pnpm storybook        # Storybook at http://localhost:6006
 pnpm test             # unit tests in node, story tests in headless Chromium
 pnpm typecheck

@@ -7,10 +7,10 @@
   "type": "module",
   "exports": {
     "./overrides": "./src/overrides.ts",
-    "./tree": "./src/tree.ts",
-    "./plugin": "./src/plugin.ts"
+    "./tree": "./src/tree.ts"
   },
   "scripts": {
+    "dev": "cd ../.. && node packages/workbench/src/cli.ts dev --target http://localhost:5174 --port 5173",
     "test": "vitest run",
     "test:unit": "vitest run",
     "typecheck": "tsc --noEmit"

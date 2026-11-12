@@ -4244,18 +4244,24 @@ window.addEventListener("focus", () => enqueue(refreshStatus));
 import.meta.hot?.on("workbench:values", () => enqueue(refreshStatus));
 
 // The override stylesheet the proxy links into the app (ETH-148): fetched again when the file
-// changes, the new sheet replacing the old once it loads, so nothing flashes unstyled.
+// changes, the new sheet replacing the old once it loads, so nothing flashes unstyled. Each new
+// link goes after the newest, so it wins even while an earlier one still loads, and drops every
+// link before it once it loads.
 import.meta.hot?.on("workbench:values", () => {
-  const old = frame.contentDocument?.querySelector<HTMLLinkElement>(
-    "link[data-workbench-overrides]",
-  );
-  if (old === null || old === undefined) return;
-  const next = document.createElement("link");
+  const links = [
+    ...(frame.contentDocument?.querySelectorAll<HTMLLinkElement>(
+      "link[data-workbench-overrides]",
+    ) ?? []),
+  ];
+  const newest = links.at(-1);
+  if (newest === undefined) return;
+  // Made by the frame's document, so its rules are the frame's own CSSStyleRules `applied` reads.
+  const next = newest.ownerDocument.createElement("link");
   next.rel = "stylesheet";
   next.dataset.workbenchOverrides = "";
   next.href = `/__workbench/overrides.css?t=${Date.now()}`;
-  next.addEventListener("load", () => old.remove(), { once: true });
-  old.after(next);
+  next.addEventListener("load", () => links.forEach((link) => link.remove()), { once: true });
+  newest.after(next);
 });
 frame.addEventListener("load", () => {
   canvasMode.value = doc()?.documentElement.dataset.theme === "dark" ? "dark" : "light";

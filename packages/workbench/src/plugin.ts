@@ -1,6 +1,6 @@
-// The Workbench's dev-only half of the app's dev server: its page at /__workbench/, the endpoint
-// that writes the override file (ADR-002), and the one that copies a Google font into the repo
-// (ADR-021). `apply: "serve"` keeps them all out of a build.
+// The Workbench's server half, run by `design-workshop dev` in its own Vite (ADR-043): its page
+// at /__workbench/, the endpoint that writes the override file (ADR-002), and the one that copies
+// a Google font into the repo (ADR-021). `apply: "serve"` keeps them all out of a build.
 import {
   existsSync,
   mkdirSync,

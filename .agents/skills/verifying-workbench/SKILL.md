@@ -59,17 +59,21 @@ If the offline install lacks a package, use `pnpm --dir "$RUN" install --frozen-
 Keep `SOURCE`, `RUN` and `OUT` for this run. Separate shell calls must recover their actual values,
 not create a second snapshot. Secrets and ignored local configuration are intentionally not copied.
 
-In an Amp orb, start a supervised service with the shell tool's working directory set to `$RUN`:
+In an Amp orb, start the app and `design-workshop dev` in front of it (ADR-043) as supervised
+services, with the shell tool's working directory set to `$RUN`:
 
 ```sh
+amp orb service start verify-app \
+  --command 'pnpm --filter web exec react-router dev --host 0.0.0.0 --port 5174 --strictPort' \
+  --port 5174
 amp orb service start verify-workbench \
-  --command 'pnpm --filter web exec react-router dev --host 0.0.0.0 --port 5173 --strictPort' \
+  --command 'pnpm workbench dev --target http://localhost:5174 --port 5173' \
   --port 5173 --portal
 ```
 
 Run one verification session at a time. If that service or port is already in use, do not stop or
-reuse it unless this run owns it. Outside an orb, run the same dev command in a dedicated foreground
-terminal and stop that process after testing. Share only the portal URL printed by Amp, not
+reuse it unless this run owns it. Outside an orb, run the same two commands in dedicated foreground
+terminals and stop those processes after testing. Share only the portal URL printed by Amp, not
 localhost.
 
 ## Doctor
@@ -139,9 +143,10 @@ verification or a guarantee that all screens remain correct.
 
 ## Cleanup
 
-Run `amp orb service stop verify-workbench` with the shell tool's working directory set to `$RUN`.
-Amp scopes service commands to their originating directory; a stop from `$SOURCE` does not stop this
-service. Require a successful stop before deleting the snapshot. Copy any remaining `.artifacts/`
+Run `amp orb service stop verify-workbench` and `amp orb service stop verify-app` with the shell
+tool's working directory set to `$RUN`. Amp scopes service commands to their originating directory;
+a stop from `$SOURCE` does not stop these services. Require a successful stop before deleting the
+snapshot. Copy any remaining `.artifacts/`
 evidence into `$OUT`, restore no files in `$SOURCE`, and remove only the disposable `$RUN` directory
 from a shell whose working directory is `$SOURCE`. Confirm `$OUT` still contains logs and
 screenshots after cleanup. Compare the source's status with its starting status; retain all

@@ -4,8 +4,6 @@ import type { Box } from "./radius";
 import { selectorFor, type Step } from "./selector";
 import type { Offset, Spacing } from "./spacing";
 
-const OVERRIDES = "/.workbench/overrides.css";
-
 /** The requested app URL, the single demo chat by default, or `/` for an unsafe target. */
 export function canvasPath(search: string): string {
   const path = new URLSearchParams(search).get("path") ?? "/t/demo-brief";
@@ -110,26 +108,28 @@ export function paddingBox(node: Element): Box {
   };
 }
 
-function overrideSheet(doc: Document): CSSStyleSheet | undefined {
+// The override file's links in `doc`, in document order: the one `design-workshop dev` injects
+// (ADR-043), and its replacement while the page swaps it after a write.
+function overrideSheets(doc: Document): CSSStyleSheet[] {
   const view = doc.defaultView;
-  if (view === null) return undefined;
-  return [...doc.styleSheets].find(
+  if (view === null) return [];
+  return [...doc.styleSheets].filter(
     (s) =>
       s.ownerNode instanceof view.HTMLElement &&
-      s.ownerNode.dataset.viteDevId?.endsWith(OVERRIDES) === true,
+      s.ownerNode.dataset.workbenchOverrides !== undefined,
   );
 }
 
 /** Whether the source, excluding the Workbench stylesheet, already transforms this element. */
 export function hasNativeTransform(node: Styled): boolean {
-  const sheet = overrideSheet(node.ownerDocument);
-  const disabled = sheet?.disabled ?? false;
-  if (sheet !== undefined) sheet.disabled = true;
+  const sheets = overrideSheets(node.ownerDocument);
+  const disabled = sheets.map((sheet) => sheet.disabled);
+  for (const sheet of sheets) sheet.disabled = true;
   try {
     const s = style(node);
     return [s.transform, s.translate, s.rotate, s.scale].some((v) => v !== "none");
   } finally {
-    if (sheet !== undefined) sheet.disabled = disabled;
+    for (const [i, sheet] of sheets.entries()) sheet.disabled = disabled[i] ?? false;
   }
 }
 
@@ -140,7 +140,7 @@ export function hasNativeTransform(node: Styled): boolean {
 export function applied(doc: Document, selector: string, name: string): string | null {
   const view = doc.defaultView;
   if (view === null) return null;
-  const sheet = overrideSheet(doc);
+  const sheet = overrideSheets(doc).at(-1); // the copy that wins the cascade
   for (const rule of sheet?.cssRules ?? []) {
     if (rule instanceof view.CSSStyleRule && rule.selectorText === selector) {
       const value = rule.style.getPropertyValue(name).trim();

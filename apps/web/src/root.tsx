@@ -14,12 +14,17 @@ import {
 import "./index.css";
 // The Google fonts the Workbench copied into the repo (ADR-021), before the values that name them.
 import "@yaklabs/catalog/fonts.css";
-// After index.css and outside every layer, so a saved value beats the app's own (ADR-002).
-import "../../../.workbench/overrides.css";
+// After index.css and outside every layer, so a saved value beats the app's own (ADR-002). In
+// development `design-workshop dev` links the live file itself (ADR-043); a second copy here would
+// hot reload on its own and could lag the Workbench's writes, so only a build links it.
+import overridesHref from "../../../.workbench/overrides.css?url";
 import type { Route } from "./+types/root";
 import { CHROME_BOOT } from "./chrome";
 import { Providers } from "./providers";
 import { THEME_BOOT, useTheme, type ThemeChoice } from "./theme";
+
+export const links: Route.LinksFunction = () =>
+  import.meta.env.DEV ? [] : [{ rel: "stylesheet", href: overridesHref }];
 
 export function Layout({ children }: { children: ReactNode }) {
   return (

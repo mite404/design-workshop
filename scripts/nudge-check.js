@@ -240,7 +240,7 @@ try {
         fields: [document.querySelector("#wb-x").value, document.querySelector("#wb-y").value],
         message: document.querySelector(".message").textContent,
         sheets: [...document.querySelector("iframe").contentDocument.styleSheets]
-          .filter((s) => s.ownerNode?.dataset?.viteDevId?.endsWith("overrides.css"))
+          .filter((s) => s.ownerNode?.dataset?.workbenchOverrides !== undefined)
           .map((s) => ({ disabled: s.disabled, rules: [...s.cssRules].map((r) => r.cssText) })),
       })),
       null,

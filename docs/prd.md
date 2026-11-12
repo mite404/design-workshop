@@ -390,8 +390,9 @@ Ethan, Nov 12 2026: the Workbench should install into an existing repo, the way 
 rather than every project cloning and reshaping itself to fit this one. A theme is the
 Workbench's own JSON file, a translation layer between standard primitives and their colours,
 fonts and hover colours. Neither writes the host app's code. This section is the plan. Built:
-`design-workshop init` ([INIT CLI story](feature/init-cli/init-cli-story.md), ADR-042). Not
-built: the proxy and `design-workshop dev`. Plan detail:
+`design-workshop init` ([INIT CLI story](feature/init-cli/init-cli-story.md), ADR-042) and
+`design-workshop dev` ([proxy story](feature/proxy/proxy-story.md), ADR-043 to ADR-045), which
+serves this repo too. Plan detail:
 [portability plan](research/project-portability-plan.md).
 
 ### How Storybook installs (checked Nov 12 2026)
@@ -402,10 +403,10 @@ built: the proxy and `design-workshop dev`. Plan detail:
 - Storybook then runs its own dev server, which compiles the host's components with a builder
   (Vite, Webpack, Rspack). The host's app code is not changed.
 
-### How the Workbench is tied to this repo today
+### How the Workbench was tied to this repo (before the proxy)
 
-- It is a Vite plugin in `apps/web/vite.config.ts`, serving `/__workbench/` from the app's own
-  dev server. A host on Next or Webpack has no way to load it.
+- It was a Vite plugin in `apps/web/vite.config.ts`, serving `/__workbench/` from the app's own
+  dev server. A host on Next or Webpack had no way to load it.
 - The override file is imported by the app (`apps/web/src/root.tsx`) and by Storybook's
   preview. A host would have to edit its code to load it.
 - It reads the canvas through `frame.contentDocument`, so the app must be on its origin.
