@@ -355,16 +355,24 @@ These are Ethan's stated preferences for how the Workbench itself should look an
     agent that Ethan starts with the chat button or Select element.
   - Component mode gets a persisted chat history panel, one chat per component (R19). Several
     chats and a thread picker are deferred.
+- Nov 12 2026, Ethan, on the open questions:
+  - A finished look is folded into the baseline tokens once a designer commits the work to the
+    real codebase. That is different from saving the editor's current state, in Live or
+    Component mode, which stays in the override file and theme files.
+  - R14: the shell's templated regions are the title bar, the navigation rail, the drawer and
+    the panel ("the most commonly used slots").
 
 ## 14. Open questions
 
 - How does a designer learn that a change broke or moved something on a screen, a state or a
-  story that is not on the canvas? Not at the press (ADR-026). It needs the Workbench to load
-  other screens and stories first (ETH-118), so it has no story and no ticket yet.
-- Is a finished look folded into the baseline tokens, or does it stay in the override file for
-  good? Revisited after the first finished app.
-- R14: which shell regions besides the rail and drawer get a templated choice, and what are
-  their options? Asked Nov 12 2026; no region gets one until Ethan names it.
+  story that is not on the canvas? Not at the press (ADR-026). Ethan, Nov 12: unsolved; it needs
+  more QA testing in practice first, so it has no story and no ticket yet.
+- Folding a finished look into the baseline (decided below, Nov 12): which step does the fold?
+  Section 6 says the Workbench never writes the baseline tokens and commits only the override
+  file, so either Check and commit changes, or the fold is a separate step outside the
+  Workbench.
+- R14: what are the title bar's and the panel's templated options, and which region is "the
+  panel"? Ethan named the regions on Nov 12; no option is built until he names them.
 
 ## 15. OPEN ISSUES
 
