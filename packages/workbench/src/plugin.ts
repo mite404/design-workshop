@@ -38,16 +38,29 @@ import { COLOUR_ROOT, colourTokens, HEX } from "./colour.ts";
 import { parseTheme, type Theme } from "./theme.ts";
 import { exportProject, readSources } from "./project.ts";
 
-/** The override file the Workbench writes. */
-export const OVERRIDES = fileURLToPath(new URL("../../catalog/src/overrides.css", import.meta.url));
+const BUNDLED_THEMES = fileURLToPath(new URL("../themes/", import.meta.url));
 const TOKENS = fileURLToPath(new URL("../../catalog/src/tokens.css", import.meta.url));
 const CATALOG = fileURLToPath(new URL("../../catalog/src/", import.meta.url));
 const FONTS = join(CATALOG, "fonts.css");
-// Bundled themes, then the repo's saved ones (ADR-028), which are the only new files it writes.
-const THEME_FOLDERS = [
-  fileURLToPath(new URL("../themes/", import.meta.url)),
-  fileURLToPath(new URL("../../../.workbench/themes/", import.meta.url)),
-];
+
+// The files the Workbench reads and writes: the override file, the tokens file its baselines
+// come from (null for a host, which has none, ADR-044), and its theme folders, bundled first;
+// it saves themes to the last.
+type Files = { overrides: string; tokens: string | null; themes: string[] };
+
+// This repo's Template: its catalog's files and its saved themes (ADR-028).
+const TEMPLATE: Files = {
+  overrides: fileURLToPath(new URL("../../catalog/src/overrides.css", import.meta.url)),
+  tokens: TOKENS,
+  themes: [BUNDLED_THEMES, fileURLToPath(new URL("../../../.workbench/themes/", import.meta.url))],
+};
+
+/** A host's files, all under its `.workbench/` at `root` (PRD section 16, ETH-149). */
+export const hostFiles = (root: string): Files => ({
+  overrides: join(root, ".workbench", "overrides.css"),
+  tokens: null,
+  themes: [BUNDLED_THEMES, join(root, ".workbench", "themes")],
+});
 const PAGE = fileURLToPath(new URL("./page.ts", import.meta.url));
 const ROOT = ":root";
 const COLOURS = colourTokens(readFileSync(TOKENS, "utf8"));
@@ -327,10 +340,10 @@ function revision(file: string): string {
   }).trim();
 }
 
-function historyStatus(): { head: string; dirty: boolean } {
+function historyStatus(file: string): { head: string; dirty: boolean } {
   return {
-    head: revision(OVERRIDES),
-    dirty: readFileSync(OVERRIDES, "utf8") !== committed(OVERRIDES),
+    head: revision(file),
+    dirty: readFileSync(file, "utf8") !== committed(file),
   };
 }
 
@@ -490,57 +503,67 @@ async function reload(server: ViteDevServer, file: string): Promise<void> {
 }
 
 // Each writing endpoint: what it does with a POST, and the file it changes for hot reload.
-const WRITES: Record<string, { run: (post: Post) => Reply | Promise<Reply>; file: string }> = {
+type Writes = Record<string, { run: (post: Post) => Reply | Promise<Reply>; file: string }>;
+const writesOf = ({ overrides, themes }: Files): Writes => ({
   "/__workbench/values": {
     run: (post) => {
-      const reply = writeValue(OVERRIDES, post);
+      const reply = writeValue(overrides, post);
       return reply.status === 200
-        ? { status: 200, body: { changes: field(reply.body, "changes"), ...historyStatus() } }
+        ? {
+            status: 200,
+            body: { changes: field(reply.body, "changes"), ...historyStatus(overrides) },
+          }
         : reply;
     },
-    file: OVERRIDES,
+    file: overrides,
   },
-  "/__workbench/discard": { run: (post) => discardValues(OVERRIDES, post), file: OVERRIDES },
+  "/__workbench/discard": { run: (post) => discardValues(overrides, post), file: overrides },
+  // ponytail: fonts install into the Template's catalog only; a host's fonts need a story.
   "/__workbench/fonts": { run: (post) => installFont(CATALOG, post), file: FONTS },
-  "/__workbench/themes": {
-    run: (post) => saveTheme(THEME_FOLDERS, post),
-    file: THEME_FOLDERS.at(-1) ?? "",
-  },
-};
+  "/__workbench/themes": { run: (post) => saveTheme(themes, post), file: themes.at(-1) ?? "" },
+});
 
 // Each reading endpoint and the JSON it answers a GET with.
-const READS: Record<string, () => unknown> = {
+const readsOf = ({ overrides, tokens, themes }: Files): Record<string, () => unknown> => ({
   // Runs `storybook index`, so it takes seconds; asynchronously, so the dev server keeps serving.
   "/__workbench/project": exportProject,
   "/__workbench/values": () => ({
-    ...readValues(readFileSync(OVERRIDES, "utf8"), readFileSync(TOKENS, "utf8")),
-    ...historyStatus(),
+    ...readValues(
+      readFileSync(overrides, "utf8"),
+      tokens === null ? "" : readFileSync(tokens, "utf8"),
+    ),
+    ...historyStatus(overrides),
   }),
-  "/__workbench/themes": () => ({ themes: listThemes(THEME_FOLDERS) }),
+  "/__workbench/themes": () => ({ themes: listThemes(themes) }),
   "/__workbench/sources": readSources,
-};
+});
 
 const PAGE_PATHS = new Set(["/__workbench", "/__workbench/"]);
 
 // A Workbench route's reply, or null for any other path or method, which the next middleware
 // serves: the Workbench's own Vite when it runs under /__workbench/ (ADR-043).
-async function answer(server: ViteDevServer, req: IncomingMessage): Promise<Reply | null> {
+async function answer(
+  server: ViteDevServer,
+  req: IncomingMessage,
+  routes: { reads: Record<string, () => unknown>; writes: Writes; file: string },
+): Promise<Reply | null> {
   const path = (req.url ?? "").split("?")[0] ?? "";
   if (PAGE_PATHS.has(path))
     return { status: 200, body: await server.transformIndexHtml("/__workbench/", HTML) };
-  const reader = req.method === "GET" ? READS[path] : undefined;
+  const reader = req.method === "GET" ? routes.reads[path] : undefined;
   if (reader !== undefined) return { status: 200, body: await reader() };
-  const write = req.method === "POST" ? WRITES[path] : undefined;
-  return write === undefined ? null : answerWrite(server, req, write);
+  const write = req.method === "POST" ? routes.writes[path] : undefined;
+  return write === undefined ? null : answerWrite(server, req, write, routes.file);
 }
 
 async function answerWrite(
   server: ViteDevServer,
   req: IncomingMessage,
-  write: (typeof WRITES)[string],
+  write: Writes[string],
+  overrides: string,
 ): Promise<Reply> {
   const body = await read(req);
-  if (committing(OVERRIDES))
+  if (committing(overrides))
     return { status: 409, body: { error: "A commit is running. Cancel it before editing." } };
   const reply = await write.run({ origin: req.headers.origin, host: req.headers.host, body });
   if (reply.status === 200) await reload(server, write.file);
@@ -558,7 +581,7 @@ async function startCommit(
   server: ViteDevServer,
   req: IncomingMessage,
   res: ServerResponse,
-  active: { controller: AbortController | null },
+  active: { controller: AbortController | null; file: string },
 ): Promise<void> {
   const input = json(await read(req));
   const head = field(input, "head");
@@ -567,7 +590,7 @@ async function startCommit(
     sendReply(res, { status: 400, body: { error: "Review the diff before committing." } });
     return;
   }
-  if (committing(OVERRIDES)) {
+  if (committing(active.file)) {
     sendReply(res, { status: 409, body: { error: "A commit is already running." } });
     return;
   }
@@ -579,7 +602,7 @@ async function startCommit(
   res.writeHead(200, { "content-type": "application/x-ndjson", "cache-control": "no-store" });
   try {
     await commitLook(
-      OVERRIDES,
+      active.file,
       { head, source },
       (event) => {
         res.write(`${JSON.stringify(event)}\n`);
@@ -597,7 +620,7 @@ async function commitRoute(
   server: ViteDevServer,
   req: IncomingMessage,
   res: ServerResponse,
-  active: { controller: AbortController | null },
+  active: { controller: AbortController | null; file: string },
 ): Promise<void> {
   if (req.method !== "POST") {
     sendReply(res, { status: 405, body: { error: "Use POST for commit actions." } });
@@ -609,7 +632,7 @@ async function commitRoute(
   }
   switch (req.url?.split("?")[0] ?? "") {
     case "/__workbench/commit/preview":
-      sendReply(res, { status: 200, body: previewCommit(OVERRIDES) });
+      sendReply(res, { status: 200, body: previewCommit(active.file) });
       return;
     case "/__workbench/commit/cancel":
       active.controller?.abort();
@@ -629,9 +652,10 @@ async function route(
   req: IncomingMessage,
   res: ServerResponse,
   next: () => void,
+  routes: Parameters<typeof answer>[2],
 ): Promise<void> {
   try {
-    const reply = await answer(server, req);
+    const reply = await answer(server, req, routes);
     if (reply === null) next();
     else sendReply(res, reply);
   } catch (error: unknown) {
@@ -639,10 +663,14 @@ async function route(
   }
 }
 
-/** The Workbench page and its values endpoint, on the dev server only. */
-export function workbench(): Plugin {
+/**
+ * The Workbench page and its endpoints, on the dev server only, editing `files`: this repo's
+ * Template by default, or a host's from `hostFiles`.
+ */
+export function workbench(files = TEMPLATE): Plugin {
   let watcher: ReturnType<typeof watch> | undefined;
-  const active: { controller: AbortController | null } = { controller: null };
+  const active = { controller: null as AbortController | null, file: files.overrides };
+  const routes = { reads: readsOf(files), writes: writesOf(files), file: files.overrides };
   return {
     name: "workbench",
     apply: "serve",
@@ -651,8 +679,8 @@ export function workbench(): Plugin {
     },
     configureServer(server) {
       // Vite suppresses rapid changes. Watch the directory to also survive atomic file replacement.
-      watcher = watch(dirname(OVERRIDES), (_event, file) => {
-        if (file === basename(OVERRIDES))
+      watcher = watch(dirname(files.overrides), (_event, file) => {
+        if (file === basename(files.overrides))
           server.ws.send({ type: "custom", event: "workbench:values" });
       });
       server.middlewares.use((req, res, next) => {
@@ -667,7 +695,7 @@ export function workbench(): Plugin {
           });
           return;
         }
-        void route(server, req, res, next);
+        void route(server, req, res, next, routes);
       });
     },
   };

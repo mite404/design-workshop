@@ -108,7 +108,7 @@ async function dev(args: string[]): Promise<void> {
   });
   if (values.target === undefined || !/^\d{2,5}$/.test(values.port)) throw new Error(USAGE);
   const { startDev } = await import("./dev.ts"); // only `dev` needs Vite
-  const url = await startDev(values.target, Number(values.port));
+  const url = await startDev(values.target, Number(values.port), process.cwd());
   process.stdout.write(`Workbench at ${url}, in front of ${values.target}\n`);
 }
 

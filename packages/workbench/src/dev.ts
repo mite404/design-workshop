@@ -7,12 +7,13 @@ import {
   type IncomingMessage,
   type ServerResponse,
 } from "node:http";
+import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { connect } from "node:net";
 import type { Duplex } from "node:stream";
 import { fileURLToPath } from "node:url";
 import { createServer } from "vite";
-import { OVERRIDES, workbench } from "./plugin.ts";
+import { hostFiles, workbench } from "./plugin.ts";
 
 const BASE = "/__workbench/";
 const ROOT = fileURLToPath(new URL("../", import.meta.url));
@@ -87,9 +88,9 @@ function forwardUpgrade(req: IncomingMessage, socket: Duplex, head: Buffer, targ
 }
 
 // The override file as a stylesheet, never cached, so a changed file is read again.
-async function serveStylesheet(res: ServerResponse): Promise<void> {
+async function serveStylesheet(res: ServerResponse, file: string): Promise<void> {
   try {
-    const css = await readFile(OVERRIDES, "utf8");
+    const css = await readFile(file, "utf8");
     res.writeHead(200, { "content-type": "text/css", "cache-control": "no-store" });
     res.end(css);
   } catch (error: unknown) {
@@ -99,25 +100,29 @@ async function serveStylesheet(res: ServerResponse): Promise<void> {
 }
 
 /**
- * Starts the Workbench at `port` in front of the dev server at `target`, and resolves with the
- * address it serves once it listens.
- * @throws When `target` is not an http URL with a port, or the port is taken.
+ * Starts the Workbench at `port` in front of the dev server at `target`, editing the files in
+ * `root`'s `.workbench/`, and resolves with the address it serves once it listens.
+ * @throws When `target` is not an http URL with a port, `root` has no `.workbench/overrides.css`,
+ * or the port is taken.
  */
-export async function startDev(target: string, port: number): Promise<string> {
+export async function startDev(target: string, port: number, root: string): Promise<string> {
   const host = new URL(target);
   if (host.protocol !== "http:" || host.port === "")
     throw new Error(`The target must be http://host:port, not ${target}.`);
+  const files = hostFiles(root);
+  if (!existsSync(files.overrides))
+    throw new Error(`No ${files.overrides}. Run design-workshop init in ${root} first.`);
   const server = createHttpServer();
   const vite = await createServer({
     root: ROOT,
     base: BASE,
     configFile: false,
     appType: "custom",
-    plugins: [workbench()],
+    plugins: [workbench(files)],
     server: { middlewareMode: true, hmr: { server } },
   });
   server.on("request", (req, res) => {
-    if (req.url?.split("?")[0] === STYLESHEET) void serveStylesheet(res);
+    if (req.url?.split("?")[0] === STYLESHEET) void serveStylesheet(res, files.overrides);
     else if (ours(req.url)) vite.middlewares(req, res);
     else forward(req, res, host);
   });

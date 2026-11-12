@@ -482,5 +482,20 @@ websocket paths never collide with a host that also runs Vite (`/@vite/client`, 
 server answers the Workbench endpoints and its Vite under that prefix and forwards every other
 request and websocket upgrade to the host, so the app and the Workbench share one origin and the
 canvas can read the frame. The plugin runs inside that Vite unchanged, except that it hands
-paths it does not answer to the next middleware, Vite's own, until the plugin goes (ETH-150). Rejected: a plugin per framework, several adapters to keep in step; and a prebuilt
+paths it does not answer to the next middleware, Vite's own, until the plugin goes (ETH-150).
+Rejected: a plugin per framework, several adapters to keep in step; and a prebuilt
 Workbench bundle, a build step for every change while the Workbench is developed.
+
+## ADR-044 - A host's values have no file baseline
+
+2026-11-12 - Accepted. ETH-149. PRD section 16, block 11.
+`design-workshop dev` edits the host at its working directory: the override file and saved
+themes under its `.workbench/`, with the bundled themes still listed. It refuses to start until
+`init` has written `.workbench/overrides.css`. A host has no Template `tokens.css`, so every
+value's file baseline is null: the inspector starts from what the canvas computes, and Reset
+removes the override so the host's own CSS applies again. Colour roles come from `tokens.css`
+too, so a host lists none until the project contract maps its roles (PRD section 16). The
+history and commit flow need the override file committed in a Git repo, as after `init` and a
+first commit. Fonts still install into the Template's catalog; a host's fonts need their own
+story. Rejected: reading baselines from the host's stylesheets on the server, a CSS cascade
+without a browser.
