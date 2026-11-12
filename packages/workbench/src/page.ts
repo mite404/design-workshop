@@ -6,6 +6,7 @@
 import "./page.css";
 import { DRAWER, TREE_EVENT } from "./tree";
 import { COLOUR_ROOT, CONTRAST, contrast, HEX } from "./colour";
+import { checkProject } from "./contract";
 import {
   COLOUR_ROLES,
   parseTheme,
@@ -238,6 +239,31 @@ const exportButton = element(
   "button",
   { type: "button", className: "history-button", title: "Download this look as a project file" },
   "Export",
+);
+const projectFile = element("input", {
+  type: "file",
+  accept: ".json,application/json",
+  hidden: true,
+  ariaLabel: "Project file",
+});
+const openButton = element(
+  "button",
+  { type: "button", className: "history-button", title: "Check a project file before loading it" },
+  "Open",
+);
+const projectList = element("ul", {
+  className: "project-checklist",
+  ariaLabel: "Project checklist",
+});
+const projectVerdict = element("p", { className: "commit-note", role: "status" });
+const projectClose = element("button", { type: "button", className: "history-button" }, "Close");
+const projectDialog = element(
+  "dialog",
+  { className: "commit-dialog", ariaLabel: "Project file" },
+  element("h2", {}, "Project file"),
+  projectVerdict,
+  projectList,
+  element("div", { className: "commit-actions" }, projectClose),
 );
 const commitStatus = element("pre", { className: "commit-status", role: "status" });
 const commitClose = element("button", { type: "button", className: "history-button" }, "Close");
@@ -3345,7 +3371,9 @@ document.body.append(
         redo,
         discard,
       ),
-      element("div", { className: "commit-row" }, checkCommit, exportButton),
+      element("div", { className: "commit-row" }, checkCommit, exportButton, openButton),
+      projectFile,
+      projectDialog,
       message,
       componentNotice,
       selectionPanel,
@@ -3546,6 +3574,41 @@ exportButton.addEventListener("click", () => {
     }
   })();
 });
+// Shows a chosen project file's checklist (ETH-126). Reading it writes nothing; the decision is
+// the contract's checkProject alone, the same list `pnpm workbench check-project` prints.
+openButton.addEventListener("click", () => projectFile.click());
+projectFile.addEventListener("change", () => {
+  const file = projectFile.files?.[0];
+  projectFile.value = "";
+  if (file === undefined) return;
+  void (async () => {
+    const items = checkProject(await file.text());
+    const failed = items.filter((i) => i.failure !== undefined).length;
+    projectVerdict.textContent =
+      failed === 0
+        ? `${file.name} fits this Template.`
+        : `${file.name} cannot be loaded: ${failed} of ${items.length} items fail.`;
+    projectList.replaceChildren(
+      ...items.map(({ path, failure }) =>
+        element(
+          "li",
+          { className: failure === undefined ? "passed" : "failed" },
+          element(
+            "span",
+            { ariaLabel: failure === undefined ? "Passed" : "Failed" },
+            failure === undefined ? "✓" : "✕",
+          ),
+          element("code", {}, path || "file"),
+          ...(failure === undefined
+            ? []
+            : [element("span", {}, `${failure.code}: ${failure.message}`)]),
+        ),
+      ),
+    );
+    projectDialog.showModal();
+  })();
+});
+projectClose.addEventListener("click", () => projectDialog.close());
 undo.addEventListener("click", () => replay(-1));
 redo.addEventListener("click", () => replay(1));
 checkCommit.addEventListener("click", () => enqueue(runCommit));

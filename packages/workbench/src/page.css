@@ -1603,3 +1603,38 @@ body[data-referencing] .overlay,
     translate: none;
   }
 }
+
+/* A project file's checklist (ETH-126): one row per contract item, failures in the warning ink. */
+.project-checklist {
+  display: grid;
+  gap: 4px;
+  max-height: 50vh;
+  margin: 8px 0 16px;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.project-checklist li {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  column-gap: 6px;
+  font-size: 12px;
+}
+
+.project-checklist li > span:first-child {
+  grid-row: span 2;
+  color: #1a7f37;
+}
+
+.project-checklist li.failed > span:first-child,
+.project-checklist li.failed > span:last-child {
+  color: #b42318;
+}
+
+.project-checklist code {
+  font:
+    11px/1.5 ui-monospace,
+    monospace;
+  overflow-wrap: anywhere;
+}

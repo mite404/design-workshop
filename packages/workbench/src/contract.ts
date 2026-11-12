@@ -162,3 +162,77 @@ export function validate(text: string, contract: Contract = CONTRACT): Failure[]
   const key = (f: Failure) => `${f.path}\u0000${f.code}`;
   return failures.toSorted((a, b) => (key(a) < key(b) ? -1 : key(a) > key(b) ? 1 : 0));
 }
+
+/** One line of a project's checklist: a contract item and its failure, when it has one. */
+export type CheckItem = { path: string; failure?: Failure };
+
+// Each override value is a string, under a selector, as the override file holds them. Whether a
+// value is one the Workbench may write is the load's own check, on the plugin's save path.
+function checkOverrides(overrides: unknown): Failure[] {
+  const blocks = record(overrides) ? Object.entries(overrides) : null;
+  const bad =
+    blocks === null ||
+    blocks.some(
+      ([, values]) => !record(values) || Object.values(values).some((v) => typeof v !== "string"),
+    );
+  return bad
+    ? [
+        {
+          code: "bad-overrides",
+          path: "overrides",
+          message: "Overrides must map selectors to string values.",
+        },
+      ]
+    : [];
+}
+
+/**
+ * The checklist for project file `text`: every item the contract asks of it, each with its
+ * failure when it has one, and any other failure after them. It is accepted when no item has a
+ * failure. The same text always gives the same list (ADR-029).
+ */
+export function checkProject(text: string, contract: Contract = CONTRACT): CheckItem[] {
+  let data: unknown;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    return [
+      { path: "", failure: { code: "not-json", path: "", message: "The file is not JSON." } },
+    ];
+  }
+  if (!record(data) || data.format !== "design-workshop/project" || data.version !== 1)
+    return [
+      {
+        path: "format",
+        failure: {
+          code: "bad-format",
+          path: "format",
+          message: "Not a design-workshop/project, version 1.",
+        },
+      },
+    ];
+  const failures = [
+    ...validate(JSON.stringify(data.manifest), contract),
+    ...checkOverrides(data.overrides),
+  ];
+  const manifest = record(data.manifest) ? data.manifest : {};
+  const shell = new Map(Object.entries(contract.shells)).get(String(manifest.shell));
+  const paths = [
+    "storybook/version",
+    "storybook/indexVersion",
+    "shell",
+    ...(shell?.slots.map((s) => `slots/${s}`) ?? []),
+    ...(shell?.components.map((c) => `components/${c}`) ?? []),
+    "overrides",
+  ];
+  const owner = (f: Failure) => paths.find((p) => f.path === p || f.path.startsWith(`${p}/`));
+  return [
+    ...paths.map((path) => {
+      const failure = failures.find((f) => owner(f) === path);
+      return failure === undefined ? { path } : { path, failure };
+    }),
+    ...failures
+      .filter((f) => owner(f) === undefined)
+      .map((failure) => ({ path: failure.path, failure })),
+  ];
+}

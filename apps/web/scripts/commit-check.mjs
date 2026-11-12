@@ -266,7 +266,9 @@ try {
   assert.ok(readFileSync(file, "utf8").includes(`--window-radius: ${radius}px;`));
   await shotModes("failed");
   await page.keyboard.press("Escape");
-  await page.locator(".commit-dialog").waitFor({ state: "hidden", timeout: 3000 });
+  await page
+    .locator('.commit-dialog[aria-label="Check and commit"]')
+    .waitFor({ state: "hidden", timeout: 3000 });
   assert.equal(
     await page.locator(".selector").textContent(),
     selected,

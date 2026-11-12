@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { expect, test } from "vitest";
-import { manifestOf, validate } from "./contract";
+import { checkProject, manifestOf, validate } from "./contract";
 
 const VALID = {
   format: "design-workshop/manifest",
@@ -109,4 +109,44 @@ test("manifestOf reads stories by declaring file and classifies the shell from i
   expect(manifestOf({ version: "10.6.0", index, slots: ["window", "sidebar"], names }).shell).toBe(
     "full-screen",
   );
+});
+
+const project = (change: object, manifest: object = {}) =>
+  JSON.stringify({
+    format: "design-workshop/project",
+    version: 1,
+    manifest: { ...VALID, ...manifest },
+    overrides: { ":root": { "--window-radius": "20px" } },
+    ...change,
+  });
+const failed = (text: string) =>
+  checkProject(text).flatMap((i) =>
+    i.failure === undefined ? [] : [`${i.failure.code} ${i.path}`],
+  );
+
+test("a project's checklist names every contract item and passes a valid file", () => {
+  const items = checkProject(project({}));
+  expect(items.every((i) => i.failure === undefined)).toBe(true);
+  expect(items.map((i) => i.path)).toContain("components/ComposeBox");
+  expect(items.map((i) => i.path)).toContain("slots/title-bar");
+});
+
+test("a project file is refused with each item's own code", () => {
+  expect(failed("nope")).toEqual(["not-json "]);
+  expect(failed(project({ format: "design-workshop/manifest" }))).toEqual(["bad-format format"]);
+  expect(failed(project({}, { storybook: { version: "10.6.7", indexVersion: 5 } }))).toEqual([
+    "storybook-version storybook/version",
+  ]);
+  expect(failed(project({}, { slots: ["window", "sidebar"] }))).toEqual([
+    "missing-slot slots/title-bar",
+  ]);
+  expect(
+    failed(project({}, { components: { ...VALID.components, UserTurn: { stories: [] } } })),
+  ).toEqual(["missing-story components/UserTurn"]);
+  expect(failed(project({ overrides: { ":root": { "--x": 3 } } }))).toEqual([
+    "bad-overrides overrides",
+  ]);
+  const text = project({}, { surfaces: ["dock"] });
+  expect(failed(text)).toEqual(["unknown-surface surfaces/dock"]);
+  expect(checkProject(text)).toEqual(checkProject(text));
 });

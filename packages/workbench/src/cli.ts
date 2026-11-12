@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { validate } from "./contract.ts";
+import { checkProject, validate } from "./contract.ts";
 import { exportProject, readManifest } from "./project.ts";
 import { checkValues, listValues, writeValues } from "./plugin.ts";
 import { parseOverrides } from "./overrides.ts";
@@ -10,6 +10,7 @@ const TOKENS = fileURLToPath(new URL("../../catalog/src/tokens.css", import.meta
 const USAGE = `Usage: pnpm workbench list [--json]
        pnpm workbench manifest
        pnpm workbench export > look.project.json
+       pnpm workbench check-project <file>
        pnpm workbench set <selector> <name> <value>
        pnpm workbench unset <selector> <name>
        pnpm workbench check
@@ -34,6 +35,7 @@ const COMMANDS: Record<
   },
   manifest: { counts: [0], run: manifest },
   export: { counts: [0], run: exportFile },
+  "check-project": { counts: [1], run: ([file = ""]) => checkProjectFile(file) },
   check: {
     counts: [0],
     run: () => {
@@ -71,6 +73,16 @@ async function exportFile(): Promise<void> {
     return;
   }
   process.stdout.write(`${JSON.stringify(project, null, 2)}\n`);
+}
+
+// Prints a project file's checklist, the same list the Workbench shows; exits 1 on any failure.
+function checkProjectFile(file: string): void {
+  const items = checkProject(readFileSync(file, "utf8")); // → CheckItem[]
+  const lines = items.map(({ path, failure }) =>
+    failure ? `FAIL ${path}  ${failure.code}: ${failure.message}` : `ok   ${path}`,
+  ); // → string[]
+  process.stdout.write(`${lines.join("\n")}\n`);
+  if (items.some((i) => i.failure)) process.exitCode = 1;
 }
 
 function edit(selector: string, name: string, value: string | null): void {

@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdirSync, readFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { validate } from "../../../packages/workbench/src/contract.ts";
 import { parseOverrides } from "../../../packages/workbench/src/overrides.ts";
 import { arg, launch, report, ROOT, workbenchPage } from "./harness.mjs";
 
-// Project files story (docs/feature/project-files/project-files-story.md), feature 1.
+// Project files story (docs/feature/project-files/project-files-story.md), features 1 and 2.
 const base = arg("--base", "http://localhost:5173");
 const out = arg("--out", path.join(ROOT, ".artifacts/project"));
 const status = () =>
@@ -17,6 +17,22 @@ const status = () =>
 const before = status();
 const browser = await launch();
 const { page, errors } = await workbenchPage(browser, { acceptDownloads: true });
+// The checklist as the command line prints it: one "ok|FAIL path code" per item.
+const cli = (file) => {
+  try {
+    return execFileSync("node", ["packages/workbench/src/cli.ts", "check-project", file], {
+      cwd: ROOT,
+      encoding: "utf8",
+    });
+  } catch (e) {
+    return String(e.stdout);
+  }
+};
+const cliList = (file) =>
+  cli(file)
+    .trim()
+    .split("\n")
+    .map((line) => line.replace(/:.*$/, "").replaceAll(/\s+/g, " ").trim());
 const results = [];
 const step = async (name, run) => {
   try {
@@ -64,6 +80,79 @@ try {
 
   await step("1.3 exporting writes nothing in the repo", () => {
     assert.equal(status(), before);
+  });
+  const overrides = path.join(ROOT, "packages/catalog/src/overrides.css");
+  const startingOverrides = readFileSync(overrides, "utf8");
+  const uiList = async (file) => {
+    await page.locator('input[type="file"][aria-label="Project file"]').setInputFiles(file);
+    const dialog = page.getByRole("dialog", { name: "Project file" });
+    await dialog.waitFor();
+    const rows = await dialog.locator("li").evaluateAll((lis) =>
+      lis.map((li) => {
+        const code = li.querySelector("code")?.textContent ?? "";
+        const fail = li.classList.contains("failed");
+        const detail = li.querySelector("span:last-child")?.textContent?.split(":")[0] ?? "";
+        return `${fail ? "FAIL" : "ok"} ${code === "file" ? "" : code}${fail ? ` ${detail}` : ""}`.trim();
+      }),
+    );
+    return rows;
+  };
+  const fixture = (name, change) => {
+    const file = path.join(out, `${name}.project.json`);
+    const copy = structuredClone(project);
+    change(copy.manifest);
+    writeFileSync(file, JSON.stringify(copy));
+    return file;
+  };
+  const fixtures = {
+    valid: fixture("valid", () => {}),
+    version: fixture("version", (m) => {
+      m.storybook.version = "10.6.7";
+    }),
+    slot: fixture("slot", (m) => {
+      m.slots = m.slots.filter((s) => s !== "title-bar");
+    }),
+    story: fixture("story", (m) => {
+      m.components.ComposeBox.stories = [];
+    }),
+  };
+  const expected = {
+    valid: [],
+    version: ["FAIL storybook/version storybook-version"],
+    slot: ["FAIL slots/title-bar missing-slot"],
+    story: ["FAIL components/ComposeBox missing-story"],
+  };
+
+  for (const [name, file] of Object.entries(fixtures)) {
+    await step(
+      `2.1-2.4 ${name}: the Workbench and the command line give the same checklist`,
+      async () => {
+        const ui = await uiList(file);
+        assert.deepEqual(ui, cliList(file));
+        assert.deepEqual(
+          ui.filter((l) => l.startsWith("FAIL")),
+          expected[name],
+        );
+        assert.deepEqual(await uiList(file), ui, "the same file gives the same list again");
+        await page.getByRole("dialog", { name: "Project file" }).screenshot({
+          path: path.join(out, `checklist-${name}.png`),
+        });
+        await page.getByRole("button", { name: "Close", exact: true }).click();
+      },
+    );
+  }
+
+  await step("2.2 a wrong Storybook version names both versions", async () => {
+    await page
+      .locator('input[type="file"][aria-label="Project file"]')
+      .setInputFiles(fixtures.version);
+    const text = await page.getByRole("dialog", { name: "Project file" }).textContent();
+    assert.ok(text.includes("10.6.0") && text.includes("10.6.7"), text);
+    await page.getByRole("button", { name: "Close", exact: true }).click();
+  });
+
+  await step("2.1 checking writes nothing", () => {
+    assert.equal(readFileSync(overrides, "utf8"), startingOverrides);
   });
 } finally {
   await browser.close();
