@@ -146,9 +146,10 @@ that end in its completion check. The phases above are tickets inside these.
 6. **Project save, export, load** (ETH-125 to 127). Done: `c6ada6e`, `89a9b6d`, `74902cf`,
    `74cd9e4`. Commits: export; check; load.
    Check: export, check and load round-trip in the browser; invalid files cannot load.
-7. **Semantic component mapping.** Commits: contract surfaces resolve to rendered components
-   and their colour roles; inspector names a selection's surface. Check: selecting the compose
-   box shows it as the compose surface and its role colours.
+7. **Semantic component mapping.** Done: `613e9b2` (ETH-132). Commits: contract surfaces
+   resolve to rendered components and their colour roles; inspector names a selection's
+   surface. Check: selecting the compose box shows it as the compose surface and its role
+   colours.
 8. **Charts on bklit** (ETH-128 to 130). Check: no `recharts`; chart stories pass; measured.
 9. **Performance and architecture.** Commits from measurement only. Check: before and after
    numbers for each change, with run counts and spread.
