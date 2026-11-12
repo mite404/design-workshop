@@ -100,4 +100,4 @@ INIT is complete when every item holds, each with its command output recorded in
 - [x] The scratch app's `check-project` output is the same list on two runs.
 - [x] `pnpm format`, `pnpm lint`, `pnpm typecheck`, `pnpm fallow`, unit tests and the browser
       suites pass (Safari deferred by Ethan).
-- [ ] Each ticket is Done in Linear with a resolution comment linking its commit.
+- [x] Each ticket is Done in Linear with a resolution comment linking its commit.
