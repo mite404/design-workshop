@@ -509,3 +509,6 @@ baselines. This repo names `packages/catalog/src/tokens.css`. The override file 
 `.workbench/overrides.css` here too, so this repo is a host like any other and `dev` serves it
 with no special case. Rejected: a Template-only code path for this repo's baselines, a second
 path the proxy was meant to remove.
+Amended 2026-11-12 (ETH-158): `init` proposes `tokens` as the stylesheet naming the most theme
+roles, and writes `roles` and `colourSelectors` from it (PRD section 13); a person still edits
+the config to name another file.

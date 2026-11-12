@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import { checkConfig } from "./config.ts";
 import CONTRACT from "./contract.json" with { type: "json" };
 import { setOverride } from "./overrides.ts";
+import { answerRoles, detectRoles } from "./theme.ts";
 
 const SLOTS = CONTRACT.shells["app-shell"].slots;
 const LOCKFILES = [
@@ -42,7 +43,7 @@ function sourceOf(path: string): string {
 // The folders to scan: those holding `data-slot` or `data-wb` declarations, outermost only and
 // sorted; with none, `src` when it exists. ponytail: a host declaring only at its root is skipped.
 function sourcesOf(declaring: string[], paths: string[]): string[] {
-  const found = [...new Set(declaring.map(sourceOf))].filter((s) => s !== "").toSorted();
+  const found = [...new Set(declaring.map((p) => sourceOf(p)))].filter((s) => s !== "").toSorted();
   const outer = found.filter((s) => !found.some((o) => s.startsWith(`${o}/`)));
   if (outer.length > 0) return outer;
   return paths.some((p) => p.startsWith("src/")) ? ["src"] : [];
@@ -66,16 +67,20 @@ export function detect(
   );
   const own = paths.filter((p) => sources.some((s) => p.startsWith(`${s}/`)));
   const slots = new Set(
-    own.filter(component).flatMap((p) => [...text(p).matchAll(SLOT)].map((m) => m[1] ?? "")),
+    own
+      .filter((p) => component(p))
+      .flatMap((p) => [...text(p).matchAll(SLOT)].map((m) => m[1] ?? "")),
   );
   const missing = SLOTS.filter((s) => !slots.has(s));
   const shell = missing.length === 0 ? "app-shell" : "full-screen";
   const configDir = paths.map((p) => STORYBOOK_MAIN.exec(p)?.[1]).find((d) => d !== undefined);
+  const found = detectRoles(paths.filter((p) => p.endsWith(".css")).map((p) => [p, text(p)]));
   const config = {
     format: "design-workshop/config",
     version: 1,
     sources,
     storybook: configDir === undefined ? null : { configDir },
+    ...found.fields,
   };
   return {
     config,
@@ -86,11 +91,11 @@ export function detect(
     storybook: configDir === undefined ? null : { configDir, version: versionOf(configDir) },
     side: {
       asked: shell === "app-shell" && own.some((p) => READS_SIDE.test(text(p))),
-      default: (own.some((p) => SIDEBAR_RIGHT.test(text(p)))
-        ? "right"
-        : "left") satisfies Side as Side,
+      default: (own.some((p) => SIDEBAR_RIGHT.test(text(p))) ? "right" : "left") satisfies Side,
     },
     packageManager: LOCKFILES.find(([file]) => files.has(file))?.[1] ?? null,
+    // Theme roles no stylesheet names, asked only when one names some (PRD section 13).
+    unmatched: found.unmatched,
   };
 }
 
@@ -235,11 +240,19 @@ function hostFiles(root: string) {
   };
 }
 
-// The plan as lines: a notice when --side was skipped, then each file written or kept.
-const planLines = (plan: ReturnType<typeof installFiles>, skipped: boolean) => [
+// The plan as lines: a notice when --side was skipped, each file written or kept, then the theme
+// roles a written config leaves without a variable.
+const planLines = (
+  plan: ReturnType<typeof installFiles>,
+  skipped: boolean,
+  unmatched: string[],
+) => [
   ...(skipped ? ["The shell's side is fixed by this app's own code; --side skipped."] : []),
   ...[...plan.writes.keys()].map((path) => `  write ${path}`),
   ...plan.kept.map((path) => `  keep  ${path}`),
+  ...(plan.writes.has(".workbench/config.json") && unmatched.length > 0
+    ? [`Themes skip roles with no variable; adapt the app or add roles: ${unmatched.join(", ")}`]
+    : []),
 ];
 
 // The side, asking a person only when no flag answers it and the host reads it.
@@ -264,10 +277,19 @@ export async function install(
   options: { side?: string; yes: boolean },
   ask: (question: string) => Promise<string>,
 ): Promise<string[]> {
-  const found = await inspect(root);
-  const plan = installFiles(found, await sideFor(found, options, ask), hostFiles(root));
+  const detected = await inspect(root);
+  const host = hostFiles(root);
+  const side = await sideFor(detected, options, ask);
+  const asking = !options.yes && !host.config && detected.unmatched.asked;
+  const { config, unmatched } = await answerRoles(
+    detected.config,
+    detected.unmatched.roles,
+    asking ? ask : null,
+  );
+  const found = { ...detected, config };
+  const plan = installFiles(found, side, host);
   if (plan.refusals.length > 0) throw new Error(plan.refusals.join("\n"));
-  const lines = planLines(plan, options.side !== undefined && !found.side.asked);
+  const lines = planLines(plan, options.side !== undefined && !found.side.asked, unmatched);
   if (plan.writes.size === 0) return lines;
   const confirmed =
     options.yes || (await ask(`${lines.join("\n")}\nWrite these files? (y/N) `)) === "y";

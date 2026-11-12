@@ -237,8 +237,9 @@ look in under an hour without writing a prompt.
   from a component Ethan likes elsewhere by translating its styles into the Template's value names.
   *Partly built, as role-keyed theme files (ADR-028): save the colours as a palette, load and
   unload a palette or a type pairing (ETH-119 to 121). A project file carries a whole look into
-  another checkout (ETH-125 to 127). Starting a project from a theme and agent-drafted themes are
-  not built.*
+  another checkout (ETH-125 to 127). Themes reskin another app through its role map, which
+  `init` detects and asks about (ETH-156 to 158), so a new app starts from a theme by running
+  `init` and loading it. Agent-drafted themes are not built.*
 - R17. Motion: scrub a running transition, edit duration and easing curves. *Built: the
   controls' hover duration (ETH-139, ADR-038) and easing (ETH-140, ADR-039) are shared tokens
   the Workbench edits, the easing on a curve editor, and a slider scrubs that transition on the
@@ -368,7 +369,7 @@ These are Ethan's stated preferences for how the Workbench itself should look an
     role names, or that an agent can adapt to them without breaking changes. Roles are found by
     a fixed name table, Template names first, then the shadcn names this repo maps
     (`packages/ui/src/styles/globals.css`); `init` asks about the rest; an agent adapting the app
-    is the fallback. [Story](feature/role-map/role-map-story.md).
+    is the fallback. [Story](done/role-map/role-map-story.md).
 
 ## 14. Open questions
 

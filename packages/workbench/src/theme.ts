@@ -216,3 +216,66 @@ export function matchRoles(css: string): RoleMatch[] {
     return { role, name: null, table: null };
   });
 }
+
+// The config's role fields for `matches`: none when every role has its Template name (ADR-028),
+// else the roles found, and shadcn's light and dark selectors when a colour came from shadcn.
+// ponytail: shadcn's `.dark` class assumed; a host on another dark selector edits its config.
+function roleFields(matches: RoleMatch[]): {
+  roles?: Record<string, string>;
+  colourSelectors?: { light: string; dark: string };
+} {
+  if (matches.every((m) => m.table === "template")) return {};
+  const roles = Object.fromEntries(
+    matches.flatMap((m) => (m.name === null ? [] : [[m.role, m.name]])),
+  );
+  const shadcn = matches.some((m) => m.table === "shadcn" && has(COLOUR_ROLES, m.role));
+  return { roles, ...(shadcn ? { colourSelectors: { light: ":root", dark: ".dark" } } : {}) };
+}
+
+const named = (matches: RoleMatch[]) => matches.filter((m) => m.name !== null).length;
+
+/**
+ * What `init` writes for an app's `sheets` ([path, css]): the one declaring the most role names
+ * as `tokens`, the role fields its matches give, and the roles none names, asked about only when
+ * some sheet names a role (PRD section 13).
+ */
+export function detectRoles(sheets: [string, string][]) {
+  // ponytail: one stylesheet; a host splitting its roles across several gets the rest asked.
+  const best = sheets
+    .map(([path, css]) => ({ path, matches: matchRoles(css) }))
+    .filter((s) => named(s.matches) > 0)
+    .toSorted((a, b) => named(b.matches) - named(a.matches))[0];
+  const matches = best?.matches ?? matchRoles("");
+  return {
+    fields: { ...(best === undefined ? {} : { tokens: best.path }), ...roleFields(matches) },
+    unmatched: {
+      roles: matches.filter((m) => m.name === null).map((m) => m.role),
+      asked: best !== undefined,
+    },
+  };
+}
+
+/**
+ * `config` with a person's answers for the theme `roles` it leaves unmatched, asked one at a time
+ * by `ask` (null asks nothing), and the roles still unmatched. Answers join `roles`, which a
+ * config with unmatched roles always has.
+ * @throws When an answer is neither empty (skip) nor a custom property name.
+ */
+export async function answerRoles<C extends { roles?: Record<string, string> }>(
+  config: C,
+  roles: string[],
+  ask: ((question: string) => Promise<string>) | null,
+): Promise<{ config: C; unmatched: string[] }> {
+  const answers: Record<string, string> = {};
+  for (const role of ask === null ? [] : roles) {
+    // oxlint-disable-next-line no-await-in-loop -- one person answers one question at a time
+    const name = (await ask?.(`Variable for theme role ${role}? (Enter to skip) `)) ?? "";
+    if (name !== "" && !/^--[A-Za-z0-9-]+$/.test(name)) throw new Error(`No variable ${name}.`);
+    if (name !== "") answers[role] = name;
+  }
+  return {
+    config:
+      config.roles === undefined ? config : { ...config, roles: { ...config.roles, ...answers } },
+    unmatched: roles.filter((role) => !Object.hasOwn(answers, role)),
+  };
+}

@@ -17,6 +17,7 @@ import { checkProject } from "./contract";
 import { detect, inspect } from "./init";
 import { parseOverrides } from "./overrides";
 import { readManifest } from "./project";
+import { COLOUR_ROLES, TYPE_ROLES } from "./theme";
 
 const SHELL =
   '<div data-slot="window"><b data-slot="title-bar" /><nav data-slot="sidebar" /></div>';
@@ -40,6 +41,7 @@ test("an app-shell host that reads the side is asked it, defaulting to its Sideb
       version: 1,
       sources: ["apps/web/src", "packages/ui/src"],
       storybook: { configDir: "apps/storybook/.storybook" },
+      roles: {},
     },
     failures: [],
     shell: "app-shell",
@@ -47,6 +49,8 @@ test("an app-shell host that reads the side is asked it, defaulting to its Sideb
     storybook: { configDir: "apps/storybook/.storybook", version: "10.6.0" },
     side: { asked: true, default: "right" },
     packageManager: "pnpm",
+    // No stylesheet names a role, so none is asked; all 22 are listed.
+    unmatched: { asked: false, roles: Object.keys({ ...COLOUR_ROLES, ...TYPE_ROLES }) },
   });
 });
 
@@ -79,9 +83,10 @@ test("a host with no source folder at all gives a config the check refuses", () 
 test("this repo's detected config is the one it commits", async () => {
   const root = fileURLToPath(new URL("../../../", import.meta.url));
   const found = await inspect(root);
-  // `tokens` is named by a person, not detected (ADR-045).
+  // The tokens file is the stylesheet naming the most theme roles; every role has its Template name.
   const committed: unknown = JSON.parse(readFileSync(`${root}.workbench/config.json`, "utf8"));
-  expect({ ...found.config, tokens: "packages/catalog/src/tokens.css" }).toEqual(committed);
+  expect(found.config).toEqual(committed);
+  expect(found.unmatched.roles).toEqual([]);
   expect(found.shell).toBe("app-shell");
   expect(found.storybook?.version).toBe("10.6.0");
   expect(found.side).toEqual({ asked: true, default: "left" });
@@ -152,7 +157,9 @@ test("init --yes in a scratch Vite app writes exactly its files, and a rerun wri
     version: 1,
     sources: ["src"],
     storybook: null,
+    roles: {},
   });
+  expect(first.stdout).toContain("Themes skip roles with no variable");
   expect(after[".workbench/overrides.css"]).toBe(
     EMPTY.replace("{\n", "{\n  --shell-side: right;\n"),
   );
@@ -220,4 +227,41 @@ test("a person answers the side and confirms, or declines and nothing is written
   const bad = init(scratch(), "up\n");
   expect(bad.status).toBe(1);
   expect(bad.stderr).toContain("No side up.");
+});
+
+const SHADCN = {
+  ...VITE_APP,
+  "src/globals.css":
+    ":root {\n  --background: #fff;\n  --foreground: #111;\n  --card: #fff;\n}\n.dark {\n  --background: #000;\n}\n",
+};
+
+test("a shadcn app's roles are detected, the rest asked one by one or listed with --yes", () => {
+  const listed = scratch(SHADCN);
+  const quiet = init(listed, "", "--yes");
+  expect(quiet.status).toBe(0);
+  expect(quiet.stdout).not.toContain("Variable for theme role");
+  expect(quiet.stdout).toContain("adapt the app or add roles: hover, compose, control");
+  expect(JSON.parse(readFileSync(join(listed, ".workbench/config.json"), "utf8"))).toMatchObject({
+    tokens: "src/globals.css",
+    roles: { page: "--background", surface: "--card", ink: "--foreground" },
+    colourSelectors: { light: ":root", dark: ".dark" },
+  });
+
+  // The side, then each unmatched role in table order (hover first), then the confirmation.
+  const asked = scratch(SHADCN);
+  const answers = ["", "--paper-hover", ...Array.from({ length: 18 }, () => ""), "y"];
+  const result = init(asked, `${answers.join("\n")}\n`);
+  expect(result.status).toBe(0);
+  expect(result.stdout).toContain("Variable for theme role hover? (Enter to skip)");
+  const config: unknown = JSON.parse(readFileSync(join(asked, ".workbench/config.json"), "utf8"));
+  expect(config).toHaveProperty("roles", {
+    page: "--background",
+    surface: "--card",
+    ink: "--foreground",
+    hover: "--paper-hover",
+  });
+
+  const bad = init(scratch(SHADCN), "\npaper\n");
+  expect(bad.status).toBe(1);
+  expect(bad.stderr).toContain("No variable paper.");
 });

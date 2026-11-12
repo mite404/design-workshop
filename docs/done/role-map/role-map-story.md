@@ -46,6 +46,6 @@ Each ticket is one commit, verified and pushed before the next starts.
 
 - [x] In this repo, `pnpm workbench roles` matches every role by its Template name (ETH-156).
 - [x] A shadcn-style scratch app loads a palette, and its own variables change (ETH-157).
-- [ ] `init` in that app writes the detected map and asks only about the unmatched roles
+- [x] `init` in that app writes the detected map and asks only about the unmatched roles
       (ETH-158).
-- [ ] Gates pass at each commit; each ticket is Done in Linear with its commit linked.
+- [x] Gates pass at each commit; each ticket is Done in Linear with its commit linked.
