@@ -30,6 +30,6 @@ Each ticket is one commit, verified and pushed before the next starts.
 
 - [x] A message sent on one component is back after opening another and returning, and after a
       reload (ETH-154).
-- [ ] Component mode shows the docked panel named for its component; Live mode does not
+- [x] Component mode shows the docked panel named for its component; Live mode does not
       (ETH-155).
-- [ ] Gates pass at each commit; each ticket is Done in Linear with its commit linked.
+- [x] Gates pass at each commit; each ticket is Done in Linear with its commit linked.

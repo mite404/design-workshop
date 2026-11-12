@@ -1,7 +1,8 @@
-// Component chat check (ETH-154, R19): in Component mode the Workbench chat belongs to the open
-// component. A message sent with a reference on one component is gone on another, back on
-// returning to it and after a reload, its reference still resolved; Live mode's chat does not
-// show it. Screenshots go to .artifacts/component-chat/.
+// Component chat check (ETH-154, ETH-155, R19): in Component mode the Workbench chat belongs to
+// the open component and docks open at the canvas's right, the app narrowed beside it. A message
+// sent with a reference on one component is gone on another, back on returning to it and after a
+// reload, its reference still resolved; Live mode's chat does not show it and is not docked.
+// Screenshots go to .artifacts/component-chat/.
 //   node apps/web/scripts/component-chat-check.mjs [--base http://localhost:5173] [--out dir]
 import { mkdirSync } from "node:fs";
 import path from "node:path";
@@ -49,6 +50,19 @@ async function openComponent(name) {
   );
 }
 
+// The panel's title and whether it is docked open with the frame ending where it begins.
+const layout = () =>
+  page.evaluate(() => {
+    const panel = document.querySelector(".chat");
+    const app = document.querySelector(".frame").getBoundingClientRect();
+    const box = panel.getBoundingClientRect();
+    return {
+      title: panel.querySelector("h2").textContent,
+      docked: panel.dataset.docked === "true" && panel.dataset.open === "true",
+      beside: Math.abs(app.right - box.left) < 1 && Math.abs(box.height - app.height) < 1,
+    };
+  });
+
 async function expectMessages(count) {
   await page
     .waitForFunction(
@@ -81,7 +95,6 @@ try {
 
   await step("a message with a reference is sent on the open component", async () => {
     await openComponent("ChatThreadPanel");
-    await page.getByRole("button", { name: "Chat", exact: true }).click();
     await page.getByRole("button", { name: "Reference an element" }).click();
     const text = frame.locator('[data-wb="ChatThreadPanel"] p:visible').last();
     await text.scrollIntoViewIfNeeded();
@@ -93,6 +106,12 @@ try {
     await page.getByRole("button", { name: "Send", exact: true }).click();
     await expectMessages(1);
     await page.screenshot({ path: path.join(out, "01-sent.png") });
+  });
+
+  await step("the chat docks open beside the app, named for its component", async () => {
+    const found = await layout();
+    if (found.title !== "Chat · ChatThreadPanel" || found.docked !== true || found.beside !== true)
+      throw new Error(JSON.stringify(found));
   });
 
   await step("another component opens with its own, empty chat", async () => {
@@ -117,7 +136,6 @@ try {
     await page.waitForFunction(
       () => document.querySelector(".chat-message li.chip")?.dataset.unresolved === "false",
     );
-    await page.getByRole("button", { name: "Chat", exact: true }).click();
     await page.screenshot({ path: path.join(out, "02-after-reload.png") });
     return (await chip.locator(".chip-label").textContent()) ?? "";
   });
@@ -126,6 +144,9 @@ try {
     await frame.getByRole("button", { name: "Live mode", exact: true }).click();
     await page.waitForFunction(() => document.querySelector("iframe").style.maskImage === "");
     await expectMessages(0);
+    const found = await layout();
+    if (found.docked !== false || found.title !== "Chat") throw new Error(JSON.stringify(found));
+    await page.screenshot({ path: path.join(out, "03-live.png") });
   });
 } finally {
   await browser.close();

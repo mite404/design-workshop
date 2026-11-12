@@ -247,8 +247,8 @@ look in under an hour without writing a prompt.
   its Storybook story, and the drawer lists those stories. *Built (ETH-118).*
 - R19. **Component chat history.** In Component mode, a chat history panel sits on the right of
   the app, beside the component tree drawer. It holds one chat per component, persisted, and is
-  shown only in Component mode. *Planned: [story](feature/component-chat/component-chat-story.md),
-  ETH-154 and ETH-155.*
+  shown only in Component mode. *Built (ETH-154, ETH-155):
+  [story](done/component-chat/component-chat-story.md).*
 
 ### Not doing
 

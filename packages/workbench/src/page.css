@@ -1521,8 +1521,33 @@ body[data-referencing] .overlay,
   transition-delay: 0s;
 }
 
+/* Component mode (R19): the component's chat docks full height at the canvas's right, and the
+   app and its overlay narrow beside it, so the panel never covers the component. */
+.chat[data-docked="true"] {
+  top: 0;
+  right: 0;
+  bottom: 0;
+  max-height: none;
+  border-radius: 0;
+  box-shadow: -0.5px 0 0 rgb(0 0 0 / 0.12);
+}
+
+.chat[data-docked="true"][data-open="false"] {
+  translate: 12px 0;
+}
+
+.canvas:has(> .chat[data-docked="true"][data-open="true"]) > :is(.frame, .overlay) {
+  width: calc(100% - 360px);
+}
+
+.canvas:has(> .chat[data-docked="true"][data-open="true"]) > .dock {
+  right: calc(360px + 16px);
+}
+
 .chat header {
   display: flex;
+  flex-wrap: wrap;
+  column-gap: 8px;
   align-items: baseline;
   justify-content: space-between;
   padding: 10px 12px;
@@ -1531,6 +1556,7 @@ body[data-referencing] .overlay,
 
 .chat h2 {
   margin: 0;
+  white-space: nowrap;
   font-size: 11px;
   font-weight: 600;
 }

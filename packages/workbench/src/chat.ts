@@ -71,13 +71,14 @@ const draft = element("textarea", {
   ariaLabel: "Message",
 });
 const send = element("button", { type: "button", className: "primary" }, "Send");
+const title = element("h2", {}, "Chat");
 const panel = element(
   "section",
   { className: "chat", id: "wb-chat", ariaLabel: "Chat", inert: true },
   element(
     "header",
     {},
-    element("h2", {}, "Chat"),
+    title,
     element("span", { className: "chat-mock" }, "Mocked · nothing is sent to a model"),
   ),
   log,
@@ -325,6 +326,10 @@ export function showChatFor(component: string | null): void {
   if (component === chatName) return;
   if (chatName === null) liveLog = [...log.childNodes];
   chatName = component;
+  // Docked full height at the canvas's right, open, and named for its component (R19).
+  panel.dataset.docked = String(component !== null);
+  title.textContent = component === null ? "Chat" : `Chat · ${component}`;
+  open(component !== null);
   messages = component === null ? [] : parseMessages(localStorage.getItem(chatKeyOf(component)));
   log.replaceChildren(
     ...(component === null
