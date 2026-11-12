@@ -30,6 +30,8 @@ try {
     .evaluate((element) =>
       Promise.all(element.getAnimations().map((animation) => animation.finished)),
     );
+  assert.equal(await row("AgentTurn").first().getAttribute("aria-expanded"), "false");
+  assert.equal(await row("IconButton").count(), 0, "nested components start folded into groups");
   const panel = frame.locator('[data-wb="ChatThreadPanel"]').first();
   await row("ChatThreadPanel").first().locator(':scope > [data-sidebar="menu-button"]').click();
   assert.ok(await selected(panel), "a tree click selects the real component");
@@ -136,7 +138,7 @@ try {
   await page.setViewportSize({ width: 630, height: 900 });
   await frame.locator('[data-mobile="true"][data-slot="sidebar"]').waitFor({ state: "attached" });
   await toggle.click();
-  await row("CatalogCard").first().focus();
+  await row("UserTurn").first().focus();
   await page.keyboard.press("Escape");
   assert.equal(
     await toggle.getAttribute("aria-expanded"),
@@ -145,11 +147,11 @@ try {
   );
   await page.setViewportSize({ width: 1440, height: 900 });
 
-  assert.ok((await row("CatalogCard").count()) > 0);
+  assert.ok((await row("UserTurn").count()) > 0);
   await page.locator(".tool").click();
   await frame.getByRole("link", { name: "Home", exact: true }).click();
   await frame.locator(".welcome").waitFor();
-  await row("CatalogCard").first().waitFor({ state: "detached" });
+  await row("UserTurn").first().waitFor({ state: "detached" });
   assert.equal(await tree.locator('[data-slot="sidebar"]').count(), 0);
   assert.equal(await row("sidebar").count(), 0, "the drawer never lists itself");
 

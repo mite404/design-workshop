@@ -45,7 +45,8 @@ export default function ComponentTree() {
   );
   const [selected, setSelected] = useState<Element | null>(null);
   const [focused, setFocused] = useState<Element | null>(null);
-  const [folded, setFolded] = useState(new Set<Element>());
+  // Rows the user opened or shut; others show only the top-level groups open.
+  const [choices, setChoices] = useState(new Map<Element, boolean>());
   const tree = useRef<HTMLUListElement>(null);
   const rows = useRef(new Map<Element, HTMLLIElement>());
   const { open, openMobile, isMobile } = useSidebar();
@@ -78,12 +79,16 @@ export default function ComponentTree() {
       if (element === null || element instanceof Element) {
         const component = element?.closest(NAMED) ?? null;
         setSelected(component);
-        setFolded(
-          (current) =>
-            new Set(
-              [...current].filter((parent) => parent === component || !parent.contains(component)),
-            ),
-        );
+        setChoices((current) => {
+          const next = new Map(current);
+          for (
+            let a = component?.parentElement?.closest(NAMED);
+            a;
+            a = a.parentElement?.closest(NAMED)
+          )
+            next.set(a, true);
+          return next;
+        });
       }
     };
     document.addEventListener(TREE_EVENT.selected, follow);
@@ -108,12 +113,10 @@ export default function ComponentTree() {
     };
   }, [selected, visible]);
 
-  function toggle(element: Element): void {
-    setFolded((current) => {
-      const next = new Set(current);
-      if (!next.delete(element)) next.add(element);
-      return next;
-    });
+  const isOpen = (element: Element, depth: number) => choices.get(element) ?? depth === 0;
+
+  function toggle(element: Element, expanded: boolean): void {
+    setChoices((current) => new Map(current).set(element, !expanded));
   }
 
   function choose(element: Element): void {
@@ -121,17 +124,16 @@ export default function ComponentTree() {
     if (shell?.active) shell.setMode(shell.active.main, "component");
   }
 
-  function branchKey(key: string, node: ComponentNode, row: HTMLLIElement) {
-    const closed = folded.has(node.element);
+  function branchKey(key: string, node: ComponentNode, row: HTMLLIElement, expanded: boolean) {
     if (key === "ArrowRight") {
       if (node.children.length === 0) return;
-      if (closed) toggle(node.element);
+      if (!expanded) toggle(node.element, expanded);
       else focusRow(row.querySelector<HTMLLIElement>('[role="treeitem"]'));
-    } else if (node.children.length > 0 && !closed) toggle(node.element);
+    } else if (node.children.length > 0 && expanded) toggle(node.element, expanded);
     else focusRow(row.parentElement?.closest<HTMLElement>('[role="treeitem"]'));
   }
 
-  function keys(event: KeyboardEvent<HTMLLIElement>, node: ComponentNode): void {
+  function keys(event: KeyboardEvent<HTMLLIElement>, node: ComponentNode, expanded: boolean): void {
     if (event.altKey || event.ctrlKey || event.metaKey) return;
     const row = event.currentTarget;
     const all = [...(tree.current?.querySelectorAll<HTMLLIElement>('[role="treeitem"]') ?? [])];
@@ -152,7 +154,7 @@ export default function ComponentTree() {
       return;
     }
     if (["ArrowRight", "ArrowLeft"].includes(event.key)) {
-      branchKey(event.key, node, row);
+      branchKey(event.key, node, row, expanded);
     } else {
       choose(node.element);
     }
@@ -162,7 +164,7 @@ export default function ComponentTree() {
 
   function renderNodes(items: ComponentNode[], depth = 0) {
     return items.map((node) => {
-      const expanded = !folded.has(node.element);
+      const expanded = isOpen(node.element, depth);
       const active = selected === node.element;
       return (
         <SidebarMenuItem
@@ -177,7 +179,7 @@ export default function ComponentTree() {
           aria-expanded={node.children.length > 0 ? expanded : undefined}
           tabIndex={tabStop === node.element ? 0 : -1}
           className="outline-hidden"
-          onKeyDown={(event) => keys(event, node)}
+          onKeyDown={(event) => keys(event, node, expanded)}
           onFocus={(event) => {
             if (event.target === event.currentTarget) setFocused(node.element);
           }}
@@ -206,7 +208,7 @@ export default function ComponentTree() {
                 onClick={(event) => {
                   event.stopPropagation();
                   focusRow(rows.current.get(node.element));
-                  toggle(node.element);
+                  toggle(node.element, expanded);
                 }}
               >
                 <FoldChevron open={expanded} />

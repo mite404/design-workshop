@@ -138,6 +138,14 @@ try {
     true,
     "the requested component starts above the visible chat history",
   );
+  for (const name of ["AgentTurn", "Prose"]) {
+    const branch = rows.getByRole("treeitem", { name, exact: true }).first();
+    if ((await branch.getAttribute("aria-expanded")) === "false")
+      await branch
+        .getByRole("button", { name: `Expand ${name}` })
+        .first()
+        .click();
+  }
   await rows
     .getByRole("treeitem", { name: "CatalogCard", exact: true })
     .first()
