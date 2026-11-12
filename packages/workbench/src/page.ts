@@ -25,7 +25,7 @@ import {
   type Change,
   type History,
 } from "./history";
-import { chatKey, chatLayer, referencing, trackChat, watchReference } from "./chat";
+import { chatKey, chatLayer, referencing, showChatFor, trackChat, watchReference } from "./chat";
 import {
   clampRadius,
   CORNERS,
@@ -1480,7 +1480,13 @@ function trackComponent(): void {
   }
   if (storyFrame() === null) restoreComponent(d);
   showComponent(d);
+  showChatFor(openComponentName());
 }
+
+// The open component's `data-wb` name, whose chat shows (R19); null in Live mode.
+// ponytail: a story frame's component has no element here, so it keeps Live mode's chat.
+const openComponentName = (): string | null =>
+  componentMode ? (component?.closest("[data-wb]")?.getAttribute("data-wb") ?? null) : null;
 
 const rows = SPACING.map((name) => {
   const input = element("input", { id: `wb-${name}`, inputMode: "numeric", autocomplete: "off" });
@@ -4260,7 +4266,13 @@ import.meta.hot?.on("workbench:values", () => {
   next.rel = "stylesheet";
   next.dataset.workbenchOverrides = "";
   next.href = `/__workbench/overrides.css?t=${Date.now()}`;
-  next.addEventListener("load", () => links.forEach((link) => link.remove()), { once: true });
+  next.addEventListener(
+    "load",
+    () => {
+      for (const link of links) link.remove();
+    },
+    { once: true },
+  );
   newest.after(next);
 });
 frame.addEventListener("load", () => {

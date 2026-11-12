@@ -6,13 +6,15 @@
 // the file and line of the component it sits in, and its current values (R12).
 // Nothing leaves the page: no model is called.
 import { chain, element, place, selectorOf, style, type Styled } from "./dom";
+import { chatKeyOf, parseMessages, storedRef, type Message } from "./chatStore";
 import { currentValues, holds, labelOf, sourceOf } from "./reference";
 import { SPACING } from "./spacing";
 import { TYPE } from "./type";
 
 // One element a draft or message refers to: the element, and its identity when it was chosen.
+// A reference restored from storage starts without its element and finds it by its selector.
 type Ref = {
-  node: Styled;
+  node: Styled | null;
   label: string;
   selector: string;
   preview: string;
@@ -103,6 +105,10 @@ let glideTimer = 0;
 const references: Ref[] = []; // the draft's
 const shown = new Map<HTMLElement, Ref>(); // every reference on screen, to mark unresolved
 let sources: Promise<unknown> = Promise.resolve(null); // JSON: data-wb name → path:line
+// The component whose chat shows (R19), or null for Live mode's, which is not kept.
+let chatName: string | null = null;
+let messages: Message[] = [];
+let liveLog: Node[] = [];
 
 /** Whether an element is being chosen, so the page's own selection stands aside. */
 export const referencing = (): boolean => choosing;
@@ -129,7 +135,9 @@ function show(node: Styled | null): void {
   hover = node;
   highlight.dataset.glide = "";
   clearTimeout(glideTimer);
-  glideTimer = window.setTimeout(() => delete highlight.dataset.glide, GLIDE);
+  glideTimer = window.setTimeout(() => {
+    delete highlight.dataset.glide;
+  }, GLIDE);
   targetLabel.textContent = node === null ? "" : name(node);
 }
 
@@ -217,8 +225,12 @@ function previewOf(node: Element): string {
 
 // Whether `ref` still names the element it was chosen as: it is on the page, and its selector
 // is still its own. Otherwise it is unresolved and is never moved to another element.
-const resolved = (ref: Ref): boolean =>
-  ref.node.isConnected && ref.node.ownerDocument === doc() && selectorOf(ref.node) === ref.selector;
+function resolved(ref: Ref): boolean {
+  const found = ref.node ?? doc()?.querySelector(ref.selector) ?? null;
+  if (found === null || !eligible(found)) return false;
+  ref.node = found;
+  return found.isConnected && found.ownerDocument === doc() && selectorOf(found) === ref.selector;
+}
 
 function refItem(ref: Ref, removable: boolean): HTMLLIElement {
   const item = element("li", {
@@ -297,12 +309,44 @@ async function attach(): Promise<void> {
   open(true);
 }
 
+const messageItem = (text: string, refs: Ref[]): HTMLLIElement =>
+  element(
+    "li",
+    { className: "chat-message" },
+    element("ul", { className: "chips" }, ...refs.map((r) => refItem(r, false))),
+    element("p", {}, text),
+  );
+
+/**
+ * Shows the chat of `component`, a `data-wb` name (R19), kept in localStorage, or Live mode's unsaved
+ * chat for null. Cheap to call every frame: it acts only when the name changes.
+ */
+export function showChatFor(component: string | null): void {
+  if (component === chatName) return;
+  if (chatName === null) liveLog = [...log.childNodes];
+  chatName = component;
+  messages = component === null ? [] : parseMessages(localStorage.getItem(chatKeyOf(component)));
+  log.replaceChildren(
+    ...(component === null
+      ? liveLog
+      : messages.map((m) =>
+          messageItem(
+            m.text,
+            m.refs.map((r) => ({ ...r, node: null })),
+          ),
+        )),
+  );
+}
+
 function submit(): void {
   const text = draft.value.trim();
   if (text === "" && references.length === 0) return;
-  const refs = element("ul", { className: "chips" }, ...references.map((r) => refItem(r, false)));
-  log.append(element("li", { className: "chat-message" }, refs, element("p", {}, text)));
+  log.append(messageItem(text, references));
   log.lastElementChild?.scrollIntoView({ block: "end" });
+  if (chatName !== null) {
+    messages.push({ text, refs: references.map((r) => storedRef(r)) });
+    localStorage.setItem(chatKeyOf(chatName), JSON.stringify(messages));
+  }
   references.length = 0;
   draft.value = "";
   renderChips();
@@ -440,8 +484,8 @@ export function trackChat(): void {
     }
   }
   for (const [item, ref] of shown) {
-    if (!item.isConnected) shown.delete(item);
-    else item.dataset.unresolved = String(!resolved(ref));
+    if (item.isConnected) item.dataset.unresolved = String(!resolved(ref));
+    else shown.delete(item);
   }
 }
 

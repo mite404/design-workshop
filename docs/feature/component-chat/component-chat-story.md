@@ -28,7 +28,7 @@ Each ticket is one commit, verified and pushed before the next starts.
 
 ## Completion checklist
 
-- [ ] A message sent on one component is back after opening another and returning, and after a
+- [x] A message sent on one component is back after opening another and returning, and after a
       reload (ETH-154).
 - [ ] Component mode shows the docked panel named for its component; Live mode does not
       (ETH-155).
