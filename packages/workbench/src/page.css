@@ -529,9 +529,12 @@ body {
 }
 
 .row + .row,
-.note + .row,
-.font-root + .row {
+.note + .row {
   margin-top: 6px;
+}
+
+.font-root + .row {
+  margin-top: 12px;
 }
 
 .row label {
@@ -1010,11 +1013,10 @@ body {
   display: none;
 }
 
+/* Label above the field, as in the colour rows, so a family name has the panel's full width. */
 .font-root {
   display: grid;
-  grid-template-columns: 76px 1fr;
-  align-items: center;
-  gap: 8px;
+  gap: 4px;
   margin-top: 8px;
   color: var(--wb-soft-ink);
 }
