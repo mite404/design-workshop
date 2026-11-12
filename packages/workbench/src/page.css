@@ -9,19 +9,20 @@
   cursor: pointer;
 }
 
+/* Check and commit spans the row; the project file actions share the row below it. */
 .commit-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 6px;
 }
 
 .commit-row .check-commit {
-  flex: 1;
+  grid-column: 1 / -1;
   white-space: nowrap;
 }
 
 .commit-row .history-button {
-  flex: 0 0 auto;
-  padding: 0 12px;
+  padding: 6px 12px;
 }
 
 .check-commit:disabled {
