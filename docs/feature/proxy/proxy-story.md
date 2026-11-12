@@ -14,7 +14,7 @@ Each ticket is one commit, verified and pushed before the next starts.
 1. **The proxy serves the Workbench** (ETH-147). `design-workshop dev --target <url>` starts one
    server: the Workbench's own Vite, in middleware mode under the base `/__workbench/`, the same
    endpoints the plugin answers, and every other request and websocket forwarded to the target.
-   The endpoint code moves out of the plugin so both paths share it.
+   The plugin itself runs inside that Vite, so both paths share its code.
 2. **The override stylesheet without an import** (ETH-148). HTML responses get a `<link>` to
    `/__workbench/overrides.css`; the Workbench refreshes it in the frame when the file changes.
 3. **A host's own files** (ETH-149). The override file and themes come from the host's

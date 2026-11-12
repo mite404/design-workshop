@@ -18,6 +18,7 @@ const USAGE = `Usage: pnpm workbench list [--json]
        pnpm workbench export > look.project.json
        pnpm workbench check-project <file>
        pnpm workbench check-config [.workbench/config.json]
+       pnpm workbench dev --target http://localhost:5173 [--port 5180]
        pnpm workbench init <root> [--dry-run | --yes] [--side left|right]
        pnpm workbench set <selector> <name> <value>
        pnpm workbench unset <selector> <name>
@@ -42,6 +43,7 @@ const COMMANDS: Record<
     },
   },
   manifest: { counts: [0], run: manifest },
+  dev: { counts: [2, 4], run: dev },
   init: { counts: [1, 2, 3, 4], run: init },
   export: { counts: [0], run: exportFile },
   "check-project": { counts: [1], run: ([file = ""]) => checkProjectFile(file) },
@@ -96,6 +98,18 @@ function checkProjectFile(file: string): void {
   ); // → string[]
   process.stdout.write(`${lines.join("\n")}\n`);
   if (items.some((i) => i.failure)) process.exitCode = 1;
+}
+
+// Serves the Workbench in front of the app's own dev server until stopped (ADR-043).
+async function dev(args: string[]): Promise<void> {
+  const { values } = parseArgs({
+    args,
+    options: { target: { type: "string" }, port: { type: "string", default: "5180" } },
+  });
+  if (values.target === undefined || !/^\d{2,5}$/.test(values.port)) throw new Error(USAGE);
+  const { startDev } = await import("./dev.ts"); // only `dev` needs Vite
+  const url = await startDev(values.target, Number(values.port));
+  process.stdout.write(`Workbench at ${url}, in front of ${values.target}\n`);
 }
 
 // `init`'s flags: a root, then --dry-run (which writes nothing, whatever else is given), --yes

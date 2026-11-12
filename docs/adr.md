@@ -481,6 +481,6 @@ Workbench's own Vite in middleware mode. Its base is `/__workbench/`, so its mod
 websocket paths never collide with a host that also runs Vite (`/@vite/client`, `/@fs/`). The
 server answers the Workbench endpoints and its Vite under that prefix and forwards every other
 request and websocket upgrade to the host, so the app and the Workbench share one origin and the
-canvas can read the frame. The endpoint code is shared with the plugin until the plugin goes
-(ETH-150). Rejected: a plugin per framework, several adapters to keep in step; and a prebuilt
+canvas can read the frame. The plugin runs inside that Vite unchanged, except that it hands
+paths it does not answer to the next middleware, Vite's own, until the plugin goes (ETH-150). Rejected: a plugin per framework, several adapters to keep in step; and a prebuilt
 Workbench bundle, a build step for every change while the Workbench is developed.

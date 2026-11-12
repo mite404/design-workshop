@@ -519,18 +519,18 @@ const READS: Record<string, () => unknown> = {
   "/__workbench/sources": readSources,
 };
 
-async function answer(server: ViteDevServer, req: IncomingMessage): Promise<Reply> {
-  const path = req.url?.split("?")[0];
-  if (path === "/__workbench/" || path === "/__workbench") {
+const PAGE_PATHS = new Set(["/__workbench", "/__workbench/"]);
+
+// A Workbench route's reply, or null for any other path or method, which the next middleware
+// serves: the Workbench's own Vite when it runs under /__workbench/ (ADR-043).
+async function answer(server: ViteDevServer, req: IncomingMessage): Promise<Reply | null> {
+  const path = (req.url ?? "").split("?")[0] ?? "";
+  if (PAGE_PATHS.has(path))
     return { status: 200, body: await server.transformIndexHtml("/__workbench/", HTML) };
-  }
-  const reader = READS[path ?? ""];
-  if (reader !== undefined && req.method === "GET") return { status: 200, body: await reader() };
-  const write = WRITES[path ?? ""];
-  if (write !== undefined && req.method === "POST") {
-    return answerWrite(server, req, write);
-  }
-  return { status: 404, body: { error: `no Workbench route ${req.method} ${path}` } };
+  const reader = req.method === "GET" ? READS[path] : undefined;
+  if (reader !== undefined) return { status: 200, body: await reader() };
+  const write = req.method === "POST" ? WRITES[path] : undefined;
+  return write === undefined ? null : answerWrite(server, req, write);
 }
 
 async function answerWrite(
@@ -622,6 +622,22 @@ async function commitRoute(
   }
 }
 
+// Answers a Workbench route, or hands the request on when the path is not one.
+async function route(
+  server: ViteDevServer,
+  req: IncomingMessage,
+  res: ServerResponse,
+  next: () => void,
+): Promise<void> {
+  try {
+    const reply = await answer(server, req);
+    if (reply === null) next();
+    else sendReply(res, reply);
+  } catch (error: unknown) {
+    sendReply(res, { status: 500, body: { error: String(error) } });
+  }
+}
+
 /** The Workbench page and its values endpoint, on the dev server only. */
 export function workbench(): Plugin {
   let watcher: ReturnType<typeof watch> | undefined;
@@ -650,12 +666,7 @@ export function workbench(): Plugin {
           });
           return;
         }
-        answer(server, req).then(
-          (reply) => sendReply(res, reply),
-          (error: unknown) => {
-            sendReply(res, { status: 500, body: { error: String(error) } });
-          },
-        );
+        void route(server, req, res, next);
       });
     },
   };
