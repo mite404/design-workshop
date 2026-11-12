@@ -22,9 +22,14 @@ Preconditions: isolated snapshot; browser server needed only for the colour and 
 pnpm --filter @yaklabs/workbench test
 pnpm --silent workbench list --json
 pnpm workbench check
+pnpm --silent workbench manifest
 node apps/web/scripts/colour-check.mjs --base http://localhost:5173 --out "$OUT/colour"
 node apps/web/scripts/theme-check.mjs --base http://localhost:5173 --out "$OUT/theme"
 ```
+
+`manifest` prints this repo's project manifest and its contract failures, exiting 1 on any
+(ADR-029). It runs `storybook index`, so it takes several seconds. To see a refusal, delete a
+required story in the snapshot and expect its `missing-story` code.
 
 The theme check names each step after its criterion in `docs/feature/themes/themes-story.md`. It
 creates `.workbench/themes/theme-check.theme.json` in the snapshot and removes it afterwards.

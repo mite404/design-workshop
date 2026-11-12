@@ -91,6 +91,52 @@ function checkShell(
 }
 
 /**
+ * What a manifest is read from: the installed Storybook version, Storybook's index, the slots the
+ * source declares, and each `data-wb` name with the file that declares it.
+ */
+export type Sources = {
+  version: string;
+  index: unknown;
+  slots: string[];
+  names: Map<string, string>;
+};
+
+/**
+ * The manifest describing `sources` in the contract's terms. A name's stories are the index's
+ * stories whose `componentPath` is the file that declares it. The shell is `app-shell` when every
+ * slot it needs is present, otherwise `full-screen`; surfaces are those whose component is present.
+ */
+export function manifestOf(sources: Sources, contract: Contract = CONTRACT) {
+  const index = record(sources.index) ? sources.index : {};
+  const entries = Object.entries(record(index.entries) ? index.entries : {});
+  const storiesOf = (file: string) =>
+    entries
+      .filter(
+        ([, e]) => record(e) && e.type === "story" && String(e.componentPath).endsWith(`/${file}`),
+      )
+      .map(([id]) => id)
+      .toSorted();
+  const slots = [...new Set(sources.slots)].toSorted();
+  return {
+    format: "design-workshop/manifest",
+    version: 1,
+    storybook: { version: sources.version, indexVersion: index.v },
+    shell: contract.shells["app-shell"].slots.every((s) => slots.includes(s))
+      ? "app-shell"
+      : "full-screen",
+    slots,
+    components: Object.fromEntries(
+      [...sources.names]
+        .toSorted(([a], [b]) => (a < b ? -1 : 1))
+        .map(([name, file]) => [name, { stories: storiesOf(file) }]),
+    ),
+    surfaces: Object.entries(contract.surfaces)
+      .filter(([, spec]) => !("component" in spec) || sources.names.has(spec.component))
+      .map(([surface]) => surface),
+  };
+}
+
+/**
  * Every reason the manifest `text` breaks `contract`, sorted by path then code. An empty list
  * accepts it. The same text always gives the same list.
  */

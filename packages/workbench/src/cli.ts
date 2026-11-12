@@ -1,11 +1,18 @@
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { tmpdir } from "node:os";
+import { basename, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { manifestOf, validate } from "./contract.ts";
 import { checkValues, listValues, writeValues } from "./plugin.ts";
 import { parseOverrides } from "./overrides.ts";
 
 const OVERRIDES = fileURLToPath(new URL("../../catalog/src/overrides.css", import.meta.url));
 const TOKENS = fileURLToPath(new URL("../../catalog/src/tokens.css", import.meta.url));
+const REPO = fileURLToPath(new URL("../../../", import.meta.url));
+const SOURCE_DIRS = ["packages/catalog/src", "packages/ui/src", "apps/web/src"];
 const USAGE = `Usage: pnpm workbench list [--json]
+       pnpm workbench manifest
        pnpm workbench set <selector> <name> <value>
        pnpm workbench unset <selector> <name>
        pnpm workbench check
@@ -25,6 +32,7 @@ const COMMANDS: Record<string, { counts: number[]; run: (args: string[]) => void
       edit(selector, name, null);
     },
   },
+  manifest: { counts: [0], run: manifest },
   check: {
     counts: [0],
     run: () => {
@@ -43,6 +51,47 @@ function list(args: string[]): void {
       ? `${JSON.stringify(rows, null, 2)}\n`
       : `selector\tname\tbaseline\tsaved\n${rows.map((row) => [row.selector, row.name, row.baseline ?? "null", row.saved ?? "null"].join("\t")).join("\n")}\n`,
   );
+}
+
+// Each `data-<attribute>` value the Template's source declares, with the file declaring it.
+function declared(attribute: string): [string, string][] {
+  const pattern = new RegExp(`data-${attribute}="([A-Za-z][\\w-]*)"`, "g");
+  return SOURCE_DIRS.flatMap((dir) =>
+    readdirSync(join(REPO, dir), { recursive: true, encoding: "utf8" })
+      .filter(
+        (file) => file.endsWith(".tsx") && !file.includes(".stories.") && !file.includes(".test."),
+      )
+      .flatMap((file) =>
+        [...readFileSync(join(REPO, dir, file), "utf8").matchAll(pattern)].map(
+          (m): [string, string] => [m[1] ?? "", basename(file)],
+        ),
+      ),
+  );
+}
+
+// Prints this repo's manifest and every contract failure; exits 1 when there is any (ADR-029).
+function manifest(): void {
+  const out = mkdtempSync(join(tmpdir(), "manifest-"));
+  try {
+    const indexFile = join(out, "index.json");
+    execFileSync("pnpm", ["--filter", "storybook", "exec", "storybook", "index", "-o", indexFile], {
+      cwd: REPO,
+      stdio: "ignore",
+    });
+    const storybook = join(REPO, "apps/storybook/node_modules/storybook/package.json");
+    const pkg: unknown = JSON.parse(readFileSync(storybook, "utf8"));
+    const result = manifestOf({
+      version: String(typeof pkg === "object" && pkg !== null ? Reflect.get(pkg, "version") : ""),
+      index: JSON.parse(readFileSync(indexFile, "utf8")),
+      slots: declared("slot").map(([slot]) => slot),
+      names: new Map(declared("wb")),
+    });
+    const failures = validate(JSON.stringify(result));
+    process.stdout.write(`${JSON.stringify({ manifest: result, failures }, null, 2)}\n`);
+    if (failures.length > 0) process.exitCode = 1;
+  } finally {
+    rmSync(out, { recursive: true, force: true });
+  }
 }
 
 function edit(selector: string, name: string, value: string | null): void {

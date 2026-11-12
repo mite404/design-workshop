@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { expect, test } from "vitest";
-import { validate } from "./contract";
+import { manifestOf, validate } from "./contract";
 
 const VALID = {
   format: "design-workshop/manifest",
@@ -75,4 +75,38 @@ test("the validator imports only its contract data: no network, no model (ADR-02
   expect([...source.matchAll(/^import .* from "([^"]+)"/gm)].map((m) => m[1])).toEqual([
     "./contract.json",
   ]);
+});
+
+test("manifestOf reads stories by declaring file and classifies the shell from its slots", () => {
+  const index = {
+    v: 5,
+    entries: {
+      "turns--user": { type: "story", componentPath: "../../packages/catalog/src/Turns.tsx" },
+      "turns--docs": { type: "docs", componentPath: "../../packages/catalog/src/Turns.tsx" },
+      "compose--empty": { type: "story", componentPath: "../../src/ComposeBox.tsx" },
+      "other--x": { type: "story", componentPath: "../../src/NotComposeBox.tsx" },
+    },
+  };
+  const names = new Map([
+    ["UserTurn", "Turns.tsx"],
+    ["AgentTurn", "Turns.tsx"],
+    ["ComposeBox", "ComposeBox.tsx"],
+  ]);
+  const app = manifestOf({
+    version: "10.6.0",
+    index,
+    slots: ["sidebar", "window", "title-bar"],
+    names,
+  });
+  expect(app.shell).toBe("app-shell");
+  expect(app.components).toEqual({
+    AgentTurn: { stories: ["turns--user"] },
+    ComposeBox: { stories: ["compose--empty"] },
+    UserTurn: { stories: ["turns--user"] },
+  });
+  // ChatThreadPanel is absent, so the thread surface is not claimed.
+  expect(app.surfaces).toEqual(["page", "compose"]);
+  expect(manifestOf({ version: "10.6.0", index, slots: ["window", "sidebar"], names }).shell).toBe(
+    "full-screen",
+  );
 });
