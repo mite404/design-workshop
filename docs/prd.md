@@ -227,7 +227,9 @@ look in under an hour without writing a prompt.
   ETH-138 handles, Live mode only, ADR-037) have handles and readouts.*
 - R14. Rearrange shell regions by drag, saved as layout values. *Partly built: the rail and its
   drawer sit on the left or the right, one layout value the Workbench sets (ETH-142, ADR-041).*
-- R15. Assets panel: drag a component from the library into an allowed slot. *Not started.*
+- R15. Assets panel: drag a component from the library into an allowed slot. *Dropped (Ethan,
+  Nov 12): what fills a slot is structure, so it is a request to an agent, made from the chat
+  button or Select element (R12), which put the element or component name in the compose box.*
 - R16. Themes: a theme is one override file. Save the current values as a theme, switch between
   themes, start a project from one. A preset is a partial theme covering one group of values, such
   as a colour palette or a font pairing (families, sizes and styles), so Ethan can swap to "font
@@ -243,12 +245,17 @@ look in under an hour without writing a prompt.
   canvas (ETH-141, ADR-040).*
 - R18. Open a story in Component mode: a component or a state the app is not showing opens as
   its Storybook story, and the drawer lists those stories. *Built (ETH-118).*
+- R19. **Component chat history.** In Component mode, a chat history panel sits on the right of
+  the app, beside the component tree drawer. It holds one chat per component, persisted, and is
+  shown only in Component mode. *Not started.*
 
 ### Not doing
 
 - Editing component code, class names or structure from the Workbench.
 - A free canvas with absolute positioning.
 - App types other than agent-loop chat interfaces.
+- Multiple persisted chats per component and a chat thread picker panel. Deferred: Ethan takes
+  them on later (Nov 12 2026).
 - Native (Rust, Swift) targets. An Electron or Tauri app with a web UI already qualifies.
 - Figma import or export. Multi-user anything.
 
@@ -268,6 +275,8 @@ Each block is usable and testable before the next starts.
 | 8 | **Layout and assets** (R14, R15) | The shell can be rearranged by hand, without asking an agent |
 | 9 | **Themes, motion** (R16, R17) | A look carries into the next project in minutes, and motion is tuned by eye |
 | 10 | **Install: `design-workshop init`** (section 16). Plan: [INIT CLI story](feature/init-cli/init-cli-story.md) | The Workbench sets itself up at another app's root, asking only what the contract cannot detect |
+| 11 | **Proxy and `design-workshop dev`** (section 16) | One path serves the Workbench in front of any host's dev server, replacing the Vite plugin |
+| 12 | **Component chat history** (R19) | A component's design conversation is still there when Ethan comes back to it |
 
 Why this order: the Template comes first because the Workbench needs a real target, and it replaces
 both the old workbook and the yaklabs calibration step. Blocks 2 and 3 are the translation layer.
@@ -339,6 +348,12 @@ These are Ethan's stated preferences for how the Workbench itself should look an
     drawer slides in from the left or the right, for now. Layouts stay a short list of templated
     choices, not unlimited bespoke options ("we DONT want unlimited bespoke options").
   - Safari is not verified for now; Ethan checks it later.
+- Nov 12 2026, Ethan, on the proxy and chat:
+  - Build the proxy and `design-workshop dev` (block 11).
+  - R15 is not a drag panel. Filling a slot, from this app's own components, is a request to an
+    agent that Ethan starts with the chat button or Select element.
+  - Component mode gets a persisted chat history panel, one chat per component (R19). Several
+    chats and a thread picker are deferred.
 
 ## 14. Open questions
 
@@ -347,11 +362,8 @@ These are Ethan's stated preferences for how the Workbench itself should look an
   other screens and stories first (ETH-118), so it has no story and no ticket yet.
 - Is a finished look folded into the baseline tokens, or does it stay in the override file for
   good? Revisited after the first finished app.
-- How does R15 fit principle 2? Dragging a component into a slot changes what a component
-  renders, which is structure, and the Workbench edits values, never code (ADR-001). Either
-  what fills a slot becomes a design value the override file can hold, or the drop writes a
-  request for an agent in the structure lane (section 7), or R15 is dropped. Undecided, so R15
-  gets no story until it is.
+- R14: which shell regions besides the rail and drawer get a templated choice, and what are
+  their options? Asked Nov 12 2026; no region gets one until Ethan names it.
 
 ## 15. OPEN ISSUES
 
