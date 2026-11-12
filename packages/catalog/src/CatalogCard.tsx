@@ -3,13 +3,17 @@ import {
   ResponsiveContainer,
   LineChart as RechartsLineChart,
   Line,
-  BarChart as RechartsBarChart,
-  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
 } from "recharts";
+import { Bar } from "@yaklabs/ui/components/charts/bar";
+import { BarChart } from "@yaklabs/ui/components/charts/bar-chart";
+import { BarXAxis } from "@yaklabs/ui/components/charts/bar-x-axis";
+import { Grid } from "@yaklabs/ui/components/charts/grid";
+import { ChartTooltip } from "@yaklabs/ui/components/charts/tooltip/chart-tooltip";
+import { YAxis as BarValueAxis } from "@yaklabs/ui/components/charts/y-axis";
 import { CardHeader } from "./CardHeader";
 import { resolve, type DataProps, type Selection } from "./catalog";
 import { ShareButton } from "./ShareButton";
@@ -64,8 +68,8 @@ function Chart({ selection }: { selection: Selection }) {
       role="img"
       aria-label={`${props.title}. Values available in the data table.`}
     >
-      <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-        {selection.component === "LineChart" ? (
+      {selection.component === "LineChart" ? (
+        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
           <RechartsLineChart
             data={props.rows}
             margin={{ top: 20, right: 24, bottom: 10, left: 0 }}
@@ -83,23 +87,30 @@ function Chart({ selection }: { selection: Selection }) {
               isAnimationActive={false}
             />
           </RechartsLineChart>
-        ) : (
-          <RechartsBarChart
-            data={props.rows}
-            margin={{ top: 20, right: 24, bottom: 10, left: 0 }}
-            accessibilityLayer
-          >
-            {axes}
-            <Bar
-              dataKey="value"
-              name={props.unit}
-              fill="var(--data)"
-              radius={[BAR_RADIUS, BAR_RADIUS, 0, 0]}
-              isAnimationActive={false}
-            />
-          </RechartsBarChart>
-        )}
-      </ResponsiveContainer>
+        </ResponsiveContainer>
+      ) : (
+        // bklit's bar chart (PRD section 12), drawn at once: cards are read, not watched.
+        <BarChart
+          data={props.rows}
+          xDataKey="label"
+          aspectRatio="auto"
+          margin={{ top: 20, right: 24, bottom: 32, left: 48 }}
+        >
+          <Grid horizontal stroke="var(--hairline)" strokeOpacity={1} />
+          <Bar dataKey="value" fill="var(--data)" lineCap={BAR_RADIUS} animate={false} />
+          <BarValueAxis />
+          <BarXAxis />
+          <ChartTooltip
+            rows={(point) => [
+              {
+                color: "var(--data)",
+                label: props.unit,
+                value: typeof point.value === "number" ? point.value : "Not recorded",
+              },
+            ]}
+          />
+        </BarChart>
+      )}
     </div>
   );
 }

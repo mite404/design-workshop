@@ -17,7 +17,7 @@ const SHOWN = '[role="tabpanel"]:not([inert])';
 const STORY = "thread-chat-thread-panel--interactive-profit";
 
 // The chart library's imports in the catalog, as written: `from "<library>"` blocks.
-const IMPORT = /import\s*{([^}]*)}\s*from\s*"(recharts|@bklit\/[^"]+)"/g;
+const IMPORT = /import\s*{([^}]*)}\s*from\s*"(recharts|@yaklabs\/ui\/components\/charts\/[^"]+)"/g;
 
 const round = (x) => Math.round(x);
 
@@ -50,7 +50,13 @@ async function chartBytes() {
   const entry = path.join(dir, "entry.js");
   writeFileSync(
     entry,
-    [...names].map(([lib, set]) => `export { ${[...set].join(", ")} } from "${lib}";\n`).join(""),
+    // Each name aliased by its library, since Recharts and bklit both export a `Bar`.
+    [...names]
+      .map(
+        ([lib, set], i) =>
+          `export { ${[...set].map((n) => `${n} as ${n}_${i}`).join(", ")} } from "${lib}";\n`,
+      )
+      .join(""),
   );
   const result = await build({
     root: path.join(ROOT, "packages/catalog"),
@@ -87,7 +93,8 @@ async function slowPage(browser) {
   return page;
 }
 
-// Milliseconds from clicking Weekly brief in the sidebar to both its charts drawn.
+// Milliseconds from clicking Weekly brief in the sidebar to both its charts drawn: each chart
+// holds its SVG, whichever library draws it.
 async function weeklyBrief(browser) {
   const page = await slowPage(browser);
   await page.goto(`${base}/`, { waitUntil: "load" });
@@ -100,7 +107,7 @@ async function weeklyBrief(browser) {
   });
   await link.click();
   await page.waitForFunction(
-    (shown) => document.querySelectorAll(`${shown} .recharts-surface`).length >= 2,
+    (shown) => document.querySelectorAll(`${shown} .chart svg`).length >= 2,
     SHOWN,
     { timeout: 60_000, polling: "raf" },
   );
@@ -113,7 +120,7 @@ async function weeklyBrief(browser) {
 async function profitStory(browser) {
   const page = await slowPage(browser);
   await page.goto(`${storybook}/iframe.html?id=${STORY}&viewMode=story`);
-  await page.waitForFunction(() => document.querySelector(".recharts-surface") !== null, null, {
+  await page.waitForFunction(() => document.querySelector(".chart svg") !== null, null, {
     timeout: 120_000,
     polling: "raf",
   });

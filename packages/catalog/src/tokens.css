@@ -877,6 +877,10 @@ h1 span {
   height: 254px;
   width: 100%;
 }
+/* bklit's chart sizes itself by aspect ratio; here it fills the chart's fixed box instead. */
+.chart > [style*="aspect-ratio"] {
+  height: 100%;
+}
 /* The axis labels' size, set here because an SVG attribute cannot read a variable. */
 .chart .recharts-cartesian-axis-tick-value {
   font-size: var(--text-xs);

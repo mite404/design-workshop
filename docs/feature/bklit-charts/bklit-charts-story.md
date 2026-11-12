@@ -50,6 +50,23 @@ imports, React external, in production mode.
    dark, and still pass their stories and browser checks.
 3. The measures from feature 1 are no worse, and the result is reported with them.
 
+### Bar cards on bklit, Nov 12 2026 (ETH-129)
+
+Same script, with "drawn" now meaning each `.chart` holds its SVG, so either library counts. One
+run (`verify-eth-129-ab-20261112-111353`) on one dev server, alternating Recharts (HEAD's
+`CatalogCard.tsx`) and bklit, two rounds of five runs each at 4x CPU slowdown.
+
+| Measure | Recharts 1 | Recharts 2 | bklit 1 | bklit 2 |
+| --- | --- | --- | --- | --- |
+| Chart code, gzip | 125,149 B | 125,149 B | 212,447 B | 212,447 B |
+| Weekly brief, median (range) | 4152 (3943-5065) | 4216 (3972-4287) | 3741 (3378-4207) | 4472 (3906-4618) |
+| Interactive Profit, median (range) | 2963 (2939-3140) | 3059 (2894-3349) | 3381 (3205-4968) | 3204 (2867-3593) |
+
+Bytes rise 70% while both libraries ship; bklit's bar parts are 93,197 B gzip alone, 73% of it
+`motion`. Render times overlap run to run, so no change is measured. These are dev-server
+timings and an isolated import bundle, not production numbers. Feature 2's "no worse" holds for
+render time; bytes are judged once Recharts leaves (feature 3).
+
 ## 3. The line chart on bklit, and Recharts removed
 
 **As** the next engineer,

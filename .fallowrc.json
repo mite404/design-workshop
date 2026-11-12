@@ -23,7 +23,7 @@
   "health": {
     // Dev scripts (DevTools snippets, the browser levers) are tools, not product code;
     // complexity gates police the components.
-    "ignore": ["scripts/**", "apps/web/scripts/**"],
+    "ignore": ["scripts/**", "apps/web/scripts/**", "packages/ui/src/components/charts/**"],
     "thresholdOverrides": [
       {
         "files": ["apps/gateway/src/**"],
@@ -32,6 +32,9 @@
       }
     ]
   },
+  // bklit's charts are installed as-is from its shadcn registry (PRD section 12, ADR-033), so a
+  // later `shadcn add` stays a clean diff: their own findings are not ours to fix.
+  "ignoreFindings": ["packages/ui/src/components/charts/**"],
   // React Router's default server entry imports isbot at build time; the app never does.
   "ignoreDependencies": ["isbot"],
   "rules": {

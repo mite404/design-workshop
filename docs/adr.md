@@ -345,3 +345,17 @@ canvas lags each write until its stylesheet reloads, so a canvas read right afte
 the old theme and skipped the next apply (five red theme-check runs). Fonts are compared and saved
 as `"Family", generic`, the only form the plugin writes, so a pairing saved at the baseline reads
 as in effect there. Rejected: waiting for the canvas to settle, which still races a fast user.
+
+## ADR-033 - bklit charts live in packages/ui, as installed, themed by Kay's tokens
+
+2026-11-12 - Accepted. ETH-129.
+bklit is installed with `shadcn add` into `packages/ui/src/components/charts`, the repo's one
+shadcn target, which Tailwind already scans; the catalog imports it from `@yaklabs/ui`. The files
+stay byte for byte as bklit ships them, so a later `shadcn add` is a clean diff: oxlint, oxfmt and
+fallow skip that folder, and typecheck still covers it. Its colour roles live in
+`packages/ui/src/styles/charts.css`, each a reference to Kay's tokens (ADR-082), so dark mode
+follows `data-theme`; bklit's `.dark` block never applied here and is dropped. Catalog stories load
+Tailwind's theme and the chart folder's utilities, not its preflight, in the app's layer order, so
+Kay's tokens still outrank Tailwind's theme. Rejected: copying bklit into the catalog and
+rewriting its Tailwind classes as plain CSS, which forks the registry; and the full app cascade
+for catalog stories, which restyled the card header.

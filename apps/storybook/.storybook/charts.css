@@ -1,0 +1,16 @@
+/* bklit's charts for catalog stories (ADR-033): Tailwind's theme and the utilities the chart files
+   use, without the preflight that would restyle the catalog's own elements (ADR-082). */
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities) source(none);
+@import "@yaklabs/ui/charts.css";
+@source "../../../packages/ui/src/components/charts";
+
+/* Preflight's border reset and shadcn's border colour (packages/ui globals.css), kept to the
+   charts so the catalog's own elements are untouched. */
+@layer base {
+  .chart *,
+  .chart ::before,
+  .chart ::after {
+    border: 0 solid var(--hairline);
+  }
+}

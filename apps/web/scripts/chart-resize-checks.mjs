@@ -13,7 +13,9 @@ function sampleOverrun(shown) {
   let sampling = true;
   const tick = () => {
     for (const chart of document.querySelectorAll(`${shown} .chart`)) {
-      const bars = [...chart.querySelectorAll(".recharts-bar-rectangle path")];
+      const bars = [
+        ...chart.querySelectorAll('.recharts-bar-rectangle path, rect[fill="var(--data)"]'),
+      ];
       if (bars.length === 0) continue;
       const right = Math.max(...bars.map((bar) => bar.getBoundingClientRect().right));
       overruns.push(Math.round(right - chart.getBoundingClientRect().right));

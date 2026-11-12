@@ -1,0 +1,78 @@
+/* bklit's chart roles (PRD section 12, ADR-033), each a reference to Kay's tokens like the rest of
+   the shadcn theme (ADR-082), so dark mode follows data-theme. Its own file so the catalog's
+   Storybook cascade can load the charts' utilities without Tailwind's preflight. */
+:root {
+  --chart-1: var(--data);
+  --chart-2: var(--accent);
+  --chart-3: var(--soft-ink);
+  --chart-4: var(--faint-ink);
+  --chart-5: var(--ink);
+  --chart-positive: var(--data);
+  --chart-negative: var(--destructive);
+  --chart-background: var(--paper);
+  --chart-foreground: var(--ink);
+  --chart-foreground-muted: var(--soft-ink);
+  --chart-line-primary: var(--chart-1);
+  --chart-line-secondary: var(--chart-2);
+  --chart-crosshair: var(--soft-ink);
+  --chart-grid: var(--hairline);
+  --chart-brush-border: var(--chart-grid);
+  --chart-tooltip-background: var(--compose-bg);
+  --chart-tooltip-foreground: var(--ink);
+  --chart-tooltip-muted: var(--soft-ink);
+  --chart-marker-background: var(--paper-deep);
+  --chart-marker-border: var(--hairline);
+  --chart-marker-foreground: var(--ink);
+  --chart-label: var(--soft-ink);
+  --chart-scale-mix: var(--paper);
+  --chart-scale-01: var(--paper-deep);
+  --chart-scale-02: color-mix(in oklab, var(--chart-1) 35%, var(--chart-scale-mix));
+  --chart-scale-03: color-mix(in oklab, var(--chart-1) 55%, var(--chart-scale-mix));
+  --chart-scale-04: color-mix(in oklab, var(--chart-1) 78%, var(--chart-scale-mix));
+  --chart-scale-05: var(--chart-1);
+  --chart-scale-pattern-color: var(--paper);
+  --chart-indicator-color: var(--ink);
+  --chart-indicator-secondary-color: var(--hairline);
+  --chart-marker-badge-background: var(--ink);
+  --chart-marker-badge-foreground: var(--paper);
+  --chart-segment-background: color-mix(in oklab, var(--ink) 6%, transparent);
+  --chart-segment-line: color-mix(in oklab, var(--ink) 25%, transparent);
+}
+
+@theme inline {
+  --color-chart-line-primary: var(--chart-line-primary);
+  --color-chart-line-secondary: var(--chart-line-secondary);
+  --color-chart-brush-border: var(--chart-brush-border);
+  --color-chart-tooltip-background: var(--chart-tooltip-background);
+  --color-chart-tooltip-foreground: var(--chart-tooltip-foreground);
+  --color-chart-tooltip-muted: var(--chart-tooltip-muted);
+  --color-chart-scale-02: var(--chart-scale-02);
+  --color-chart-scale-03: var(--chart-scale-03);
+  --color-chart-scale-04: var(--chart-scale-04);
+  --color-chart-scale-05: var(--chart-scale-05);
+  --color-chart-segment-line: var(--chart-segment-line);
+  --color-chart-segment-background: var(--chart-segment-background);
+  --color-chart-marker-badge-foreground: var(--chart-marker-badge-foreground);
+  --color-chart-marker-badge-background: var(--chart-marker-badge-background);
+  --color-chart-indicator-secondary-color: var(--chart-indicator-secondary-color);
+  --color-chart-indicator-color: var(--chart-indicator-color);
+  --color-chart-scale-pattern-color: var(--chart-scale-pattern-color);
+  --color-chart-scale-01: var(--chart-scale-01);
+  --color-chart-scale-mix: var(--chart-scale-mix);
+  --color-chart-label: var(--chart-label);
+  --color-chart-marker-foreground: var(--chart-marker-foreground);
+  --color-chart-marker-border: var(--chart-marker-border);
+  --color-chart-marker-background: var(--chart-marker-background);
+  --color-chart-grid: var(--chart-grid);
+  --color-chart-crosshair: var(--chart-crosshair);
+  --color-chart-foreground-muted: var(--chart-foreground-muted);
+  --color-chart-foreground: var(--chart-foreground);
+  --color-chart-background: var(--chart-background);
+  --color-chart-negative: var(--chart-negative);
+  --color-chart-positive: var(--chart-positive);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+}

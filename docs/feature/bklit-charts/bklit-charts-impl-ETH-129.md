@@ -54,3 +54,10 @@ feature 2. Plan: `docs/research/project-portability-plan.md`.
   Ethan's go-ahead.
 
 ## Drift log
+
+- 2026-11-12: Scope narrowed to the catalog's bar cards (`CatalogCard`). The slider card's
+  `StopChart` stays on Recharts: bklit's bar chart takes its value axis from the data and has no
+  fixed domain, and that card needs one axis shared by every stop. It moves with ETH-130, which
+  removes Recharts.
+- 2026-11-12: Bytes cannot be no worse in this ticket's state, since Recharts stays for the line
+  and slider charts while bklit and `motion` are added. Bytes are judged after ETH-130.

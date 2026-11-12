@@ -9,6 +9,7 @@
     "**/build",
     "**/dist",
     "**/storybook-static",
-    ".artifacts"
+    ".artifacts",
+    "packages/ui/src/components/charts/**"
   ]
 }
