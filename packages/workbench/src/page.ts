@@ -4143,6 +4143,21 @@ discard.addEventListener("click", () => {
 document.addEventListener("keydown", keyDown);
 window.addEventListener("focus", () => enqueue(refreshStatus));
 import.meta.hot?.on("workbench:values", () => enqueue(refreshStatus));
+
+// The override stylesheet the proxy links into the app (ETH-148): fetched again when the file
+// changes, the new sheet replacing the old once it loads, so nothing flashes unstyled.
+import.meta.hot?.on("workbench:values", () => {
+  const old = frame.contentDocument?.querySelector<HTMLLinkElement>(
+    "link[data-workbench-overrides]",
+  );
+  if (old === null || old === undefined) return;
+  const next = document.createElement("link");
+  next.rel = "stylesheet";
+  next.dataset.workbenchOverrides = "";
+  next.href = `/__workbench/overrides.css?t=${Date.now()}`;
+  next.addEventListener("load", () => old.remove(), { once: true });
+  old.after(next);
+});
 frame.addEventListener("load", () => {
   canvasMode.value = doc()?.documentElement.dataset.theme === "dark" ? "dark" : "light";
   modeLabel.textContent = `Editing ${canvasMode.value === "dark" ? "Dark" : "Light"} mode · Other values apply to both modes`;

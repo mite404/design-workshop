@@ -7,19 +7,31 @@ import {
   type IncomingMessage,
   type ServerResponse,
 } from "node:http";
+import { readFile } from "node:fs/promises";
 import { connect } from "node:net";
 import type { Duplex } from "node:stream";
 import { fileURLToPath } from "node:url";
 import { createServer } from "vite";
-import { workbench } from "./plugin.ts";
+import { OVERRIDES, workbench } from "./plugin.ts";
 
 const BASE = "/__workbench/";
 const ROOT = fileURLToPath(new URL("../", import.meta.url));
 
+const STYLESHEET = `${BASE}overrides.css`;
+const LINK = `<link rel="stylesheet" href="${STYLESHEET}" data-workbench-overrides>`;
+
+/** `html` with the override stylesheet linked last in its head, so the host needs no import. */
+export const withOverrides = (html: string): string =>
+  /<\/head>/i.test(html) ? html.replace(/<\/head>/i, `${LINK}$&`) : `${LINK}${html}`;
+
 const ours = (url: string | undefined) => url === "/__workbench" || url?.startsWith(BASE) === true;
 
-// The request's head as the host should see it: its own Host, so a host's host check passes.
-const headersFor = (req: IncomingMessage, target: URL) => ({ ...req.headers, host: target.host });
+// The request's head as the host should see it: its own Host, so a host's host check passes, and
+// no compression, so HTML can be rewritten. ponytail: uncompressed, fine for a local dev server.
+const headersFor = (req: IncomingMessage, target: URL) => {
+  const { "accept-encoding": _, ...headers } = req.headers;
+  return { ...headers, host: target.host };
+};
 
 // Sends one request to the host and streams its answer back unchanged.
 function forward(req: IncomingMessage, res: ServerResponse, target: URL) {
@@ -32,8 +44,23 @@ function forward(req: IncomingMessage, res: ServerResponse, target: URL) {
       headers: headersFor(req, target),
     },
     (answer) => {
-      res.writeHead(answer.statusCode ?? 502, answer.headers);
-      answer.pipe(res);
+      if (answer.headers["content-type"]?.startsWith("text/html") !== true) {
+        res.writeHead(answer.statusCode ?? 502, answer.headers);
+        answer.pipe(res);
+        return;
+      }
+      let html = "";
+      answer.setEncoding("utf8");
+      answer.on("data", (chunk: string) => (html += chunk));
+      answer.on("end", () => {
+        const body = withOverrides(html);
+        const { "content-length": _, ...headers } = answer.headers;
+        res.writeHead(answer.statusCode ?? 502, {
+          ...headers,
+          "content-length": Buffer.byteLength(body),
+        });
+        res.end(body);
+      });
     },
   );
   out.on("error", (error) => {
@@ -59,6 +86,18 @@ function forwardUpgrade(req: IncomingMessage, socket: Duplex, head: Buffer, targ
   socket.on("error", () => upstream.destroy());
 }
 
+// The override file as a stylesheet, never cached, so a changed file is read again.
+async function serveStylesheet(res: ServerResponse): Promise<void> {
+  try {
+    const css = await readFile(OVERRIDES, "utf8");
+    res.writeHead(200, { "content-type": "text/css", "cache-control": "no-store" });
+    res.end(css);
+  } catch (error: unknown) {
+    res.writeHead(500, { "content-type": "text/plain" });
+    res.end(String(error));
+  }
+}
+
 /**
  * Starts the Workbench at `port` in front of the dev server at `target`, and resolves with the
  * address it serves once it listens.
@@ -78,7 +117,8 @@ export async function startDev(target: string, port: number): Promise<string> {
     server: { middlewareMode: true, hmr: { server } },
   });
   server.on("request", (req, res) => {
-    if (ours(req.url)) vite.middlewares(req, res);
+    if (req.url?.split("?")[0] === STYLESHEET) void serveStylesheet(res);
+    else if (ours(req.url)) vite.middlewares(req, res);
     else forward(req, res, host);
   });
   // Vite's own socket listener takes the Workbench's hot reload; every other upgrade is the host's.

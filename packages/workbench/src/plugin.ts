@@ -38,7 +38,8 @@ import { COLOUR_ROOT, colourTokens, HEX } from "./colour.ts";
 import { parseTheme, type Theme } from "./theme.ts";
 import { exportProject, readSources } from "./project.ts";
 
-const OVERRIDES = fileURLToPath(new URL("../../catalog/src/overrides.css", import.meta.url));
+/** The override file the Workbench writes. */
+export const OVERRIDES = fileURLToPath(new URL("../../catalog/src/overrides.css", import.meta.url));
 const TOKENS = fileURLToPath(new URL("../../catalog/src/tokens.css", import.meta.url));
 const CATALOG = fileURLToPath(new URL("../../catalog/src/", import.meta.url));
 const FONTS = join(CATALOG, "fonts.css");
