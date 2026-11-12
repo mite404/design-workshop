@@ -120,3 +120,32 @@ Candidate features, in order:
 
 Recognising shared primitives under different names, and folding a finished look into the
 baseline (PRD section 14), stay open questions without tickets.
+
+## Work order: Puck's ten phases
+
+Ethan, Nov 12 2026: work in this order, one phase at a time, each broken into atomic commits
+that end in its completion check. The phases above are tickets inside these.
+
+1. **Inspector panel.** Done: `0708102`, `1430224`, `bebdef8`.
+   Check: every category folds, stays folded on reload; all browser groups pass.
+2. **Component tree drawer.** Done: `81be6da`, `583cc1b`, `ba94a7e`, `e14d710`.
+   Check: tree opens on top groups; a Live pick scrolls only when off screen and highlights.
+3. **Colour and font themes** (ETH-119 to 121). Commits: theme format and role map; save a
+   palette; load and unload a palette; save, load and unload a type pairing.
+   Check: `theme-check.mjs` saves a palette, loads it (colours change, radius does not), undoes
+   in one step, unloads to the baseline, and does the same for a type pairing.
+4. **Storybook and primitives audit.** Commits: stories for ComposeBox and the turns (ETH-123);
+   pin Storybook packages to exactly 10.6.0. Check: every required component has an index entry
+   whose `componentPath` is its file; Storybook tests pass.
+5. **Project contract** (ETH-122, 124). Commits: contract data and validator; manifest
+   command. Check: this repo's manifest validates to no failures; each fixture fails with its
+   own code, identically twice.
+6. **Project save, export, load** (ETH-125 to 127). Commits: export; check; load.
+   Check: export, check and load round-trip in the browser; invalid files cannot load.
+7. **Semantic component mapping.** Commits: contract surfaces resolve to rendered components
+   and their colour roles; inspector names a selection's surface. Check: selecting the compose
+   box shows it as the compose surface and its role colours.
+8. **Charts on bklit** (ETH-128 to 130). Check: no `recharts`; chart stories pass; measured.
+9. **Performance and architecture.** Commits from measurement only. Check: before and after
+   numbers for each change, with run counts and spread.
+10. **Editor completion.** Reread the PRD after each commit; next smallest gap. Check per gap.
