@@ -151,6 +151,10 @@ that end in its completion check. The phases above are tickets inside these.
    surface. Check: selecting the compose box shows it as the compose surface and its role
    colours.
 8. **Charts on bklit** (ETH-128 to 130). Check: no `recharts`; chart stories pass; measured.
-9. **Performance and architecture.** Commits from measurement only. Check: before and after
-   numbers for each change, with run counts and spread.
+9. **Performance and architecture.** Done: `cde9871` (ETH-133). Commits from measurement only.
+   Check: before and after numbers for each change, with run counts and spread.
+   Keystroke median at 4x CPU, dev server, 5 runs per round: about 448 ms before, 160 to 176 ms
+   after. Afterwards app script is about 5 ms per key. Fitting the compose box on draft change
+   instead of per render measured no change (144, 176, 168 ms before; 144, 168, 144 ms after)
+   and was not kept.
 10. **Editor completion.** Reread the PRD after each commit; next smallest gap. Check per gap.
