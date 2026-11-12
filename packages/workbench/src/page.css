@@ -629,6 +629,35 @@ body {
   margin-top: 6px;
 }
 
+/* The Selection panel's fixed groups (ETH-153). */
+.group-label {
+  margin: 14px 0 6px;
+  color: var(--wb-ink);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.selector + .group-label,
+.surface-note + .group-label,
+.mode-note + .group-label {
+  margin-top: 10px;
+}
+
+/* A panel with nothing to edit stays in place, greyed, with its reason (ETH-153). */
+.inspector > details[data-off] > :not(summary, .off-note) {
+  opacity: 0.45;
+}
+
+.off-note {
+  margin: 0 0 8px;
+  color: var(--wb-soft-ink);
+  font-size: 11px;
+}
+
+.off-note[hidden] {
+  display: none;
+}
+
 .font-root + .row {
   margin-top: 12px;
 }

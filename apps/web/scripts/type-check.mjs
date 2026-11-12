@@ -106,10 +106,12 @@ await step("the demo brief's first heading is selected and the section shows it"
   await heading.scrollIntoViewIfNeeded();
   await page.locator(".tool").click();
   await select(heading.locator(".."));
-  await panel.waitFor({ state: "hidden" });
+  // ETH-153: without own text the section stays in place, greyed, rather than vanishing.
+  await page.locator("details[aria-label=Typography][data-off]").waitFor();
+  assert.equal(await panel.isVisible(), true);
   await select(heading);
   sel = (await page.locator(".selector").textContent()) ?? "";
-  await panel.waitFor();
+  await page.locator("details[aria-label=Typography]:not([data-off])").waitFor();
   assert.equal(await page.locator(".type-family").textContent(), "Inter Variable");
   await expectControl("font-size", "14");
   assert.equal(await page.locator("#wb-font-size + .unit").textContent(), "sm");
@@ -276,7 +278,7 @@ await step("each reset removes its value and the heading's own value returns", a
 await step("a type value in the element's own style is read-only", async () => {
   await heading.evaluate((el) => el.style.setProperty("font-size", "18px"));
   await page.keyboard.press("Escape");
-  await page.locator("details[aria-label=Typography]:not([hidden])").waitFor({ state: "detached" });
+  await page.locator("details[aria-label=Typography][data-off]").waitFor();
   await select(heading);
   await page.waitForFunction(() => document.querySelector("#wb-font-size").readOnly);
   await page.getByRole("button", { name: "Size steps", disabled: true }).waitFor();

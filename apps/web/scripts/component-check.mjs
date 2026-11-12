@@ -183,7 +183,12 @@ try {
     true,
     "root nudge is locked",
   );
-  assert.equal(await page.locator("#wb-width").isHidden(), true, "size is Live mode only");
+  // ETH-153: size stays in its place, disabled and labelled, rather than vanishing.
+  assert.equal(await page.locator("#wb-width").isDisabled(), true, "size is Live mode only");
+  assert.equal(
+    await page.locator("details[aria-label=Selection] .group-label").first().textContent(),
+    "Size · Live mode only",
+  );
   assert.equal(await page.locator(".bar[data-name=width]").isHidden(), true, "no size handle");
   await page.locator("body").press("ArrowRight");
   assert.equal(

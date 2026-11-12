@@ -46,6 +46,7 @@ async function select(locator, padding = false) {
 }
 
 async function drag(locator, dx, dy, alt = false) {
+  await locator.scrollIntoViewIfNeeded();
   const b = await locator.boundingBox();
   const x = b.x + b.width / 2;
   const y = b.y + b.height / 2;

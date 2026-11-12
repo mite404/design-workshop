@@ -371,7 +371,20 @@ await step("the width handle outside the right edge drags the width with a reado
 await step("clicking empty space deselects", async () => {
   await page.mouse.click(6, 450);
   await page.locator(".overlay[data-selected=false]").waitFor();
-  assert.equal(await page.locator("details[aria-label=Selection]").isHidden(), true);
+  // ETH-153: the panel stays in place, greyed, with its reason and its groups in order.
+  const panel = page.locator("details[aria-label=Selection]");
+  assert.equal(await panel.isVisible(), true);
+  assert.equal(await panel.getAttribute("data-off"), "");
+  assert.equal(
+    await panel.locator(".off-note").textContent(),
+    "Select an element on the canvas to edit it.",
+  );
+  assert.deepEqual(await panel.locator(".group-label").allTextContents(), [
+    "Size",
+    "Padding",
+    "Spacing",
+    "Position",
+  ]);
 });
 
 await step("values whose selector matches nothing are listed and can be deleted", async () => {

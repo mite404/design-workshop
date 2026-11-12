@@ -3359,9 +3359,10 @@ function trackBasics(target: Selection, s: CSSStyleDeclaration): void {
 
 function trackType(): void {
   const target = selection;
-  typePanel.hidden = target === null || ownText(target.node) === undefined;
-  if (typePanel.hidden && basics.matches(":popover-open")) basics.hidePopover();
-  if (target === null || typePanel.hidden) return;
+  const off = target === null || ownText(target.node) === undefined;
+  setOff(typePanel, off ? "Select an element with its own text to edit its type." : null);
+  if (off && basics.matches(":popover-open")) basics.hidePopover();
+  if (target === null || off) return;
   const s = style(target.node);
   trackStyle(target, s);
   trackSize(target, s);
@@ -3374,6 +3375,28 @@ function trackType(): void {
   typeNote.hidden = !TYPE.some((n) => target.locked.has(n));
 }
 
+// The Selection panel's groups, in a fixed order whatever is selected (ETH-153, Ethan: like
+// Figma, never appearing, disappearing or reordering).
+const rowsOf = (names: Spacing[]) =>
+  names.map((name) => rows.find((r) => r.name === name)?.row ?? element("div"));
+const sizeLabel = element("h3", { className: "group-label" }, "Size");
+
+// Greys a panel out with the reason, or brings it back, instead of hiding it: its place in the
+// inspector never moves (ETH-153).
+function setOff(panel: HTMLDetailsElement, offReason: string | null): void {
+  let why = panel.querySelector<HTMLElement>(":scope > .off-note");
+  if (why === null) {
+    why = element("p", { className: "off-note" });
+    panel.querySelector(":scope > summary")?.after(why);
+  }
+  why.hidden = offReason === null;
+  why.textContent = offReason ?? "";
+  panel.toggleAttribute("data-off", offReason !== null);
+  for (const child of panel.children)
+    if (child.tagName !== "SUMMARY" && child !== why)
+      child.toggleAttribute("inert", offReason !== null);
+}
+
 const selectionPanel = element(
   "details",
   { ariaLabel: "Selection", open: true },
@@ -3381,8 +3404,14 @@ const selectionPanel = element(
   selectorText,
   surfaceNote,
   reachNote,
-  ...rows.map((r) => r.row),
+  sizeLabel,
+  ...rowsOf(SIZE),
+  element("h3", { className: "group-label" }, "Padding"),
+  ...rowsOf(SPACING.filter((name) => name.startsWith("padding-"))),
+  element("h3", { className: "group-label" }, "Spacing"),
+  ...rowsOf(["gap"]),
   note,
+  element("h3", { className: "group-label" }, "Position"),
   ...offsetRows.map((r) => r.row),
   offsetNote,
 );
@@ -3412,20 +3441,28 @@ function trackSurface(node: Element): void {
   surfaceSwatch.style.background = value;
 }
 
+// What the Selection panel says before its values: greyed with a reason when nothing is
+// selected, and whether size can be edited in this mode.
+function trackPanelState(): void {
+  setOff(selectionPanel, selection === null ? "Select an element on the canvas to edit it." : null);
+  sizeLabel.textContent = componentMode ? "Size · Live mode only" : "Size";
+  if (selection === null) for (const { input } of [...rows, ...offsetRows]) input.value = "";
+}
+
 function trackFields(): void {
-  selectionPanel.hidden = selection === null;
+  trackPanelState();
   if (selection === null) return;
   const { node, selector, locked } = selection;
   trackSurface(node);
   const v = spacingOf(node);
   const laidOut = laysOut(node);
   const inline = style(node).display === "inline"; // width and height do nothing there
-  for (const { name, input, clear, row } of rows) {
+  for (const { name, input, clear } of rows) {
     const sized = SIZE.includes(name);
-    row.hidden = sized && componentMode; // size is a Live-mode edit (Ethan)
     if (document.activeElement !== input) input.value = String(v[name]);
     input.readOnly = locked.has(name);
-    input.disabled = (name === "gap" && !laidOut) || (sized && inline);
+    // Size is a Live-mode edit (Ethan): greyed out in Component mode, not hidden.
+    input.disabled = (name === "gap" && !laidOut) || (sized && (inline || componentMode));
     clear.disabled = was(selector, name) === null;
   }
   note.hidden = !SPACING.some((name) => locked.has(name));
