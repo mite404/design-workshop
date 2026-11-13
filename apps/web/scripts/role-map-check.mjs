@@ -44,7 +44,7 @@ writeFileSync(
     storybook: null,
     tokens: "globals.css",
     roles: { page: "--background", ink: "--foreground" },
-    colourSelectors: { light: ":root", dark: ".dark" },
+    colourSelectors: { light: ":root:not(.dark)", dark: ".dark" },
   }),
 );
 writeFileSync(path.join(app, ".gitignore"), ".vite/\n");
@@ -124,12 +124,31 @@ try {
       const field = page.getByRole("textbox", { name: "--background hex", exact: true });
       await field.fill("#123456");
       await field.press("Enter");
-      await until(() => /:root \{\n {2}--background: #123456;/.test(disk()), "saved in :root");
+      await until(
+        () => /:root:not\(\.dark\) \{\n {2}--background: #123456;/.test(disk()),
+        "saved in the light selector",
+      );
       await until(async () => (await background()) === "rgb(18, 52, 86)", "canvas shows it");
       await page.locator(".colour-row").last().scrollIntoViewIfNeeded();
       await page.screenshot({ path: path.join(out, "colour-row.png") });
     },
   );
+
+  await step("the Canvas mode switch shows the app's .dark mode and back", async () => {
+    const mode = page.getByRole("combobox", { name: "Canvas mode" });
+    const hasDark = () =>
+      page
+        .frameLocator("iframe")
+        .locator("html")
+        .evaluate((html) => html.classList.contains("dark"));
+    await mode.selectOption("dark");
+    await until(async () => (await hasDark()) === true, "html has .dark");
+    await until(async () => (await background()) === "rgb(51, 51, 51)", "canvas shows .dark");
+    await page.screenshot({ path: path.join(out, "dark.png") });
+    await mode.selectOption("light");
+    await until(async () => (await hasDark()) === false, ".dark removed");
+    await until(async () => (await background()) === "rgb(18, 52, 86)", "light is back");
+  });
 
   await step("nothing but the app's override file changed", () => {
     const changed = git("status", "--porcelain").trim();

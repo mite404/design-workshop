@@ -219,6 +219,8 @@ export function matchRoles(css: string): RoleMatch[] {
 
 // The config's role fields for `matches`: none when every role has its Template name (ADR-028),
 // else the roles found, and shadcn's light and dark selectors when a colour came from shadcn.
+// Light is `:root:not(.dark)`: a plain `:root` override ties with `.dark` and, loading later,
+// would leak light values into dark mode.
 // ponytail: shadcn's `.dark` class assumed; a host on another dark selector edits its config.
 function roleFields(matches: RoleMatch[]): {
   roles?: Record<string, string>;
@@ -229,7 +231,10 @@ function roleFields(matches: RoleMatch[]): {
     matches.flatMap((m) => (m.name === null ? [] : [[m.role, m.name]])),
   );
   const shadcn = matches.some((m) => m.table === "shadcn" && has(COLOUR_ROLES, m.role));
-  return { roles, ...(shadcn ? { colourSelectors: { light: ":root", dark: ".dark" } } : {}) };
+  return {
+    roles,
+    ...(shadcn ? { colourSelectors: { light: ":root:not(.dark)", dark: ".dark" } } : {}),
+  };
 }
 
 const named = (matches: RoleMatch[]) => matches.filter((m) => m.name !== null).length;

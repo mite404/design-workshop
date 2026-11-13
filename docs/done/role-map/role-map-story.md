@@ -43,8 +43,10 @@ Each ticket is one commit, verified and pushed before the next starts.
    each unmatched one. With `--yes` it lists them, so an agent can adapt the app.
 
 4. **Edit the app's own colours** (ETH-159). The Colours section lists the app's role colours
-   and saves an edit into the role map's light or dark selector. Switching the canvas to a
-   class-based dark mode, such as shadcn's `.dark`, is not in this story.
+   and saves an edit into the role map's light or dark selector.
+5. **Preview a class-based dark mode** (ETH-160). When the dark selector is one class, such as
+   shadcn's `.dark`, the Canvas switch toggles it on the app root. The light selector is
+   `:root:not(.dark)`, so a light override never leaks into dark mode.
 
 ## Completion checklist
 
@@ -54,4 +56,5 @@ Each ticket is one commit, verified and pushed before the next starts.
       (ETH-158).
 - [x] The scratch app's Colours section lists only its role colours and saves an edit into its
       own `:root` (ETH-159).
+- [x] The Canvas switch shows the scratch app's `.dark` colours and back (ETH-160).
 - [x] Gates pass at each commit; each ticket is Done in Linear with its commit linked.

@@ -3454,7 +3454,8 @@ function trackSurface(node: Element): void {
   const found = surfaceOf(names); // → { surface, colour } | null
   surfaceNote.hidden = found === null;
   if (found === null) return;
-  const mode = doc()?.documentElement.dataset.theme === "dark" ? "dark" : "light";
+  const root = doc()?.documentElement;
+  const mode = root === undefined ? "light" : modeOf(root);
   const value = effectiveValue(COLOUR_ROOT[mode], found.colour) ?? "";
   surfaceLabel.textContent = `${found.surface.charAt(0).toUpperCase()}${found.surface.slice(1)} surface · ${found.colour}`;
   surfaceSwatch.title = value;
@@ -3638,6 +3639,25 @@ function finishColour(accept: boolean): void {
 let colourBaseline = new Map<string, { light: string; dark: string }>();
 // Where the app's theme roles live (PRD section 13), as the plugin reads its config.
 let roleMap: RoleMap = TEMPLATE_MAP;
+
+// The class an app turns dark mode on with, such as shadcn's `.dark`, or null when its dark
+// selector is not a single class. ponytail: one class; other dark selectors keep data-theme only.
+const darkClass = (): string | null => /^\.([\w-]+)$/.exec(roleMap.dark)?.[1] ?? null;
+
+// Shows `mode` on an app root: the Template's data-theme, and the app's dark class if it has one.
+function setMode(root: HTMLElement, mode: "light" | "dark"): void {
+  root.dataset.theme = mode;
+  const name = darkClass();
+  if (name !== null) root.classList.toggle(name, mode === "dark");
+}
+
+// The mode an app root shows, by either signal.
+const modeOf = (root: HTMLElement): "light" | "dark" => {
+  const name = darkClass();
+  return root.dataset.theme === "dark" || (name !== null && root.classList.contains(name))
+    ? "dark"
+    : "light";
+};
 
 // `value` with each `var(--x)` replaced by x's baseline in `mode`, so the canvas-free colour
 // probe can read it. Depth-limited: tokens.css has no cycles, but a cycle must not hang.
@@ -3836,7 +3856,7 @@ function showColour(row: ColourRow, values: Map<string, string>, selector: strin
 function trackColours(): void {
   const root = doc()?.documentElement;
   if (root === undefined || colourRows.length === 0) return;
-  const theme = root.dataset.theme === "dark" ? "dark" : "light";
+  const theme = modeOf(root);
   const selector = roleMap[theme];
   const computed = style(root);
   frame.parentElement?.style.setProperty("background-color", computed.getPropertyValue("--paper"));
@@ -4122,9 +4142,10 @@ canvasMode.addEventListener("change", () => {
   finishColour(false);
   const root = doc()?.documentElement;
   for (const row of colourRows) root?.style.removeProperty(row.name);
-  if (root !== undefined) root.dataset.theme = canvasMode.value;
+  const mode = canvasMode.value === "dark" ? "dark" : "light";
+  if (root !== undefined) setMode(root, mode);
   const appRoot = appDoc()?.documentElement;
-  if (appRoot !== undefined) appRoot.dataset.theme = canvasMode.value;
+  if (appRoot !== undefined) setMode(appRoot, mode);
   localStorage.setItem("theme", canvasMode.value);
   modeLabel.textContent = `Editing ${canvasMode.value === "dark" ? "Dark" : "Light"} mode · Other values apply to both modes`;
 });
@@ -4318,7 +4339,8 @@ import.meta.hot?.on("workbench:values", () => {
   newest.after(next);
 });
 frame.addEventListener("load", () => {
-  canvasMode.value = doc()?.documentElement.dataset.theme === "dark" ? "dark" : "light";
+  const appRoot = doc()?.documentElement;
+  canvasMode.value = appRoot === undefined ? "light" : modeOf(appRoot);
   modeLabel.textContent = `Editing ${canvasMode.value === "dark" ? "Dark" : "Light"} mode · Other values apply to both modes`;
   void load();
   void loadThemes();

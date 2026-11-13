@@ -18,5 +18,5 @@ Approach, scope, test plan and done-when are in the Linear issue.
 - Detecting roles needs a stylesheet, so `init` now proposes `tokens` too: the one naming the
   most roles. ADR-045 is amended; this repo's detected config now equals its committed one.
 - An app with no stylesheet naming any role gets `roles: {}` and the list, not 22 questions.
-- The light and dark selectors are written as shadcn's `:root` and `.dark` whenever a colour
-  role matched a shadcn name; another dark selector is edited by hand.
+- The light and dark selectors are written as `:root:not(.dark)` (ETH-160) and `.dark`
+  whenever a colour role matched a shadcn name; another dark selector is edited by hand.

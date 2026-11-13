@@ -268,7 +268,7 @@ test("a shadcn app's roles are detected, the rest asked one by one or listed wit
   expect(JSON.parse(readFileSync(join(listed, ".workbench/config.json"), "utf8"))).toMatchObject({
     tokens: "src/globals.css",
     roles: { page: "--background", surface: "--card", ink: "--foreground" },
-    colourSelectors: { light: ":root", dark: ".dark" },
+    colourSelectors: { light: ":root:not(.dark)", dark: ".dark" },
   });
 
   // The side, then each unmatched role in table order (hover first), then the confirmation.
