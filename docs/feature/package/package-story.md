@@ -43,9 +43,9 @@ Each ticket is one commit, verified and pushed before the next starts.
 
 1. **The package is self-contained** (ETH-164). Name `design-workshop`, a version, `files`
    listing the sources without tests, the bundled themes and `tsconfig.json`. Vite moves to
-   `dependencies`. `tsconfig.json` stands alone, with the base options inlined. `engines.node`
-   names the first Node that strips types by default. This repo's imports of
-   `@yaklabs/workbench/tree` follow the new name.
+   `dependencies`. `tsconfig.json` stands alone, with the base options inlined. This repo's
+   imports of `@yaklabs/workbench/tree` follow the new name. No `engines` field: the host's own
+   Node runs it (Ethan, Nov 13).
 2. **A scripted install check** (ETH-165). `scripts/install-check.mjs` packs the package,
    extracts it into a scratch pnpm monorepo as `packages/design-workshop/`, installs offline
    from the store, runs `init --yes` in its app and `dev` in front of a static server. It
