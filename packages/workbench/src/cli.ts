@@ -5,11 +5,12 @@ import { parseArgs } from "node:util";
 import { dirname, join, resolve } from "node:path";
 import { checkConfig } from "./config.ts";
 import { checkProject, validate } from "./contract.ts";
-import { inspect, install } from "./init.ts";
+import { inspect } from "./init.ts";
+import { install } from "./install.ts";
 import { exportProject, readManifest } from "./project.ts";
 import { checkValues, hostFiles, listValues, writeValues } from "./plugin.ts";
-import { parseOverrides } from "./overrides.ts";
 // oxlint-disable-next-line import/max-dependencies -- the command line dispatches one command per module
+import { parseOverrides } from "./overrides.ts";
 import { matchRoles } from "./theme.ts";
 
 // The files of the host the command runs in (ADR-045), read once a command needs them.

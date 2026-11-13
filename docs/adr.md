@@ -478,6 +478,11 @@ the features that read them. Rejected: an interactive questionnaire for every fi
 detected facts into opinions; and agent interpretation of a host's layout, which the contract
 rules out.
 
+Amended 2026-11-13 (ETH-166): `init` also adds the `design-workshop` devDependency, which it left
+out while the package could not be installed. The entry is `workspace:*` when the package is in
+the host's own pnpm workspace, else a path to it (`link:`, or `file:` for npm). A host that
+already depends on it keeps its entry. `init` then prints the install command to run.
+
 ## ADR-043 - The proxy runs the Workbench's own Vite under `/__workbench/`
 
 2026-11-12 - Accepted. ETH-147. PRD section 16, block 11.

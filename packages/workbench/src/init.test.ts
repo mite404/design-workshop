@@ -10,11 +10,12 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, expect, test } from "vitest";
 import { checkProject } from "./contract";
 import { detect, inspect } from "./init";
+import { specFor } from "./install";
 import { parseOverrides } from "./overrides";
 import { readManifest } from "./project";
 
@@ -120,6 +121,7 @@ test("this repo's detected config is the one it commits", async () => {
 // Scratch apps: a minimal Vite app's files, written to a temporary root, and `init` run on it as a
 // person would, through the command line (INIT CLI story, completion checklist).
 const CLI = fileURLToPath(new URL("./cli.ts", import.meta.url));
+const WORKBENCH = fileURLToPath(new URL("../", import.meta.url));
 const EMPTY =
   "/* Written by the Workbench. One design value per line. Do not edit by hand. */\n:root {\n}\n";
 const PACKAGE = { name: "scratch", private: true, type: "module", scripts: { dev: "vite" } };
@@ -165,7 +167,7 @@ test("init --yes in a scratch Vite app writes exactly its files, and a rerun wri
   const first = init(root, "", "--yes", "--side", "right");
   expect(first.stderr).toBe("");
   expect(first.status).toBe(0);
-  expect(first.stdout).toContain("Done. Next: pnpm add -D link:");
+  expect(first.stdout).toContain("Done. Next: pnpm install");
   const after = snapshot(root);
   expect(Object.keys(after).filter((path) => !(path in before))).toEqual([
     ".workbench/config.json",
@@ -173,9 +175,11 @@ test("init --yes in a scratch Vite app writes exactly its files, and a rerun wri
   ]);
   for (const path of Object.keys(before).filter((p) => p !== "package.json"))
     expect(after[path]).toBe(before[path]);
+  // Outside any workspace holding the package, the app links to it by path.
   expect(JSON.parse(after["package.json"] ?? "")).toEqual({
     ...PACKAGE,
     scripts: { dev: "vite", workbench: "design-workshop" },
+    devDependencies: { "design-workshop": `link:${relative(root, WORKBENCH)}` },
   });
   expect(JSON.parse(after[".workbench/config.json"] ?? "")).toEqual({
     format: "design-workshop/config",
@@ -289,4 +293,15 @@ test("a shadcn app's roles are detected, the rest asked one by one or listed wit
   const bad = init(scratch(SHADCN), "\npaper\n");
   expect(bad.status).toBe(1);
   expect(bad.stderr).toContain("No variable paper.");
+});
+
+test("the dependency is workspace:* inside the app's own workspace, else a path", () => {
+  const repo = scratch({ "pnpm-workspace.yaml": "packages:\n  - apps/*\n  - packages/*\n" });
+  const app = join(repo, "apps/web");
+  const inside = join(repo, "packages/design-workshop");
+  const outside = join(tmpdir(), "elsewhere/design-workshop");
+  expect(specFor(app, inside, "pnpm")).toBe("workspace:*");
+  expect(specFor(app, outside, "pnpm")).toBe(`link:${relative(app, outside)}`);
+  expect(specFor(app, outside, "npm")).toBe(`file:${relative(app, outside)}`);
+  expect(specFor(tmpdir(), inside, "pnpm")).toBe(`link:${relative(tmpdir(), inside)}`);
 });

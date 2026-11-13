@@ -62,7 +62,7 @@ Each ticket is one commit, verified and pushed before the next starts.
 
 - [x] `pnpm pack` in the package lists its sources, themes and `tsconfig.json`, and no tests.
 - [x] `pnpm test:install` passes twice in a row and leaves no scratch files behind.
-- [ ] In the scratch monorepo, `init --yes` adds the devDependency and a second run changes
+- [x] In the scratch monorepo, `init --yes` adds the devDependency and a second run changes
       nothing.
 - [ ] The README's steps, followed by hand in a fresh scratch monorepo, end with the editor open
       on that app.

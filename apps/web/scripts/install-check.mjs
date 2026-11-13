@@ -82,19 +82,18 @@ try {
 
   write(path.join(scratch, "package.json"), '{ "name": "scratch", "private": true }\n');
   write(path.join(scratch, "pnpm-workspace.yaml"), "packages:\n  - apps/*\n  - packages/*\n");
-  write(
-    path.join(app, "package.json"),
-    '{ "name": "web", "private": true, "devDependencies": { "design-workshop": "workspace:*" } }\n',
-  );
+  write(path.join(app, "package.json"), '{ "name": "web", "private": true }\n');
   write(path.join(app, "src/index.css"), ":root {\n  --background: #ffffff;\n}\n");
-  run(scratch, "pnpm", "install", "--prefer-offline", "--silent");
 
+  // As the install guide runs it: from the package's folder, before anything is installed.
   const before = files(app);
-  run(app, "pnpm", "exec", "design-workshop", "init", ".", "--yes");
+  run(scratch, "node", path.join(pkg, "src/cli.ts"), "init", "apps/web", "--yes");
   const added = files(app).filter((f) => !before.includes(f));
   assert.deepEqual(added.toSorted(), [".workbench/config.json", ".workbench/overrides.css"]);
   const manifest = readFileSync(path.join(app, "package.json"), "utf8");
   assert.match(manifest, /"workbench": "design-workshop"/, "init adds the workbench script");
+  assert.match(manifest, /"design-workshop": "workspace:\*"/, "init adds the dependency");
+  run(scratch, "pnpm", "install", "--prefer-offline", "--silent");
 
   await new Promise((resolve) => {
     server.listen(APP_PORT, resolve);
