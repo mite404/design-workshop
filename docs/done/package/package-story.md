@@ -64,8 +64,8 @@ Each ticket is one commit, verified and pushed before the next starts.
 - [x] `pnpm test:install` passes twice in a row and leaves no scratch files behind.
 - [x] In the scratch monorepo, `init --yes` adds the devDependency and a second run changes
       nothing.
-- [ ] The README's steps, followed by hand in a fresh scratch monorepo, end with the editor open
+- [x] The README's steps, followed by hand in a fresh scratch monorepo, end with the editor open
       on that app.
-- [ ] `pnpm format`, `pnpm lint`, `pnpm typecheck`, `pnpm fallow`, unit tests and the browser
+- [x] `pnpm format`, `pnpm lint`, `pnpm typecheck`, `pnpm fallow`, unit tests and the browser
       suites pass.
-- [ ] Each ticket is Done in Linear with a resolution comment linking its commit.
+- [x] Each ticket is Done in Linear with a resolution comment linking its commit.

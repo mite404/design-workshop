@@ -35,6 +35,56 @@ pnpm build
 In an Amp orb, `amp orb services ensure` starts both from `.amp/services.yaml` and prints their
 portal URLs.
 
+## Put the Workbench in another monorepo
+
+The Workbench ships as a workspace package, `packages/design-workshop/`, in the other repo, which
+must be a git repository (undo and commit read its history). It is not published to npm. Node
+runs its TypeScript directly, but not from `node_modules`, which is why it is a workspace package
+and not an installed tarball.
+
+1. Pack it here:
+
+   ```sh
+   cd packages/workbench && pnpm pack   # writes design-workshop-0.1.0.tgz
+   ```
+
+2. Extract it into the other repo, whose `pnpm-workspace.yaml` must include `packages/*`:
+
+   ```sh
+   mkdir -p packages/design-workshop
+   tar -xzf /path/to/design-workshop-0.1.0.tgz -C packages/design-workshop --strip-components 1
+   ```
+
+3. Set the app up, from the other repo's root (`apps/web` is the app's folder):
+
+   ```sh
+   node packages/design-workshop/src/cli.ts init apps/web
+   pnpm install
+   ```
+
+   `init` shows what it found and asks before writing. It writes `.workbench/config.json` and
+   `.workbench/overrides.css` in the app, and adds the `workbench` script and the
+   `design-workshop` devDependency to its `package.json`. It never changes the app's code.
+
+4. Start the app's own dev server, then the Workbench in front of it, in the app's folder:
+
+   ```sh
+   pnpm workbench dev --target http://localhost:5173   # the app's dev server address
+   ```
+
+   Open `http://localhost:5180/__workbench/`. Edits land in the app's `.workbench/` only.
+
+To update, pack again and replace `packages/design-workshop/`. `init` fills
+`.workbench/config.json` from what it detects; these optional fields change it by hand:
+
+| Field             | What it sets                                                   | Default       |
+| ----------------- | -------------------------------------------------------------- | ------------- |
+| `tokens`          | The stylesheet whose `:root` values are the baselines          | none          |
+| `roles`           | The app's variable for each theme role, when its names differ  | Template names |
+| `colourSelectors` | The selectors that hold the light and dark colours             | `data-theme`  |
+| `fonts`           | The folder that keeps installed fonts (`fonts.css`, `fonts/`)  | `.workbench`  |
+| `canvas`          | The app page the canvas opens on, such as `/t/demo-brief`      | `/`           |
+
 ## Tickets
 
 Product: `docs/prd.md`. Research: `docs/research/`. Each ticket is a plan in `docs/feature/<name>/`,
