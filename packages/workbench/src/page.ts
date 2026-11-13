@@ -3772,7 +3772,9 @@ function buildColours(values: unknown): void {
     );
     if (editable) {
       for (const control of [picker, input]) {
-        control.addEventListener("focus", () => beginColour(row));
+        control.addEventListener("focus", () => {
+          beginColour(row);
+        });
         control.addEventListener("input", () => {
           beginColour(row);
           const valid = HEX.test(control.value);
@@ -3785,10 +3787,16 @@ function buildColours(values: unknown): void {
           event.stopPropagation();
           finishColour(event.key === "Enter" && HEX.test(control.value));
         });
-        control.addEventListener("blur", () => finishColour(HEX.test(control.value)));
+        control.addEventListener("blur", () => {
+          finishColour(HEX.test(control.value));
+        });
       }
-      picker.addEventListener("change", () => finishColour(true));
-      picker.addEventListener("cancel", () => finishColour(false));
+      picker.addEventListener("change", () => {
+        finishColour(true);
+      });
+      picker.addEventListener("cancel", () => {
+        finishColour(false);
+      });
       clear.addEventListener("click", () => {
         finishColour(false);
         const root = doc()?.documentElement;
@@ -4157,7 +4165,9 @@ exportButton.addEventListener("click", () => {
 });
 // Shows a chosen project file's checklist (ETH-126). Reading it writes nothing; the decision is
 // the contract's checkProject alone, the same list `pnpm workbench check-project` prints.
-openButton.addEventListener("click", () => projectFile.click());
+openButton.addEventListener("click", () => {
+  projectFile.click();
+});
 projectFile.addEventListener("change", () => {
   const file = projectFile.files?.[0];
   projectFile.value = "";
@@ -4208,7 +4218,9 @@ projectFile.addEventListener("change", () => {
     projectDialog.showModal();
   })();
 });
-projectClose.addEventListener("click", () => projectDialog.close());
+projectClose.addEventListener("click", () => {
+  projectDialog.close();
+});
 // Loads a checked file as one release through the save path, so one undo restores the old look
 // (ETH-127). Values whose selectors match nothing stay listed by trackUnmatched (ADR-012).
 projectLoad.addEventListener("click", () => {
@@ -4229,9 +4241,15 @@ projectLoad.addEventListener("click", () => {
     showMessage(`Loaded ${look.name}.`);
   });
 });
-undo.addEventListener("click", () => replay(-1));
-redo.addEventListener("click", () => replay(1));
-checkCommit.addEventListener("click", () => enqueue(runCommit));
+undo.addEventListener("click", () => {
+  replay(-1);
+});
+redo.addEventListener("click", () => {
+  replay(1);
+});
+checkCommit.addEventListener("click", () => {
+  enqueue(runCommit);
+});
 commitClose.addEventListener("click", () => {
   if (commitController !== null) void cancelCommit();
   else commitDialog.close();
@@ -4266,8 +4284,12 @@ discard.addEventListener("click", () => {
   });
 });
 document.addEventListener("keydown", keyDown);
-window.addEventListener("focus", () => enqueue(refreshStatus));
-import.meta.hot?.on("workbench:values", () => enqueue(refreshStatus));
+window.addEventListener("focus", () => {
+  enqueue(refreshStatus);
+});
+import.meta.hot?.on("workbench:values", () => {
+  enqueue(refreshStatus);
+});
 
 // The override stylesheet the proxy links into the app (ETH-148): fetched again when the file
 // changes, the new sheet replacing the old once it loads, so nothing flashes unstyled. Each new
