@@ -76,7 +76,9 @@ function forward(req: IncomingMessage, res: ServerResponse, target: URL) {
       answer.on("data", (chunk: string) => (html += chunk));
       answer.on("end", () => {
         const body = withOverrides(html);
-        const { "content-length": _, ...headers } = answer.headers;
+        // The rewritten page goes whole, so the app's own framing (a streamed, chunked page, as
+        // Next sends) no longer applies.
+        const { "content-length": _, "transfer-encoding": __, ...headers } = answer.headers;
         res.writeHead(answer.statusCode ?? 502, {
           ...headers,
           "content-length": Buffer.byteLength(body),

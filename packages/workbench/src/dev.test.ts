@@ -1,5 +1,9 @@
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { createServer } from "node:http";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { expect, test } from "vitest";
-import { fontFile, withOverrides } from "./dev";
+import { fontFile, startDev, withOverrides } from "./dev";
 
 const LINK =
   '<link rel="stylesheet" href="/__workbench/fonts.css" data-workbench-fonts>' +
@@ -29,4 +33,30 @@ test("only an installed font's woff2 files are served, from the host's fonts fol
     "/__workbench/fonts/Inter/latin.woff2",
   ])
     expect(fontFile("/host/.workbench", url)).toBeNull();
+});
+
+test("a page the app streams in chunks reaches the browser whole, with the links", async () => {
+  const root = mkdtempSync(path.join(tmpdir(), "dev-host-"));
+  mkdirSync(path.join(root, ".workbench"));
+  writeFileSync(
+    path.join(root, ".workbench/config.json"),
+    '{ "format": "design-workshop/config", "version": 1, "sources": ["."], "storybook": null }',
+  );
+  writeFileSync(path.join(root, ".workbench/overrides.css"), ":root {\n}\n");
+  // Node frames a response with no length as chunked, as Next's streamed pages are.
+  const app = createServer((_, res) => {
+    res.writeHead(200, { "content-type": "text/html" });
+    res.write("<html><head></head>");
+    res.end("<body>streamed</body></html>");
+  });
+  await new Promise<void>((resolve) => {
+    app.listen(5195, resolve);
+  });
+  try {
+    await startDev("http://localhost:5195", 5185, root);
+    const page = await (await fetch("http://localhost:5185/")).text();
+    expect(page).toBe(`<html><head>${LINK}</head><body>streamed</body></html>`);
+  } finally {
+    app.close();
+  }
 });
