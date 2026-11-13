@@ -164,7 +164,9 @@ export async function install(
   ask: (question: string) => Promise<string>,
 ): Promise<string[]> {
   const detected = await inspect(root);
-  const host = hostFiles(root, detected.packageManager);
+  // An app in a pnpm workspace has its lockfile at the workspace root, or none yet.
+  const manager = detected.packageManager ?? (workspaceOf(root) === null ? null : "pnpm");
+  const host = hostFiles(root, manager);
   const side = await sideFor(detected, options, ask);
   const asking = !options.yes && !host.config && detected.unmatched.asked;
   const { config, unmatched } = await answerRoles(
@@ -182,5 +184,5 @@ export async function install(
   if (!confirmed) return ["Nothing written."];
   mkdirSync(join(root, ".workbench"), { recursive: true });
   for (const [path, text] of plan.writes) writeFileSync(join(root, path), text);
-  return [...(options.yes ? lines : []), `Done. Next: ${found.packageManager ?? "npm"} install`];
+  return [...(options.yes ? lines : []), `Done. Next: ${manager ?? "npm"} install`];
 }

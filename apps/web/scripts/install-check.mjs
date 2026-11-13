@@ -87,7 +87,8 @@ try {
 
   // As the install guide runs it: from the package's folder, before anything is installed.
   const before = files(app);
-  run(scratch, "node", path.join(pkg, "src/cli.ts"), "init", "apps/web", "--yes");
+  const told = run(scratch, "node", path.join(pkg, "src/cli.ts"), "init", "apps/web", "--yes");
+  assert.match(told, /Done\. Next: pnpm install/, "a pnpm workspace is told to run pnpm");
   const added = files(app).filter((f) => !before.includes(f));
   assert.deepEqual(added.toSorted(), [".workbench/config.json", ".workbench/overrides.css"]);
   const manifest = readFileSync(path.join(app, "package.json"), "utf8");
