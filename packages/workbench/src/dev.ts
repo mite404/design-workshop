@@ -11,17 +11,38 @@ import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { connect } from "node:net";
 import type { Duplex } from "node:stream";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createServer } from "vite";
+import { isFontId } from "./fonts.ts";
 import { hostFiles, workbench } from "./plugin.ts";
 
 const BASE = "/__workbench/";
 const ROOT = fileURLToPath(new URL("../", import.meta.url));
 
 const STYLESHEET = `${BASE}overrides.css`;
-const LINK = `<link rel="stylesheet" href="${STYLESHEET}" data-workbench-overrides>`;
+const FONTS = `${BASE}fonts.css`;
+const LINK =
+  `<link rel="stylesheet" href="${FONTS}" data-workbench-fonts>` +
+  `<link rel="stylesheet" href="${STYLESHEET}" data-workbench-overrides>`;
 
-/** `html` with the override stylesheet linked last in its head, so the host needs no import. */
+/**
+ * The file a request for one of the installed fonts' woff2 files names, under `folder`'s fonts/,
+ * or null for any other request, so no path outside it is served.
+ */
+export function fontFile(folder: string, url: string | undefined): string | null {
+  const match = /^\/__workbench\/fonts\/([^/]+)\/([a-z0-9-]+\.woff2)$/.exec(
+    url?.split("?")[0] ?? "",
+  );
+  return match?.[1] !== undefined && match[2] !== undefined && isFontId(match[1])
+    ? join(folder, "fonts", match[1], match[2])
+    : null;
+}
+
+/**
+ * `html` with the installed fonts' and the override stylesheets linked last in its head, so the
+ * host needs no import.
+ */
 export const withOverrides = (html: string): string =>
   /<\/head>/i.test(html) ? html.replace(/<\/head>/i, `${LINK}$&`) : `${LINK}${html}`;
 
@@ -87,12 +108,13 @@ function forwardUpgrade(req: IncomingMessage, socket: Duplex, head: Buffer, targ
   socket.on("error", () => upstream.destroy());
 }
 
-// The override file as a stylesheet, never cached, so a changed file is read again.
-async function serveStylesheet(res: ServerResponse, file: string): Promise<void> {
+// A file the Workbench wrote, never cached, so a changed file is read again; fonts.css is empty
+// until a font is installed.
+async function serveFile(res: ServerResponse, file: string, type: string): Promise<void> {
   try {
-    const css = await readFile(file, "utf8");
-    res.writeHead(200, { "content-type": "text/css", "cache-control": "no-store" });
-    res.end(css);
+    const body = file.endsWith("fonts.css") && !existsSync(file) ? "" : await readFile(file);
+    res.writeHead(200, { "content-type": type, "cache-control": "no-store" });
+    res.end(body);
   } catch (error: unknown) {
     res.writeHead(500, { "content-type": "text/plain" });
     res.end(String(error));
@@ -122,7 +144,11 @@ export async function startDev(target: string, port: number, root: string): Prom
     server: { middlewareMode: true, hmr: { server } },
   });
   server.on("request", (req, res) => {
-    if (req.url?.split("?")[0] === STYLESHEET) void serveStylesheet(res, files.overrides);
+    const path = req.url?.split("?")[0];
+    const font = fontFile(files.fonts, req.url);
+    if (path === STYLESHEET) void serveFile(res, files.overrides, "text/css");
+    else if (path === FONTS) void serveFile(res, join(files.fonts, "fonts.css"), "text/css");
+    else if (font !== null) void serveFile(res, font, "font/woff2");
     else if (ours(req.url)) vite.middlewares(req, res);
     else forward(req, res, host);
   });

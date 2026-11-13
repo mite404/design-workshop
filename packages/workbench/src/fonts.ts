@@ -162,6 +162,11 @@ export const licenseUrl = (font: FontDetails): string =>
   `https://${FONT_HOST}/npm/@fontsource/${font.id}@${font.version}/LICENSE`;
 
 /** The comment line above a font's rules in fonts.css, which marks the font as saved. */
+/** The first lines of every fonts.css the Workbench writes. */
+export const FONTS_HEADER = `/* Written by the Workbench: the Google fonts picked for this mockup, copied into fonts/ with
+   their licences (ADR-021). Do not edit by hand. */
+`;
+
 export const marker = (id: string): string => `/* fontsource: ${id} */`;
 
 /** A font's `@font-face` rules for fonts.css, under its marker, one per file. */

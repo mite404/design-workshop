@@ -463,6 +463,15 @@ describe("installFont", () => {
     expect(css.match(/@font-face/g)).toHaveLength(2);
   });
 
+  test("starts fonts.css in a host folder that has none", async () => {
+    fontsource([ABEEZEE]);
+    const dir = mkdtempSync(path.join(tmpdir(), "host-fonts-"));
+    expect((await install(dir, "abeezee")).status).toBe(200);
+    const css = readFileSync(path.join(dir, "fonts.css"), "utf8");
+    expect(css.startsWith("/* Written by the Workbench")).toBe(true);
+    expect(css).toContain('/* fontsource: abeezee */\n@font-face {\n  font-family: "ABeeZee"');
+  });
+
   test("copies one file per weight and style of a font with separate weights", async () => {
     fontsource([ABEEZEE]);
     const dir = catalog();

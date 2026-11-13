@@ -10,6 +10,7 @@ const FIELDS = new Set([
   "sources",
   "storybook",
   "tokens",
+  "fonts",
   "roles",
   "colourSelectors",
 ]);
@@ -118,6 +119,8 @@ function checkFields(data: Record<string, unknown>, exists: Exists): Failure[] {
     ...(data.tokens === undefined
       ? []
       : checkPath(data.tokens, "tokens", "bad-tokens", exists, "file")),
+    // Optional: the folder whose fonts.css and fonts/ the Workbench writes (ADR-021).
+    ...(data.fonts === undefined ? [] : checkPath(data.fonts, "fonts", "bad-fonts", exists)),
     ...checkRoles(data.roles),
     ...checkSelectors(data.colourSelectors),
   ];
@@ -152,6 +155,7 @@ export function parseConfig(text: string): {
   sources: string[];
   storybook: { configDir: string } | null;
   tokens: string | null;
+  fonts: string | null;
   roles: Record<string, string> | null;
   colourSelectors: { light: string; dark: string } | null;
 } {
@@ -166,6 +170,7 @@ export function parseConfig(text: string): {
       : [],
     storybook: typeof storybook.configDir === "string" ? { configDir: storybook.configDir } : null,
     tokens: typeof fields.tokens === "string" ? fields.tokens : null,
+    fonts: typeof fields.fonts === "string" ? fields.fonts : null,
     roles: record(fields.roles) ? stringsOf(fields.roles) : null,
     colourSelectors: record(fields.colourSelectors)
       ? { light: String(fields.colourSelectors.light), dark: String(fields.colourSelectors.dark) }

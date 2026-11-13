@@ -179,6 +179,12 @@ shows only where it is installed (Ethan: "this tradeoff is acceptable for now").
 loading fonts from a font server at run time, which breaks offline and depends on someone else's
 server, and uploading font files.
 
+Amended 2026-11-13 (ETH-162): fonts go into the host. The config's optional `fonts` names the
+folder that holds `fonts.css` and `fonts/`, by default `.workbench`; `design-workshop dev` links
+that `fonts.css` into the app's pages and serves its woff2 files, so a host needs no import. This
+repo names `packages/catalog/src`, which its app imports; `init` proposes any folder whose
+`fonts.css` the Workbench already wrote.
+
 ## ADR-022 - CI runs every check on each push to main
 
 2026-11-11 - Accepted.

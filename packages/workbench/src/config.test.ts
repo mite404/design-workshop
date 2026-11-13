@@ -41,6 +41,11 @@ test("tokens is an optional file inside the root", () => {
   ]);
 });
 
+test("fonts is an optional folder inside the root", () => {
+  expect(codes({ fonts: "src" })).toEqual([]);
+  expect(codes({ fonts: "../fonts" })).toEqual(["bad-fonts fonts"]);
+});
+
 test("folders must stay inside the root", () => {
   for (const escape of ["/etc", "../other", "src/../../x", "C:/x", "src\\ui", ""])
     expect(codes({ sources: ["src", escape] })).toEqual(["bad-source sources/1"]);

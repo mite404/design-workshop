@@ -19,6 +19,7 @@ import type { Plugin, ViteDevServer } from "vite";
 import { commitLook, committing, previewCommit } from "./commit.ts";
 import {
   FONT_HOST,
+  FONTS_HEADER,
   fontFiles,
   fontRules,
   isFamilyValue,
@@ -40,13 +41,17 @@ import { exportProject, readSources } from "./project.ts";
 import { parseConfig } from "./config.ts";
 
 const BUNDLED_THEMES = fileURLToPath(new URL("../themes/", import.meta.url));
-const CATALOG = fileURLToPath(new URL("../../catalog/src/", import.meta.url));
-const FONTS = join(CATALOG, "fonts.css");
 
 // The files the Workbench reads and writes: the override file, the tokens file its baselines
-// come from (null for a host, which has none, ADR-044), and its theme folders, bundled first;
-// it saves themes to the last.
-type Files = { overrides: string; tokens: string | null; themes: string[]; map: RoleMap };
+// come from (null for a host, which has none, ADR-044), the folder its fonts go in, and its
+// theme folders, bundled first; it saves themes to the last.
+type Files = {
+  overrides: string;
+  tokens: string | null;
+  fonts: string;
+  themes: string[];
+  map: RoleMap;
+};
 
 /**
  * A host's files: under its `.workbench/` at `root`, and the tokens file its config names, if
@@ -54,7 +59,7 @@ type Files = { overrides: string; tokens: string | null; themes: string[]; map: 
  * @throws When `.workbench/config.json` is missing or refused.
  */
 export function hostFiles(root: string): Files {
-  const { tokens, roles, colourSelectors } = parseConfig(
+  const { tokens, fonts, roles, colourSelectors } = parseConfig(
     readFileSync(join(root, ".workbench", "config.json"), "utf8"),
   );
   const file = tokens === null ? null : join(root, tokens);
@@ -63,6 +68,7 @@ export function hostFiles(root: string): Files {
   return {
     overrides: join(root, ".workbench", "overrides.css"),
     tokens: file,
+    fonts: join(root, fonts ?? ".workbench"),
     themes: [BUNDLED_THEMES, join(root, ".workbench", "themes")],
     map: { ...roleMapOf(roles, colourSelectors), palette },
   };
@@ -468,20 +474,21 @@ export function saveTheme(folders: string[], request: Post): Reply {
 }
 
 /**
- * Copies the Google font with Fontsource ID `id` (the body's only field) into `catalog`: its
+ * Copies the Google font with Fontsource ID `id` (the body's only field) into `folder`: its
  * woff2 files and LICENSE into `fonts/ID/`, then its `@font-face` rules onto `fonts.css` under a
- * marker. A font already there fetches nothing. Refuses a foreign `origin` (403), an ID off the
+ * marker, starting that file when it is not there yet. A font already there fetches nothing. Refuses a foreign `origin` (403), an ID off the
  * grammar (400), and details Fontsource does not give for `id` or with an unsafe subset, a file
  * not over HTTPS from FONT_HOST, a redirect, or a file over MAX_FILE (502), writing nothing.
  */
-export async function installFont(catalog: string, request: Post): Promise<Reply> {
+export async function installFont(folder: string, request: Post): Promise<Reply> {
   if (foreign(request)) return FOREIGN;
   const id: unknown = field(json(request.body), "id");
   if (!isFontId(id)) return { status: 400, body: { error: `not a Fontsource ID: ${String(id)}` } };
-  const css = join(catalog, "fonts.css");
-  const folder = join(catalog, "fonts", id);
-  const saved = savedFamily(readFileSync(css, "utf8"), id);
-  if (saved !== undefined && existsSync(folder))
+  const css = join(folder, "fonts.css");
+  const target = join(folder, "fonts", id);
+  const fontsCss = () => (existsSync(css) ? readFileSync(css, "utf8") : FONTS_HEADER);
+  const saved = savedFamily(fontsCss(), id);
+  if (saved !== undefined && existsSync(target))
     return { status: 200, body: { id, family: saved } };
 
   const api = `https://api.fontsource.org/v1`;
@@ -498,15 +505,15 @@ export async function installFont(catalog: string, request: Post): Promise<Reply
     return { status: 502, body: { error: failed ?? `${id} has no woff2 files` } };
   }
 
-  const temp = `${folder}.${process.pid}.tmp`;
+  const temp = `${target}.${process.pid}.tmp`;
   rmSync(temp, { recursive: true, force: true });
   mkdirSync(temp, { recursive: true });
   for (const [i, bytes] of fetched.entries()) {
     writeFileSync(join(temp, files[i]?.name ?? "LICENSE"), bytes);
   }
-  rmSync(folder, { recursive: true, force: true });
-  renameSync(temp, folder);
-  const now = readFileSync(css, "utf8");
+  rmSync(target, { recursive: true, force: true });
+  renameSync(temp, target);
+  const now = fontsCss();
   if (savedFamily(now, id) === undefined) replace(css, `${now}${fontRules(font, files)}`);
   return { status: 200, body: { id, family: font.family } };
 }
@@ -529,7 +536,7 @@ async function reload(server: ViteDevServer, file: string): Promise<void> {
 
 // Each writing endpoint: what it does with a POST, and the file it changes for hot reload.
 type Writes = Record<string, { run: (post: Post) => Reply | Promise<Reply>; file: string }>;
-const writesOf = ({ overrides, themes, map }: Files): Writes => ({
+const writesOf = ({ overrides, fonts, themes, map }: Files): Writes => ({
   "/__workbench/values": {
     run: (post) => {
       const reply = writeValue(overrides, post, map);
@@ -543,8 +550,10 @@ const writesOf = ({ overrides, themes, map }: Files): Writes => ({
     file: overrides,
   },
   "/__workbench/discard": { run: (post) => discardValues(overrides, post), file: overrides },
-  // ponytail: fonts install into the Template's catalog only; a host's fonts need a story.
-  "/__workbench/fonts": { run: (post) => installFont(CATALOG, post), file: FONTS },
+  "/__workbench/fonts": {
+    run: (post) => installFont(fonts, post),
+    file: join(fonts, "fonts.css"),
+  },
   "/__workbench/themes": { run: (post) => saveTheme(themes, post), file: themes.at(-1) ?? "" },
 });
 

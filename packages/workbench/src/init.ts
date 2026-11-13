@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import { checkConfig } from "./config.ts";
 import CONTRACT from "./contract.json" with { type: "json" };
 import { setOverride } from "./overrides.ts";
+import { FONTS_HEADER } from "./fonts.ts";
 import { answerRoles, detectRoles } from "./theme.ts";
 
 const SLOTS = CONTRACT.shells["app-shell"].slots;
@@ -75,12 +76,19 @@ export function detect(
   const shell = missing.length === 0 ? "app-shell" : "full-screen";
   const configDir = paths.map((p) => STORYBOOK_MAIN.exec(p)?.[1]).find((d) => d !== undefined);
   const found = detectRoles(paths.filter((p) => p.endsWith(".css")).map((p) => [p, text(p)]));
+  // A fonts.css the Workbench already writes, which the app imports, keeps its fonts (ADR-021).
+  const fonts = paths
+    .find((p) => p.endsWith("/fonts.css") && text(p).startsWith(FONTS_HEADER))
+    ?.slice(0, -"/fonts.css".length);
+  const { tokens, ...roles } = found.fields;
   const config = {
     format: "design-workshop/config",
     version: 1,
     sources,
     storybook: configDir === undefined ? null : { configDir },
-    ...found.fields,
+    ...(tokens === undefined ? {} : { tokens }),
+    ...(fonts === undefined ? {} : { fonts }),
+    ...roles,
   };
   return {
     config,
