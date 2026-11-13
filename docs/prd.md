@@ -226,7 +226,8 @@ look in under an hour without writing a prompt.
   *Built: radius (ETH-101), gap and padding (ETH-102), and width and height (ETH-137 values,
   ETH-138 handles, Live mode only, ADR-037) have handles and readouts.*
 - R14. Rearrange shell regions by drag, saved as layout values. *Partly built: the rail and its
-  drawer sit on the left or the right, one layout value the Workbench sets (ETH-142, ADR-041).*
+  drawer sit on the left or the right, one layout value the Workbench sets (ETH-142, ADR-041).
+  No other region gets a choice for now (Ethan, Nov 13, section 13).*
 - R15. Assets panel: drag a component from the library into an allowed slot. *Dropped (Ethan,
   Nov 12): what fills a slot is structure, so it is a request to an agent, made from the chat
   button or Select element (R12), which put the element or component name in the compose box.*
@@ -363,8 +364,9 @@ These are Ethan's stated preferences for how the Workbench itself should look an
   - The fold is a separate step outside the Workbench: an agent in the structure lane moves the
     override values into the baseline tokens when the work goes into the real codebase. The
     Workbench still commits only the override file (section 6).
-  - R14: the shell's templated regions are the title bar, the navigation rail, the drawer and
-    the panel ("the most commonly used slots").
+  - R14: the title bar, the navigation rail, the drawer and the panel are what set an app-shell
+    apart from a full-screen app ("the most commonly used slots"). They are not a request for
+    more layout choices; the rail and drawer side stays the only one.
   - Theme roles in another app (R16): the Workbench works with apps that match the Template's
     role names, or that an agent can adapt to them without breaking changes. Roles are found by
     a fixed name table, Template names first, then the shadcn names this repo maps
@@ -376,8 +378,6 @@ These are Ethan's stated preferences for how the Workbench itself should look an
 - How does a designer learn that a change broke or moved something on a screen, a state or a
   story that is not on the canvas? Not at the press (ADR-026). Ethan, Nov 12: unsolved; it needs
   more QA testing in practice first, so it has no story and no ticket yet.
-- R14: what are the title bar's and the panel's templated options, and which region is "the
-  panel"? Ethan named the regions on Nov 12; no option is built until he names them.
 
 ## 15. OPEN ISSUES
 
