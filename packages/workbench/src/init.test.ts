@@ -17,11 +17,35 @@ import { checkProject } from "./contract";
 import { detect, inspect } from "./init";
 import { parseOverrides } from "./overrides";
 import { readManifest } from "./project";
-import { COLOUR_ROLES, TYPE_ROLES } from "./theme";
 
 const SHELL =
   '<div data-slot="window"><b data-slot="title-bar" /><nav data-slot="sidebar" /></div>';
 const noStorybook = () => null;
+// Every theme role, in the order the name table lists them (ADR-028).
+const ALL_ROLES = [
+  "page",
+  "surface",
+  "hover",
+  "compose",
+  "control",
+  "ink",
+  "ink-soft",
+  "ink-faint",
+  "accent",
+  "on-accent",
+  "send",
+  "focus",
+  "selection",
+  "chrome",
+  "on-chrome",
+  "on-chrome-soft",
+  "chrome-hover",
+  "text-font",
+  "display-font",
+  "base-size",
+  "ratio",
+  "leading",
+];
 
 test("an app-shell host that reads the side is asked it, defaulting to its Sidebar's side", () => {
   const found = detect(
@@ -50,7 +74,7 @@ test("an app-shell host that reads the side is asked it, defaulting to its Sideb
     side: { asked: true, default: "right" },
     packageManager: "pnpm",
     // No stylesheet names a role, so none is asked; all 22 are listed.
-    unmatched: { asked: false, roles: Object.keys({ ...COLOUR_ROLES, ...TYPE_ROLES }) },
+    unmatched: { asked: false, roles: ALL_ROLES },
   });
 });
 
