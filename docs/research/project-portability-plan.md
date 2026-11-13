@@ -107,8 +107,8 @@ phases 1 to 3, so it can go in whatever order serves the work.
 
 ### Phase 5. Install into any repo, like Storybook (PRD section 16)
 
-Item 3 is built (ADR-042). Item 1 has a story and tickets:
-[proxy story](../done/proxy/proxy-story.md) (ADR-043).
+Items 1 to 3 are built (ADR-042, ADR-043). Packing the Workbench into another monorepo has a
+story and tickets: [package story](../feature/package/package-story.md) (ETH-164 to ETH-167).
 Candidate features, in order:
 
 1. A same-origin proxy in front of this repo's own dev server that serves the Workbench and

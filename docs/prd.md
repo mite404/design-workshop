@@ -413,7 +413,8 @@ Workbench's own JSON file, a translation layer between standard primitives and t
 fonts and hover colours. Neither writes the host app's code. This section is the plan. Built:
 `design-workshop init` ([INIT CLI story](done/init-cli/init-cli-story.md), ADR-042) and
 `design-workshop dev` ([proxy story](done/proxy/proxy-story.md), ADR-043 to ADR-045), which
-serves this repo too. Plan detail:
+serves this repo too. Planned: packing it into another monorepo as a workspace package
+([package story](feature/package/package-story.md), ETH-164 to ETH-167). Plan detail:
 [portability plan](research/project-portability-plan.md).
 
 ### How Storybook installs (checked Nov 12 2026)
