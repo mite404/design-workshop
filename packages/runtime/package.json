@@ -6,9 +6,9 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "test": "vitest run",
+    "test": "vitest run && node --test scripts/observe-csp.test.mjs",
     "test:unit": "vitest run",
-    "test:security": "node --test scripts/observe-csp.test.mjs && node scripts/verify-security.mjs",
+    "test:security": "node scripts/verify-security.mjs",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
