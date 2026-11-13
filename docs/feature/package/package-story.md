@@ -46,7 +46,7 @@ Each ticket is one commit, verified and pushed before the next starts.
    `dependencies`. `tsconfig.json` stands alone, with the base options inlined. This repo's
    imports of `@yaklabs/workbench/tree` follow the new name. No `engines` field: the host's own
    Node runs it (Ethan, Nov 13).
-2. **A scripted install check** (ETH-165). `scripts/install-check.mjs` packs the package,
+2. **A scripted install check** (ETH-165). `apps/web/scripts/install-check.mjs` packs the package,
    extracts it into a scratch pnpm monorepo as `packages/design-workshop/`, installs offline
    from the store, runs `init --yes` in its app and `dev` in front of a static server. It
    asserts that the editor page, `page.ts` and both injected stylesheets answer 200, that the
@@ -60,8 +60,8 @@ Each ticket is one commit, verified and pushed before the next starts.
 
 ## 4. Completion checklist
 
-- [ ] `pnpm pack` in the package lists its sources, themes and `tsconfig.json`, and no tests.
-- [ ] `node scripts/install-check.mjs` passes twice in a row and leaves no scratch files behind.
+- [x] `pnpm pack` in the package lists its sources, themes and `tsconfig.json`, and no tests.
+- [x] `pnpm test:install` passes twice in a row and leaves no scratch files behind.
 - [ ] In the scratch monorepo, `init --yes` adds the devDependency and a second run changes
       nothing.
 - [ ] The README's steps, followed by hand in a fresh scratch monorepo, end with the editor open
