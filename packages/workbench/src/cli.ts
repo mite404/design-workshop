@@ -72,9 +72,9 @@ const COMMANDS: Record<
 
 function list(args: string[]): void {
   if (args.length === 1 && args[0] !== "--json") throw new Error(USAGE);
-  const { overrides, tokens } = files();
+  const { overrides, tokens, map } = files();
   const text = readFileSync(overrides, "utf8");
-  const rows = listValues(text, tokens === null ? "" : readFileSync(tokens, "utf8"));
+  const rows = listValues(text, tokens === null ? "" : readFileSync(tokens, "utf8"), map);
   process.stdout.write(
     args[0] === "--json"
       ? `${JSON.stringify(rows, null, 2)}\n`

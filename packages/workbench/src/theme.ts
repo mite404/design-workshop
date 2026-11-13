@@ -1,6 +1,6 @@
 // Theme files (ADR-028): the Workbench's own JSON, keyed by roles rather than CSS variables, so
 // one theme can reskin any app whose role map says which of its values play each role.
-import { COLOUR_ROOT, HEX } from "./colour.ts";
+import { COLOUR_ROOT, HEX, type Colour } from "./colour.ts";
 import { isFamilyValue } from "./fonts.ts";
 import { isScale, scaleValue } from "./type.ts";
 
@@ -133,6 +133,9 @@ export type RoleMap = {
   type: Partial<Record<TypeRole, string>>;
   light: string;
   dark: string;
+  // The colours beyond its roles that an app with the Template's names lists and edits: every
+  // one in its tokens file.
+  palette?: Record<string, Colour>;
 };
 
 /** The Template's own role map, which an app without one in its config matches exactly. */

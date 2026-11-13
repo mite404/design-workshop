@@ -40,8 +40,6 @@ import { exportProject, readSources } from "./project.ts";
 import { parseConfig } from "./config.ts";
 
 const BUNDLED_THEMES = fileURLToPath(new URL("../themes/", import.meta.url));
-const REPO = fileURLToPath(new URL("../../../", import.meta.url));
-const TOKENS = fileURLToPath(new URL("../../catalog/src/tokens.css", import.meta.url));
 const CATALOG = fileURLToPath(new URL("../../catalog/src/", import.meta.url));
 const FONTS = join(CATALOG, "fonts.css");
 
@@ -59,17 +57,23 @@ export function hostFiles(root: string): Files {
   const { tokens, roles, colourSelectors } = parseConfig(
     readFileSync(join(root, ".workbench", "config.json"), "utf8"),
   );
+  const file = tokens === null ? null : join(root, tokens);
+  // An app without `roles` has the Template's names, so its tokens file holds its palette.
+  const palette = roles === null && file !== null ? colourTokens(readFileSync(file, "utf8")) : {};
   return {
     overrides: join(root, ".workbench", "overrides.css"),
-    tokens: tokens === null ? null : join(root, tokens),
+    tokens: file,
     themes: [BUNDLED_THEMES, join(root, ".workbench", "themes")],
-    map: roleMapOf(roles, colourSelectors),
+    map: { ...roleMapOf(roles, colourSelectors), palette },
   };
 }
 const PAGE = fileURLToPath(new URL("./page.ts", import.meta.url));
 const ROOT = ":root";
-const COLOURS = colourTokens(readFileSync(TOKENS, "utf8"));
-const COLOUR_NAMES = Object.keys(COLOURS).filter((name) => COLOURS[name]?.editable === true);
+// The colour names `map` lets the Workbench write: its palette's editable ones and its roles'.
+const colourNames = ({ palette = {}, colours }: RoleMap): string[] => [
+  ...Object.keys(palette).filter((name) => palette[name]?.editable === true),
+  ...Object.values(colours),
+];
 const EDITABLE = [
   "--window-radius",
   "--shell-side",
@@ -120,7 +124,8 @@ export function readValues(
     // The Template's colours, else the app's role colours (PRD section 13).
     colours: Object.fromEntries(
       Object.entries(colourTokens(tokens)).filter(
-        ([name]) => Object.hasOwn(COLOURS, name) || Object.values(map.colours).includes(name),
+        ([name]) =>
+          Object.hasOwn(map.palette ?? {}, name) || Object.values(map.colours).includes(name),
       ),
     ),
     tokens: Object.fromEntries(
@@ -147,7 +152,7 @@ type Write = {
 // The app's role map adds its own names: type roles on `:root`, colour roles in its light and
 // dark selectors, which may be `:root` itself, as shadcn's light one is.
 function namesOf(selector: string, map: RoleMap = TEMPLATE_MAP): readonly string[] {
-  const colours = [...COLOUR_NAMES, ...Object.values(map.colours)];
+  const colours = colourNames(map);
   const names = [
     ...(selector === ROOT ? [...EDITABLE, ...Object.values(map.type)] : []),
     ...([COLOUR_ROOT.light, COLOUR_ROOT.dark, map.light, map.dark].includes(selector)
@@ -166,8 +171,7 @@ const ROOT_CHECKS: Record<string, (v: string) => boolean> = {
 };
 // The check a value of `name` must pass: a hex for any colour, the Template's or the app's.
 function checkOf(name: string, map: RoleMap): (v: string) => boolean {
-  if (COLOUR_NAMES.includes(name) || Object.values(map.colours).includes(name))
-    return (v) => HEX.test(v);
+  if (colourNames(map).includes(name)) return (v) => HEX.test(v);
   if (isType(name)) return (v) => typeValue(name, v);
   if (isScale(name)) return (v) => scaleValue(name, v);
   if (name.startsWith("--font-")) return isFamilyValue;
@@ -327,6 +331,7 @@ function listedBaseline(
 export function listValues(
   overrides: string,
   tokens: string,
+  map: RoleMap = TEMPLATE_MAP,
 ): {
   selector: string;
   name: string;
@@ -334,10 +339,10 @@ export function listValues(
   saved: string | null;
 }[] {
   const blocks = parseOverrides(overrides);
-  const values = readValues(overrides, tokens);
+  const values = readValues(overrides, tokens, map);
   const selectors = new Set([ROOT, ...Object.values(COLOUR_ROOT), ...blocks.keys()]);
   return [...selectors].flatMap((selector) =>
-    namesOf(selector).map((name) => ({
+    namesOf(selector, map).map((name) => ({
       selector,
       name,
       baseline: listedBaseline(values, selector, name),
@@ -689,7 +694,7 @@ async function route(
  * The Workbench page and its endpoints, on the dev server only, editing `files`: this repo's own
  * by default, or another host's from `hostFiles`.
  */
-export function workbench(files = hostFiles(REPO)): Plugin {
+export function workbench(files: Files): Plugin {
   let watcher: ReturnType<typeof watch> | undefined;
   const active = { controller: null as AbortController | null, file: files.overrides };
   const routes = { reads: readsOf(files), writes: writesOf(files), file: files.overrides };

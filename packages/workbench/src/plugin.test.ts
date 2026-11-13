@@ -12,6 +12,7 @@ import path from "node:path";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import {
   discardValues,
+  hostFiles,
   installFont,
   listThemes,
   readValues,
@@ -287,6 +288,41 @@ test("readValues reads each token's baseline and override, and each element's va
   const empty = readValues(`${HEADER}:root {\n}\n`, tokens);
   expect(empty.tokens["--window-radius"]?.override).toBeNull();
   expect(empty.saved).toEqual({});
+});
+
+test("a host's palette comes from its own tokens file, and only without a role map", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "workbench-host-"));
+  mkdirSync(path.join(root, ".workbench"));
+  const tokens = ":root {\n  --lagoon: #123456;\n  --tide: var(--lagoon);\n}\n";
+  writeFileSync(path.join(root, "tokens.css"), tokens);
+  const host = (roles?: Record<string, string>) => {
+    const config = {
+      format: "design-workshop/config",
+      version: 1,
+      sources: ["src"],
+      storybook: null,
+    };
+    writeFileSync(
+      path.join(root, ".workbench", "config.json"),
+      JSON.stringify({ ...config, tokens: "tokens.css", ...(roles ? { roles } : {}) }),
+    );
+    const { overrides, map } = hostFiles(root);
+    writeFileSync(overrides, `${HEADER}:root {\n}\n`);
+    const lagoon = { selector: ':root[data-theme="light"]', name: "--lagoon", was: null };
+    const write = (name: string) =>
+      writeValue(
+        overrides,
+        { origin: ORIGIN, host: HOST, body: JSON.stringify({ ...lagoon, name, value: "#abcdef" }) },
+        map,
+      ).status;
+    return { listed: Object.keys(readValues(`${HEADER}:root {\n}\n`, tokens, map).colours), write };
+  };
+  const template = host();
+  expect(template.listed).toEqual(["--lagoon", "--tide"]);
+  expect([template.write("--lagoon"), template.write("--tide")]).toEqual([200, 400]);
+  const mapped = host({ ink: "--tide" });
+  expect(mapped.listed).toEqual(["--tide"]);
+  expect([mapped.write("--lagoon"), mapped.write("--tide")]).toEqual([400, 200]);
 });
 
 test("discard restores HEAD rather than the index, and old-commit writes are refused", () => {

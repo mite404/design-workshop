@@ -8,7 +8,7 @@ export const COLOUR_ROOT = {
 export const HEX = /^#[\da-f]{6}$/i;
 
 // Each named colour's baseline expressions. Aliases and transparent mixes remain visible.
-type Colour = { light: string; dark: string; editable: boolean };
+export type Colour = { light: string; dark: string; editable: boolean };
 
 function declarations(body: string): Record<string, string> {
   return Object.fromEntries(
