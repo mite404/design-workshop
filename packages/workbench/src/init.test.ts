@@ -109,7 +109,8 @@ test("this repo's detected config is the one it commits", async () => {
   const found = await inspect(root);
   // The tokens file is the stylesheet naming the most theme roles; every role has its Template name.
   const committed: unknown = JSON.parse(readFileSync(`${root}.workbench/config.json`, "utf8"));
-  expect(found.config).toEqual(committed);
+  // The canvas page is chosen, not detected.
+  expect({ ...found.config, canvas: "/t/demo-brief" }).toEqual(committed);
   expect(found.unmatched.roles).toEqual([]);
   expect(found.shell).toBe("app-shell");
   expect(found.storybook?.version).toBe("10.6.0");

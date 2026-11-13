@@ -6,5 +6,6 @@
     "configDir": "apps/storybook/.storybook"
   },
   "tokens": "packages/catalog/src/tokens.css",
-  "fonts": "packages/catalog/src"
+  "fonts": "packages/catalog/src",
+  "canvas": "/t/demo-brief"
 }

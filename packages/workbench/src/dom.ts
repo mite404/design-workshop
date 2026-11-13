@@ -4,25 +4,6 @@ import type { Box } from "./radius";
 import { selectorFor, type Step } from "./selector";
 import type { Offset, Spacing } from "./spacing";
 
-/** The requested app URL, the single demo chat by default, or `/` for an unsafe target. */
-export function canvasPath(search: string): string {
-  const path = new URLSearchParams(search).get("path") ?? "/t/demo-brief";
-  try {
-    const decoded = decodeURIComponent(path);
-    if (
-      !decoded.startsWith("/") ||
-      decoded.startsWith("//") ||
-      decoded.split("").some((c) => c === "\\" || c <= " ")
-    )
-      return "/";
-    const url = new URL(decoded, "https://workbench.invalid");
-    if (url.pathname.startsWith("/__workbench")) return "/";
-    return path;
-  } catch {
-    return "/";
-  }
-}
-
 /** An element that takes inline styles: HTML or SVG. */
 export type Styled = Element & ElementCSSInlineStyle;
 

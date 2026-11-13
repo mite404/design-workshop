@@ -49,6 +49,7 @@ type Files = {
   overrides: string;
   tokens: string | null;
   fonts: string;
+  canvas: string;
   themes: string[];
   map: RoleMap;
 };
@@ -59,7 +60,7 @@ type Files = {
  * @throws When `.workbench/config.json` is missing or refused.
  */
 export function hostFiles(root: string): Files {
-  const { tokens, fonts, roles, colourSelectors } = parseConfig(
+  const { tokens, fonts, canvas, roles, colourSelectors } = parseConfig(
     readFileSync(join(root, ".workbench", "config.json"), "utf8"),
   );
   const file = tokens === null ? null : join(root, tokens);
@@ -69,6 +70,7 @@ export function hostFiles(root: string): Files {
     overrides: join(root, ".workbench", "overrides.css"),
     tokens: file,
     fonts: join(root, fonts ?? ".workbench"),
+    canvas,
     themes: [BUNDLED_THEMES, join(root, ".workbench", "themes")],
     map: { ...roleMapOf(roles, colourSelectors), palette },
   };
@@ -96,10 +98,12 @@ const TRANSLATE = /^-?\d{1,4}px -?\d{1,4}px$/;
 // One answer: its HTTP status, and a page as a string or anything else as JSON.
 type Reply = { status: number; body: unknown };
 
-const HTML = `<!doctype html>
+// The page, telling its script which app page the canvas opens on.
+const pageHtml = (canvas: string) => `<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
+    <meta name="workbench-canvas" content="${canvas.replaceAll("&", "&amp;").replaceAll('"', "&quot;")}" />
     <title>Workbench</title>
     <script type="module" src="/@fs${PAGE}"></script>
   </head>
@@ -581,11 +585,11 @@ const PAGE_PATHS = new Set(["/__workbench", "/__workbench/"]);
 async function answer(
   server: ViteDevServer,
   req: IncomingMessage,
-  routes: { reads: Record<string, () => unknown>; writes: Writes; file: string },
+  routes: { reads: Record<string, () => unknown>; writes: Writes; file: string; page: string },
 ): Promise<Reply | null> {
   const path = (req.url ?? "").split("?")[0] ?? "";
   if (PAGE_PATHS.has(path))
-    return { status: 200, body: await server.transformIndexHtml("/__workbench/", HTML) };
+    return { status: 200, body: await server.transformIndexHtml("/__workbench/", routes.page) };
   const reader = req.method === "GET" ? routes.reads[path] : undefined;
   if (reader !== undefined) return { status: 200, body: await reader() };
   const write = req.method === "POST" ? routes.writes[path] : undefined;
@@ -706,7 +710,12 @@ async function route(
 export function workbench(files: Files): Plugin {
   let watcher: ReturnType<typeof watch> | undefined;
   const active = { controller: null as AbortController | null, file: files.overrides };
-  const routes = { reads: readsOf(files), writes: writesOf(files), file: files.overrides };
+  const routes = {
+    reads: readsOf(files),
+    writes: writesOf(files),
+    file: files.overrides,
+    page: pageHtml(files.canvas),
+  };
   return {
     name: "workbench",
     apply: "serve",

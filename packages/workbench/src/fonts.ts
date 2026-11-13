@@ -167,6 +167,16 @@ export const FONTS_HEADER = `/* Written by the Workbench: the Google fonts picke
    their licences (ADR-021). Do not edit by hand. */
 `;
 
+/**
+ * The config's `fonts` field among `files` (path → text): the folder of a fonts.css the Workbench
+ * already wrote, which keeps its fonts (ADR-021), else none.
+ */
+export function fontsField(files: ReadonlyMap<string, string>): { fonts?: string } {
+  const [path] =
+    [...files].find(([p, text]) => p.endsWith("/fonts.css") && text.startsWith(FONTS_HEADER)) ?? [];
+  return path === undefined ? {} : { fonts: path.slice(0, -"/fonts.css".length) };
+}
+
 export const marker = (id: string): string => `/* fontsource: ${id} */`;
 
 /** A font's `@font-face` rules for fonts.css, under its marker, one per file. */

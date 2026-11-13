@@ -11,6 +11,7 @@ const FIELDS = new Set([
   "storybook",
   "tokens",
   "fonts",
+  "canvas",
   "roles",
   "colourSelectors",
 ]);
@@ -26,6 +27,25 @@ const stringsOf = (v: Record<string, unknown>) =>
   Object.fromEntries(
     Object.entries(v).filter((e): e is [string, string] => typeof e[1] === "string"),
   );
+
+/** The requested app URL, else `start` (the host's configured page), or `/` when unsafe. */
+export function canvasPath(search: string, start = "/"): string {
+  const path = new URLSearchParams(search).get("path") ?? start;
+  try {
+    const decoded = decodeURIComponent(path);
+    if (
+      !decoded.startsWith("/") ||
+      decoded.startsWith("//") ||
+      decoded.split("").some((c) => c === "\\" || c <= " ")
+    )
+      return "/";
+    const url = new URL(decoded, "https://workbench.invalid");
+    if (url.pathname.startsWith("/__workbench")) return "/";
+    return path;
+  } catch {
+    return "/";
+  }
+}
 
 // Code-unit order by path then code, so the list does not depend on the machine's locale.
 const key = (f: Failure) => `${f.path}\u0000${f.code}`;
@@ -94,6 +114,13 @@ function checkSelectors(selectors: unknown): Failure[] {
       ];
 }
 
+// Optional: the app page the canvas opens on, by default `/`.
+function checkCanvas(canvas: unknown): Failure[] {
+  return canvas === undefined || (typeof canvas === "string" && canvasPath("", canvas) === canvas)
+    ? []
+    : [{ code: "bad-canvas", path: "canvas", message: "Canvas must be a path in the app." }];
+}
+
 function checkFields(data: Record<string, unknown>, exists: Exists): Failure[] {
   const sources = Array.isArray(data.sources) ? data.sources : null;
   const storybook = data.storybook;
@@ -121,6 +148,7 @@ function checkFields(data: Record<string, unknown>, exists: Exists): Failure[] {
       : checkPath(data.tokens, "tokens", "bad-tokens", exists, "file")),
     // Optional: the folder whose fonts.css and fonts/ the Workbench writes (ADR-021).
     ...(data.fonts === undefined ? [] : checkPath(data.fonts, "fonts", "bad-fonts", exists)),
+    ...checkCanvas(data.canvas),
     ...checkRoles(data.roles),
     ...checkSelectors(data.colourSelectors),
   ];
@@ -156,6 +184,7 @@ export function parseConfig(text: string): {
   storybook: { configDir: string } | null;
   tokens: string | null;
   fonts: string | null;
+  canvas: string;
   roles: Record<string, string> | null;
   colourSelectors: { light: string; dark: string } | null;
 } {
@@ -171,6 +200,7 @@ export function parseConfig(text: string): {
     storybook: typeof storybook.configDir === "string" ? { configDir: storybook.configDir } : null,
     tokens: typeof fields.tokens === "string" ? fields.tokens : null,
     fonts: typeof fields.fonts === "string" ? fields.fonts : null,
+    canvas: typeof fields.canvas === "string" ? fields.canvas : "/",
     roles: record(fields.roles) ? stringsOf(fields.roles) : null,
     colourSelectors: record(fields.colourSelectors)
       ? { light: String(fields.colourSelectors.light), dark: String(fields.colourSelectors.dark) }

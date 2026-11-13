@@ -37,10 +37,10 @@ import {
   type Box,
   type Corner,
 } from "./radius";
+import { canvasPath } from "./config";
 import { type Bezier, EASE, formatBezier, parseBezier, progressAt } from "./motion";
 import {
   applied,
-  canvasPath,
   chain,
   element,
   hasNativeTransform,
@@ -172,7 +172,10 @@ type OffsetEdit = {
 type BodyPress = { x: number; y: number; id: number; under: Element | null; moved: boolean };
 
 const frame = element("iframe", {
-  src: canvasPath(location.search),
+  src: canvasPath(
+    location.search,
+    document.querySelector<HTMLMetaElement>('meta[name="workbench-canvas"]')?.content,
+  ),
   title: "Canvas",
   className: "frame",
 });

@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { expect, test } from "vitest";
-import { checkConfig } from "./config";
+import { canvasPath, checkConfig } from "./config";
 
 const VALID = {
   format: "design-workshop/config",
@@ -46,6 +46,12 @@ test("fonts is an optional folder inside the root", () => {
   expect(codes({ fonts: "../fonts" })).toEqual(["bad-fonts fonts"]);
 });
 
+test("canvas is an optional page of the app", () => {
+  expect(codes({ canvas: "/t/demo-brief?mode=component" })).toEqual([]);
+  for (const canvas of ["t/demo", "//evil.test", "https://evil.test", "/__workbench/", 1])
+    expect(codes({ canvas })).toEqual(["bad-canvas canvas"]);
+});
+
 test("folders must stay inside the root", () => {
   for (const escape of ["/etc", "../other", "src/../../x", "C:/x", "src\\ui", ""])
     expect(codes({ sources: ["src", escape] })).toEqual(["bad-source sources/1"]);
@@ -79,4 +85,28 @@ test("roles name known roles with variables; colour selectors are one rule each"
   expect(codes({ colourSelectors: { light: ":root", dark: ".dark } :root {" } })).toEqual([
     "bad-colour-selectors colourSelectors",
   ]);
+});
+
+test("canvas path accepts app routes and defaults unsafe or recursive targets to root", () => {
+  expect(canvasPath("")).toBe("/");
+  expect(canvasPath("", "/t/demo-brief")).toBe("/t/demo-brief");
+  expect(canvasPath("", "//evil.test")).toBe("/");
+  expect(canvasPath("?path=%2Ft%2Fdemo-brief%3Fmode%3Dcomponent%23card")).toBe(
+    "/t/demo-brief?mode=component#card",
+  );
+  for (const path of [
+    "//evil.test",
+    "https://evil.test",
+    "javascript:alert(1)",
+    "relative",
+    "/\\evil.test",
+    "/__workbench/",
+    "/a/../__workbench",
+    "/%5f_workbench/",
+    "/%2fexample.test",
+    "/%",
+    "/\n/evil.test",
+  ]) {
+    expect(canvasPath(`?path=${encodeURIComponent(path)}`)).toBe("/");
+  }
 });
