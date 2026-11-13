@@ -234,13 +234,12 @@ look in under an hour without writing a prompt.
 - R16. Themes: a theme is one override file. Save the current values as a theme, switch between
   themes, start a project from one. A preset is a partial theme covering one group of values, such
   as a colour palette or a font pairing (families, sizes and styles), so Ethan can swap to "font
-  pairing 2" from the current state without losing his other changes. An agent can draft a theme
-  from a component Ethan likes elsewhere by translating its styles into the Template's value names.
-  *Partly built, as role-keyed theme files (ADR-028): save the colours as a palette, load and
+  pairing 2" from the current state without losing his other changes.
+  *Built, as role-keyed theme files (ADR-028): save the colours as a palette, load and
   unload a palette or a type pairing (ETH-119 to 121). A project file carries a whole look into
   another checkout (ETH-125 to 127). Themes reskin another app through its role map, which
   `init` detects and asks about (ETH-156 to 158), so a new app starts from a theme by running
-  `init` and loading it. Agent-drafted themes are not built.*
+  `init` and loading it.*
 - R17. Motion: scrub a running transition, edit duration and easing curves. *Built: the
   controls' hover duration (ETH-139, ADR-038) and easing (ETH-140, ADR-039) are shared tokens
   the Workbench edits, the easing on a curve editor, and a slider scrubs that transition on the
@@ -328,8 +327,8 @@ These are Ethan's stated preferences for how the Workbench itself should look an
   boundary before sharing the app with other users.
 - Browser targets are Helium, Chrome and Safari. Type changes need a Safari font-rendering check;
   Chromium alone does not establish Safari behavior.
-- Themes come from both sources: Ethan's own tuned components, and components he likes elsewhere,
-  translated by an agent.
+- Themes come from Ethan's own tuned values. (An earlier entry here said an agent would also
+  translate components he likes elsewhere; see the Nov 13 entry below.)
 - Themes and presets are not in the first usable version. One look at a time is enough to start.
 - Opening a story in Component mode (R18, ETH-118) is not in the first usable version. That
   version closes on ETH-115 and ETH-117. (Ethan: "Move ETH-118 to Next in the PRD")
@@ -372,6 +371,14 @@ These are Ethan's stated preferences for how the Workbench itself should look an
     a fixed name table, Template names first, then the shadcn names this repo maps
     (`packages/ui/src/styles/globals.css`); `init` asks about the rest; an agent adapting the app
     is the fallback. [Story](done/role-map/role-map-story.md).
+- Nov 13 2026, Ethan, on "agent-drafted themes":
+  - They were never an appearance theme. Ethan meant a multi-gated check of whether a project the
+    Workbench is deployed into is compatible with it.
+  - The near-term use is the Yak Labs template itself: an agent-loop chat app with persisted chat
+    threads, used three times so far. The Workbench makes quick visual variants of it for job
+    application prototypes. Variants differ in look, not in function.
+  - The compatibility gates, and file open, save and export for other apps, come later, after a
+    couple of mocked chat apps have been made this way. They have no story yet.
 
 ## 14. Open questions
 
