@@ -42,10 +42,16 @@ Each ticket is one commit, verified and pushed before the next starts.
 3. **`init` writes the map** (ETH-158). It detects roles with the name table and asks about
    each unmatched one. With `--yes` it lists them, so an agent can adapt the app.
 
+4. **Edit the app's own colours** (ETH-159). The Colours section lists the app's role colours
+   and saves an edit into the role map's light or dark selector. Switching the canvas to a
+   class-based dark mode, such as shadcn's `.dark`, is not in this story.
+
 ## Completion checklist
 
 - [x] In this repo, `pnpm workbench roles` matches every role by its Template name (ETH-156).
 - [x] A shadcn-style scratch app loads a palette, and its own variables change (ETH-157).
 - [x] `init` in that app writes the detected map and asks only about the unmatched roles
       (ETH-158).
+- [x] The scratch app's Colours section lists only its role colours and saves an edit into its
+      own `:root` (ETH-159).
 - [x] Gates pass at each commit; each ticket is Done in Linear with its commit linked.

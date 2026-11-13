@@ -3603,7 +3603,7 @@ function beginColour(row: ColourRow): void {
   colourEdit = {
     row,
     root,
-    selector: canvasMode.value === "dark" ? COLOUR_ROOT.dark : COLOUR_ROOT.light,
+    selector: roleMap[canvasMode.value === "dark" ? "dark" : "light"],
     before: colourHex(style(root).getPropertyValue(row.name)),
     inline: root.style.getPropertyValue(row.name),
   };
@@ -3793,12 +3793,7 @@ function buildColours(values: unknown): void {
         finishColour(false);
         const root = doc()?.documentElement;
         if (root !== undefined)
-          saveValue(
-            root,
-            canvasMode.value === "dark" ? COLOUR_ROOT.dark : COLOUR_ROOT.light,
-            name,
-            null,
-          );
+          saveValue(root, roleMap[canvasMode.value === "dark" ? "dark" : "light"], name, null);
       });
     }
     return row;
@@ -3834,7 +3829,7 @@ function trackColours(): void {
   const root = doc()?.documentElement;
   if (root === undefined || colourRows.length === 0) return;
   const theme = root.dataset.theme === "dark" ? "dark" : "light";
-  const selector = COLOUR_ROOT[theme];
+  const selector = roleMap[theme];
   const computed = style(root);
   frame.parentElement?.style.setProperty("background-color", computed.getPropertyValue("--paper"));
   const values = new Map(

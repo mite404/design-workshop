@@ -108,6 +108,7 @@ function baseline(tokens: string, name: string): string | null {
 export function readValues(
   overrides: string,
   tokens: string,
+  map: RoleMap = TEMPLATE_MAP,
 ): {
   tokens: Record<string, { baseline: string | null; override: string | null }>;
   colours: ReturnType<typeof colourTokens>;
@@ -116,7 +117,12 @@ export function readValues(
   const blocks = parseOverrides(overrides);
   const root = blocks.get(ROOT);
   return {
-    colours: colourTokens(tokens),
+    // The Template's colours, else the app's role colours (PRD section 13).
+    colours: Object.fromEntries(
+      Object.entries(colourTokens(tokens)).filter(
+        ([name]) => Object.hasOwn(COLOURS, name) || Object.values(map.colours).includes(name),
+      ),
+    ),
     tokens: Object.fromEntries(
       EDITABLE.map((n) => [n, { baseline: baseline(tokens, n), override: root?.get(n) ?? null }]),
     ),
@@ -545,6 +551,7 @@ const readsOf = ({ overrides, tokens, themes, map }: Files): Record<string, () =
     ...readValues(
       readFileSync(overrides, "utf8"),
       tokens === null ? "" : readFileSync(tokens, "utf8"),
+      map,
     ),
     ...historyStatus(overrides),
     roleMap: { roles: { ...map.colours, ...map.type }, light: map.light, dark: map.dark },

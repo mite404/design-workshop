@@ -112,6 +112,25 @@ try {
     await until(() => /\.dark \{\n {2}--background: #101010;/.test(disk()), "vesper in .dark");
   });
 
+  await step(
+    "the Colours section edits the app's own role colours, not the Template's",
+    async () => {
+      // Undo Vesper and show light mode, then edit the light page colour by hand.
+      await page.getByRole("button", { name: "Undo", exact: true }).click();
+      await until(() => !disk().includes("--background"), "vesper undone");
+      await page.getByRole("combobox", { name: "Canvas mode" }).selectOption("light");
+      const rows = await page.locator(".colour-row label").allTextContents();
+      if (rows.join() !== "--background,--foreground") throw new Error(`rows: ${rows.join()}`);
+      const field = page.getByRole("textbox", { name: "--background hex", exact: true });
+      await field.fill("#123456");
+      await field.press("Enter");
+      await until(() => /:root \{\n {2}--background: #123456;/.test(disk()), "saved in :root");
+      await until(async () => (await background()) === "rgb(18, 52, 86)", "canvas shows it");
+      await page.locator(".colour-row").last().scrollIntoViewIfNeeded();
+      await page.screenshot({ path: path.join(out, "colour-row.png") });
+    },
+  );
+
   await step("nothing but the app's override file changed", () => {
     const changed = git("status", "--porcelain").trim();
     if (changed !== "M .workbench/overrides.css") throw new Error(`app changes: ${changed}`);
