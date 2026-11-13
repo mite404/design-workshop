@@ -33,7 +33,9 @@
     ]
   },
   // React Router's default server entry imports isbot at build time; the app never does.
-  "ignoreDependencies": ["isbot"],
+  // apps/storybook/vite.config.ts names "web" only inside optimizeDeps strings ("web > sonner"),
+  // which the import graph cannot see; the browser tests need that workspace link.
+  "ignoreDependencies": ["isbot", "web"],
   "rules": {
     "unused-dependencies": "warn"
   }

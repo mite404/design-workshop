@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "prepare": "lefthook install",
     "dev": "turbo run dev",
     "workbench": "node packages/workbench/src/cli.ts",
     "dev:web": "turbo run dev --filter=web",
@@ -21,11 +22,13 @@
     "format": "oxfmt --write",
     "format:check": "oxfmt --check",
     "fallow": "fallow",
+    "fallow:ci": "fallow --ci",
     "fallow:audit": "fallow audit"
   },
   "devDependencies": {
     "@yaklabs/config": "workspace:*",
     "fallow": "^3.28.0",
+    "lefthook": "^2.2.2",
     "oxfmt": "^0.70.0",
     "oxlint": "^1.85.0",
     "oxlint-tsgolint": "^7.0.2003",

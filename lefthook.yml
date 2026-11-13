@@ -1,0 +1,21 @@
+# Fast local gate; CI (.github/workflows/ci.yml) runs the strict whole-project versions.
+output:
+  - failure
+  - summary
+
+pre-commit:
+  jobs:
+    # Mutating jobs first, in order; stage_fixed restages only the files they touched.
+    - name: format
+      glob: "*.{ts,tsx,js,mjs,cjs,json,jsonc,css,html}"
+      run: pnpm exec oxfmt --write --no-error-on-unmatched-pattern {staged_files}
+      stage_fixed: true
+    - name: lint
+      glob: "*.{ts,tsx,js,mjs,cjs}"
+      run: pnpm exec oxlint --disable-nested-config --no-error-on-unmatched-pattern {staged_files}
+    - name: fallow
+      run: pnpm exec fallow --quiet --fail-on-issues
+    # Whole project graphs through turbo (cached), never individual filenames.
+    - name: typecheck
+      glob: "*.{ts,tsx,json}"
+      run: pnpm typecheck

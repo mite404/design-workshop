@@ -29,6 +29,10 @@ pnpm lint
 pnpm build
 ```
 
+The pre-commit hook (Lefthook, installed by `pnpm install`) formats and lints staged files, then runs
+fallow and `pnpm typecheck`. `pnpm --filter @yaklabs/runtime test:security` is a separate suite: it
+needs the built app served by Wrangler and takes that origin as its argument; CI does not run it.
+
 In an Amp orb, `amp orb services ensure` starts both from `.amp/services.yaml` and prints their
 portal URLs.
 
