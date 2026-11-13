@@ -29,6 +29,7 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm lint
       - run: pnpm format:check
+      # Not `fallow --ci`: fallow 3.29 exits 0 under its SARIF format even with findings.
       - run: pnpm fallow:ci
       - run: pnpm test
       - run: pnpm build

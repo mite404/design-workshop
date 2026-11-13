@@ -22,7 +22,7 @@
     "format": "oxfmt --write",
     "format:check": "oxfmt --check",
     "fallow": "fallow",
-    "fallow:ci": "fallow --ci",
+    "fallow:ci": "fallow --quiet --fail-on-issues",
     "fallow:audit": "fallow audit"
   },
   "devDependencies": {
