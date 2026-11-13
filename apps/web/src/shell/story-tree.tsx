@@ -11,7 +11,7 @@ import {
   TREE_EVENT,
   watchComponentView,
   type StoryNode,
-} from "@yaklabs/workbench/tree";
+} from "design-workshop/tree";
 import { useEffect, useState, useSyncExternalStore, type KeyboardEvent } from "react";
 import { z } from "zod";
 import { useShell } from "./model";

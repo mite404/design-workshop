@@ -1,5 +1,5 @@
 import { SidebarProvider } from "@yaklabs/ui/components/sidebar";
-import { TREE_EVENT } from "@yaklabs/workbench/tree";
+import { TREE_EVENT } from "design-workshop/tree";
 import { flushSync } from "react-dom";
 import { createRoot } from "react-dom/client";
 import { expect, test } from "vitest";

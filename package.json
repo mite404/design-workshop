@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "turbo run dev",
     "workbench": "node packages/workbench/src/cli.ts",
-    "dev:web": "turbo run dev --filter=web --filter=@yaklabs/workbench",
+    "dev:web": "turbo run dev --filter=web --filter=design-workshop",
     "build": "turbo run build",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test --concurrency=50%",

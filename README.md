@@ -6,13 +6,16 @@ yaklabs app shell and component library (`github.com/mite404/yaklabs`, copied wh
 
 ## Layout
 
-A pnpm 10.33.0 workspace run by Turborepo. The packages keep their `@yaklabs/*` names.
+A pnpm 10.33.0 workspace run by Turborepo. The packages other than the Workbench keep their
+`@yaklabs/*` names.
 
 - `apps/web`: the React Router single-page app.
 - `apps/storybook`: hosts Storybook and the story tests. The stories live beside their components.
 - `apps/gateway`: the yaklabs Cloudflare Worker. The Template does not need it to run.
 - `packages/catalog`, `packages/ui`, `packages/runtime`, `packages/config`: the card catalog, the
   shadcn/ui primitives, the in-browser agent runtime and the shared TypeScript config.
+- `packages/workbench`: the Workbench itself, the package `design-workshop`, which ships into
+  other monorepos on its own.
 
 ## Run
 

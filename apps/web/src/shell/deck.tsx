@@ -5,7 +5,7 @@ import {
   ResizablePanelGroup,
 } from "@yaklabs/ui/components/resizable";
 import { useIsMobile } from "@yaklabs/ui/hooks/use-mobile";
-import { componentView, storyView, watchComponentView } from "@yaklabs/workbench/tree";
+import { componentView, storyView, watchComponentView } from "design-workshop/tree";
 import {
   useCallback,
   useEffect,

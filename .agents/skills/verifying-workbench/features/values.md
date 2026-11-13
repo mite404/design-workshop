@@ -23,7 +23,7 @@ Run `pnpm workbench` from the repository root. For colours, open the Colours pan
 Preconditions: isolated snapshot; browser server needed only for the colour and hot-reload checks.
 
 ```sh
-pnpm --filter @yaklabs/workbench test
+pnpm --filter design-workshop test
 pnpm --silent workbench list --json
 pnpm workbench check
 pnpm --silent workbench manifest

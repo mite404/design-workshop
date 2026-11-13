@@ -6,7 +6,7 @@ import {
   useSidebar,
 } from "@yaklabs/ui/components/sidebar";
 import { FoldChevron, SidebarSection } from "@yaklabs/ui/components/sidebar-section";
-import { componentTree, DRAWER, TREE_EVENT, type ComponentNode } from "@yaklabs/workbench/tree";
+import { componentTree, DRAWER, TREE_EVENT, type ComponentNode } from "design-workshop/tree";
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
 import StoryTree from "./story-tree";
 
